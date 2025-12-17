@@ -5,4 +5,11 @@ version.workspace = true
 authors.workspace = true
 description = "Macros for generating shrink_wrap serdes code."
 
+[lib]
+proc-macro = true
+
 [dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+shrink_wrap_core = { path = "../shrink_wrap_core" }

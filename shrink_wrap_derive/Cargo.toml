@@ -1,6 +1,8 @@
 [package]
 name = "shrink_wrap_derive"
-version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+description = "Macros for generating shrink_wrap serdes code."
 
 [dependencies]

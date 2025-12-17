@@ -1,9 +1,9 @@
 [package]
 name = "shrink_wrap"
-edition = "2021"
+edition.workspace = true
 version.workspace = true
 authors.workspace = true
-description.workspace = true
+description = "Compact zero-copy wire format for microcontrollers using no allocator and supporting dynamic types."
 
 [dependencies]
 defmt = { version = "1.0", optional = true }

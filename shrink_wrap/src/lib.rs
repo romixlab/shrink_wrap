@@ -73,6 +73,7 @@ pub mod prelude {
     pub use crate::nib32::UNib32;
     pub use crate::ref_box::RefBox;
     pub use crate::ref_vec::{RefVec, RefVecIter};
+    pub use crate::stack_vec::StackVec;
     pub use crate::traits::{DeserializeShrinkWrap, ElementSize, SerializeShrinkWrap};
     pub use crate::un::*;
     pub use shrink_wrap_derive::{ShrinkWrap, derive_shrink_wrap, ww_repr};

@@ -111,12 +111,28 @@ dependencies = [
  "defmt",
  "hex-literal",
  "paste",
+ "shrink_wrap_derive",
  "tracing",
+]
+
+[[package]]
+name = "shrink_wrap_core"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
 name = "shrink_wrap_derive"
 version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "shrink_wrap_core",
+ "syn",
+]
 
 [[package]]
 name = "syn"

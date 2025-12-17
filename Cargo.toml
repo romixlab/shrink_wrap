@@ -7,5 +7,6 @@ version = "0.1.0"
 resolver = "3"
 members = [
     "shrink_wrap",
+    "shrink_wrap_core",
     "shrink_wrap_derive",
 ]

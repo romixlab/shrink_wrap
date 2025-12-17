@@ -66,6 +66,7 @@ pub enum Error {
 // }
 
 pub mod prelude {
+    pub use crate::Error as ShrinkWrapError;
     pub use crate::buf_reader::BufReader;
     pub use crate::buf_writer::BufWriter;
     pub use crate::nib::Nibble;
@@ -74,5 +75,5 @@ pub mod prelude {
     pub use crate::ref_vec::{RefVec, RefVecIter};
     pub use crate::traits::{DeserializeShrinkWrap, ElementSize, SerializeShrinkWrap};
     pub use crate::un::*;
-    pub use crate::Error as ShrinkWrapError;
+    pub use shrink_wrap_derive::{ShrinkWrap, derive_shrink_wrap, ww_repr};
 }

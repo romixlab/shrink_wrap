@@ -8,7 +8,7 @@ use syn::{Expr, Lit, LitStr, Meta};
 
 /// Take `#[id = integer]` attribute and return the number
 #[allow(clippy::ptr_arg)]
-pub(crate) fn take_id_attr(_attrs: &mut Vec<syn::Attribute>) -> Option<u32> {
+pub fn take_id_attr(_attrs: &mut Vec<syn::Attribute>) -> Option<u32> {
     // TODO: implement id's
     None
 }
@@ -116,7 +116,7 @@ pub(crate) fn take_size_assumption(attrs: &mut Vec<syn::Attribute>) -> Option<Ob
     }
 }
 
-pub(crate) fn collect_docs_attrs(attrs: &mut Vec<syn::Attribute>) -> Docs {
+pub fn collect_docs_attrs(attrs: &mut Vec<syn::Attribute>) -> Docs {
     let mut docs = Docs::empty();
     for attr in attrs.iter() {
         if !attr.path().is_ident("doc") {
@@ -213,7 +213,7 @@ pub(crate) fn take_derive_attr(attrs: &mut Vec<syn::Attribute>) -> Vec<Path> {
     derive
 }
 
-pub(crate) fn collect_unknown_attributes(attrs: &mut Vec<syn::Attribute>) {
+pub fn collect_unknown_attributes(attrs: &mut Vec<syn::Attribute>) {
     for a in attrs {
         // ignore #[shrink_warp(...)] in after #[derive(ShrinkWrap)]
         if a.path().is_ident("shrink_wrap") {

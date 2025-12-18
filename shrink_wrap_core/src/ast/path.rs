@@ -22,7 +22,7 @@ impl Path {
         }
     }
 
-    pub(crate) fn make_owned(&mut self) {
+    pub fn make_owned(&mut self) {
         if let Some(last_segment) = self.segments.last_mut() {
             *last_segment =
                 Ident::new(format!("{}Owned", last_segment).as_str(), Span::call_site());

@@ -8,6 +8,7 @@ pub mod ty;
 pub(crate) mod util;
 pub(crate) mod value;
 
+pub use docs::Docs;
 pub use item_enum::ItemEnum;
 pub use item_struct::{Field, ItemStruct};
 pub use repr::Repr;

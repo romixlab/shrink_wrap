@@ -5,20 +5,20 @@ use std::ops::Deref;
 use syn::{Lit, LitInt};
 
 #[derive(Clone)]
-pub(crate) enum FieldPath {
+pub enum FieldPath {
     Ref(TokenStream),
     Value(TokenStream),
 }
 
 impl FieldPath {
-    fn by_ref(self) -> TokenStream {
+    pub fn by_ref(self) -> TokenStream {
         match self {
             FieldPath::Ref(path) => path,
             FieldPath::Value(path) => quote! { &#path },
         }
     }
 
-    fn by_value(self) -> TokenStream {
+    pub fn by_value(self) -> TokenStream {
         match self {
             FieldPath::Ref(path) => quote! { *#path },
             FieldPath::Value(path) => path,
@@ -40,7 +40,7 @@ impl FieldPath {
 }
 
 impl Type {
-    pub(crate) fn def(&self, no_alloc: bool) -> TokenStream {
+    pub fn def(&self, no_alloc: bool) -> TokenStream {
         match self {
             Type::Bool => quote! { bool },
             Type::U4 | Type::U8 => quote! { u8 },
@@ -147,7 +147,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn buf_write(
+    pub fn buf_write(
         &self,
         field_path: FieldPath,
         no_alloc: bool,
@@ -289,7 +289,7 @@ impl Type {
         tokens.append_all(quote! { wr.#write_fn(#field_path) #handle_eob; });
     }
 
-    pub(crate) fn buf_read(
+    pub fn buf_read(
         &self,
         variable_name: &Ident,
         _no_alloc: bool,

@@ -1,6 +1,6 @@
+use crate::Error::OutOfBoundsRev;
 use crate::nib32::UNib32;
 use crate::un::read_unx;
-use crate::Error::OutOfBoundsRev;
 use crate::{DeserializeShrinkWrap, ElementSize, Error};
 
 /// Buffer reader that treats input as a stream of bits, nibbles or bytes.

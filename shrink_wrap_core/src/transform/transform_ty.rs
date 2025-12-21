@@ -100,13 +100,13 @@ fn transform_path_segment(
                 .or_else(|| other_ty.strip_prefix('i'))
             {
                 let bits: Result<u8, _> = un.parse();
-                if let Ok(bits) = bits {
-                    if (1..=63).contains(&bits) {
-                        return Ok(Type::External(
-                            Path::new_ident(Ident::new(other_ty, path_segment.ident.span())),
-                            false,
-                        ));
-                    }
+                if let Ok(bits) = bits
+                    && (1..=63).contains(&bits)
+                {
+                    return Ok(Type::External(
+                        Path::new_ident(Ident::new(other_ty, path_segment.ident.span())),
+                        false,
+                    ));
                 }
             }
 

@@ -366,6 +366,7 @@ impl<'i, const N: usize, T: DeserializeShrinkWrap<'i> + Default + Copy> Deserial
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let mut array: [T; N] = [T::default(); N];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..N {
             array[i] = rd.read()?;
         }

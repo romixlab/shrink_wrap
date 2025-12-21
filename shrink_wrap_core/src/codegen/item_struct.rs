@@ -61,10 +61,10 @@ impl ItemStruct {
                 if let Some(size) = f.ty.element_size() {
                     sum = sum.add(size);
                 }
-                if let Type::External(path, _) = &f.ty {
-                    if let Some(ident) = path.segments.last() {
-                        unknown_unsized.push(ident.clone());
-                    }
+                if let Type::External(path, _) = &f.ty
+                    && let Some(ident) = path.segments.last()
+                {
+                    unknown_unsized.push(ident.clone());
                 }
             }
         }

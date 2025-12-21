@@ -1,7 +1,7 @@
 # shrink_wrap
 
 <p align="center">
-<img src="./assets/logo-256.png" alt="logo"/>
+<img src="https://github.com/romixlab/shrink_wrap/blob/main/assets/logo-256.png?raw=true" alt="logo"/>
 </p>
 
 > Compact zero-copy wire format for microcontrollers using no allocator and supporting dynamic types.

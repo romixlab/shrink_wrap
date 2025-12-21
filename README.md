@@ -22,6 +22,12 @@
 * Zero-copy de-serialization.
 * `StackVec` for storing an object with arbitrary max-bound size on stack.
 
+## Where used
+
+This crate is a core piece of [WireWeaver](https://github.com/vhrdtech/wire_weaver) - lightweight microcontroller API
+code generator with support for methods (RPC), properties,
+streams, [global traits](https://github.com/vhrdtech/ww_stdlib) and backward/forward compatibility.
+
 ## Implementation details
 
 * Attribute macro that generates serdes code.

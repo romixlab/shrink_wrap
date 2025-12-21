@@ -28,10 +28,35 @@ This crate is a core piece of [WireWeaver](https://github.com/vhrdtech/wire_weav
 code generator with support for methods (RPC), properties,
 streams, [global traits](https://github.com/vhrdtech/ww_stdlib) and backward/forward compatibility.
 
+## Recommended way to depend on this crate
+
+### On no_std
+
+```
+[dependencies]
+shrink_wrap = { version = "0.1.0", default-features = false }
+```
+
+To make this crate `no_std`.
+
+### In API or data type crates for both std and no_std
+
+```
+[dependencies]
+shrink_wrap = { version = "0.1.0", default-features = false }
+
+[features]
+default = ["std"]
+std = ["shrink_wrap/std"]
+```
+
+And put `#![cfg_attr(not(feature = "std"), no_std)]` in `lib.rs`.
+Then use your crate with `default-features = false` on `no_std`.
+
 ## Implementation details
 
 * Attribute macro that generates serdes code.
-    * #[owned = "feature"] attribute to generate TyOwned from Ty<'i> and serdes code for it as well.
+    * `#[owned = "feature"]` attribute to generate TyOwned from Ty<'i> and serdes code for it as well.
 * `BufWriter` and `BufReader` that do low-level work with byte buffers, can be used stand-alone as well.
 * Main trick is keeping lengths of objects in the back of the buffer and read/write from both ends.
 * In order to avoid temporary allocations (or two buffers) during serialization, back of the buffer is used as a stack

@@ -3,6 +3,8 @@ name = "shrink_wrap"
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
+license = "MIT"
+repository.workspace = true
 description = "Compact zero-copy wire format for microcontrollers using no allocator and supporting dynamic types."
 
 [dependencies]

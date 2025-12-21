@@ -3,6 +3,8 @@ name = "shrink_wrap_derive"
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
+license = "MIT"
+repository.workspace = true
 description = "Macros for generating shrink_wrap serdes code."
 
 [lib]

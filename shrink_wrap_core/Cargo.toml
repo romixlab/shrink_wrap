@@ -3,6 +3,8 @@ name = "shrink_wrap_core"
 edition.workspace = true
 authors.workspace = true
 version.workspace = true
+license = "MIT"
+repository.workspace = true
 description = "shrink_wrap wire format code generator"
 
 [dependencies]

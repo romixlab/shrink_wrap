@@ -1,3 +1,10 @@
+## [0.1.2] - 2026-01-07
+
+### 🐛 Bug Fixes
+
+- No_std build
+- Separate versions of workspace crates to avoid publishing duplicates
+
 ## [0.1.1] - 2026-01-07
 
 ### 🐛 Bug Fixes

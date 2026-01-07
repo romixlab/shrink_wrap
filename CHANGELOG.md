@@ -1,3 +1,13 @@
+## [0.1.1] - 2026-01-07
+
+### 🐛 Bug Fixes
+
+- No_std build
+
+### 📚 Documentation
+
+- Add crates badge
+
 ## [0.1.0]
 
 ### 🚀 Features

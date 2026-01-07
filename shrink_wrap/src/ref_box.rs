@@ -71,7 +71,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for RefBox<'i, 
 }
 
 impl<'i, T: Debug + DeserializeShrinkWrap<'i>> Debug for RefBox<'i, T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             RefBox::Ref { value } => {
                 write!(f, "RefBox({value:?})")

@@ -1,5 +1,7 @@
 # shrink_wrap
 
+![Crates.io Version](https://img.shields.io/crates/v/shrink_wrap)
+
 <p align="center">
 <img src="https://github.com/romixlab/shrink_wrap/blob/main/assets/logo-256.png?raw=true" alt="logo"/>
 </p>

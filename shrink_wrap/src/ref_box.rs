@@ -1,5 +1,5 @@
 use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
-use std::fmt::{Debug, Formatter};
+use core::fmt::{Debug, Formatter};
 
 /// Box-like structure for no alloc use, serializes and deserializes the value as WireWeaver's Unsized.
 /// Can be used to create self-referential structs and enums on no_std and no alloc systems.

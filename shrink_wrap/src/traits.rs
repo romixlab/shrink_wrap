@@ -382,3 +382,19 @@ impl<'i, const N: usize, T: DeserializeShrinkWrap<'i> + Default + Copy> Deserial
         Ok(array)
     }
 }
+
+impl SerializeShrinkWrap for () {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+
+    fn ser_shrink_wrap(&self, _wr: &mut BufWriter) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+impl<'i> DeserializeShrinkWrap<'i> for () {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
+
+    fn des_shrink_wrap<'di>(_rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        Ok(())
+    }
+}

@@ -57,3 +57,8 @@ fn array() {
     let x: [u8; 5] = DeserializeShrinkWrap::from_ww_bytes(bytes).unwrap();
     assert_eq!(x, [1, 2, 3, 4, 5]);
 }
+
+#[test]
+fn unit() {
+    let _unit: () = DeserializeShrinkWrap::from_ww_bytes(&[]).unwrap();
+}

@@ -1,7 +1,7 @@
 use crate::Error::OutOfBoundsRev;
 use crate::nib32::UNib32;
 use crate::un::read_unx;
-use crate::{DeserializeShrinkWrap, ElementSize, Error};
+use crate::{DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, Error};
 
 /// Buffer reader that treats input as a stream of bits, nibbles or bytes.
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -245,6 +245,22 @@ impl<'i> BufReader<'i> {
             #[cfg(feature = "tracing-extended")]
             tracing::trace!("reading ?Sized object");
             T::des_shrink_wrap(self)
+        }
+    }
+
+    /// Read any value that implements DeserializeShrinkWrapOwned.
+    /// See [read](Self::read) for more information.
+    pub fn read_owned<T: DeserializeShrinkWrapOwned>(&mut self) -> Result<T, Error> {
+        if matches!(T::ELEMENT_SIZE, ElementSize::Unsized) {
+            #[cfg(feature = "tracing-extended")]
+            tracing::trace!("reading Unsized object");
+            let size = self.read_unib32_rev()? as usize;
+            let mut rd_split = self.split(size)?;
+            T::des_shrink_wrap_owned(&mut rd_split)
+        } else {
+            #[cfg(feature = "tracing-extended")]
+            tracing::trace!("reading ?Sized object");
+            T::des_shrink_wrap_owned(self)
         }
     }
 

@@ -1,6 +1,9 @@
 use core::fmt::{Debug, Formatter};
 
-use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
+use crate::{
+    BufReader, BufWriter, DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, Error,
+    SerializeShrinkWrap,
+};
 
 /// Variable length encoded u32 based on nibbles.
 /// Each nibbles carries 1 bit indicating whether there are more nibbles + 3 bits from the original number.
@@ -108,6 +111,14 @@ impl<'i> DeserializeShrinkWrap<'i> for UNib32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        UNib32::read_forward(rd)
+    }
+}
+
+impl DeserializeShrinkWrapOwned for UNib32 {
+    const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         UNib32::read_forward(rd)
     }
 }

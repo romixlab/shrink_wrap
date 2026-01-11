@@ -1,4 +1,7 @@
-use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
+use crate::{
+    BufReader, BufWriter, DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, Error,
+    SerializeShrinkWrap,
+};
 use paste::paste;
 
 macro_rules! un {
@@ -52,6 +55,14 @@ macro_rules! un {
                 const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
 
                 fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+                    Ok([<U $bits>](rd.[<read_un $base_bits>]($bits)?))
+                }
+            }
+
+            impl DeserializeShrinkWrapOwned for [<U $bits>] {
+                const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
+
+                fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
                     Ok([<U $bits>](rd.[<read_un $base_bits>]($bits)?))
                 }
             }
@@ -216,6 +227,22 @@ macro_rules! signed_un {
                 const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
 
                 fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+                    let val = rd.[<read_un $base_bits>]($bits)?;
+                    let is_negative = val & (1 << ($bits - 1)) != 0;
+                    if is_negative {
+                        const SIGN_EXTEND_M1: [<u $base_bits>] = [<u $base_bits>]::MAX << ($bits - 1);
+                        const SIGN_EXTEND: [<u $base_bits>] = SIGN_EXTEND_M1 << 1;
+                        Ok(Self((val | SIGN_EXTEND) as [<i $base_bits>]))
+                    } else {
+                        Ok(Self(val as [<i $base_bits>]))
+                    }
+                }
+            }
+
+            impl DeserializeShrinkWrapOwned for [<I $bits>] {
+                const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
+
+                fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
                     let val = rd.[<read_un $base_bits>]($bits)?;
                     let is_negative = val & (1 << ($bits - 1)) != 0;
                     if is_negative {

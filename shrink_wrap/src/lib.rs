@@ -12,7 +12,9 @@ pub use ref_box::RefBox;
 pub mod ref_vec;
 pub use ref_vec::{RefVec, RefVecIter};
 pub mod traits;
-pub use traits::{DeserializeShrinkWrap, ElementSize, SerializeShrinkWrap};
+pub use traits::{
+    DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, SerializeShrinkWrap,
+};
 
 #[cfg(feature = "std")]
 pub mod alloc;
@@ -74,7 +76,9 @@ pub mod prelude {
     pub use crate::ref_box::RefBox;
     pub use crate::ref_vec::{RefVec, RefVecIter};
     pub use crate::stack_vec::StackVec;
-    pub use crate::traits::{DeserializeShrinkWrap, ElementSize, SerializeShrinkWrap};
+    pub use crate::traits::{
+        DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, SerializeShrinkWrap,
+    };
     pub use crate::un::*;
     pub use shrink_wrap_derive::{ShrinkWrap, derive_shrink_wrap, ww_repr};
 }

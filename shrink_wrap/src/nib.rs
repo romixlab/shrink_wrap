@@ -1,4 +1,7 @@
-use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
+use crate::{
+    BufReader, BufWriter, DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, Error,
+    SerializeShrinkWrap,
+};
 
 /// 4 bits, serialized with alignment of four-bits.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -55,6 +58,14 @@ impl<'i> DeserializeShrinkWrap<'i> for Nibble {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 4 };
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        Ok(Nibble(rd.read_u4()?))
+    }
+}
+
+impl DeserializeShrinkWrapOwned for Nibble {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 4 };
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         Ok(Nibble(rd.read_u4()?))
     }
 }

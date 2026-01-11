@@ -25,6 +25,18 @@ pub trait DeserializeShrinkWrap<'i>: Sized {
     }
 }
 
+pub trait DeserializeShrinkWrapOwned: Sized {
+    const ELEMENT_SIZE: ElementSize;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error>;
+
+    fn from_ww_bytes_owned(buf: &[u8]) -> Result<Self, Error> {
+        let mut rd = BufReader::new(buf);
+        let value = Self::des_shrink_wrap_owned(&mut rd)?;
+        Ok(value)
+    }
+}
+
 // pub fn to_ww_bytes<'i, T: SerializeShrinkWrap>(
 //     buf: &'i mut [u8],
 //     value: &T,
@@ -173,6 +185,22 @@ impl SerializeShrinkWrap for bool {
     }
 }
 
+impl<'i> DeserializeShrinkWrap<'i> for bool {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 1 };
+
+    fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        rd.read_bool()
+    }
+}
+
+impl DeserializeShrinkWrapOwned for bool {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 1 };
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        rd.read_bool()
+    }
+}
+
 macro_rules! impl_serialize {
     ($sign:ident, $bits:literal) => {
         paste! {
@@ -199,14 +227,6 @@ impl_serialize!(i, 128);
 impl_serialize!(f, 32);
 impl_serialize!(f, 64);
 
-impl<'i> DeserializeShrinkWrap<'i> for bool {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 1 };
-
-    fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        rd.read_bool()
-    }
-}
-
 macro_rules! impl_deserialize {
     ($sign:ident, $bits:literal) => {
         paste! {
@@ -214,6 +234,14 @@ macro_rules! impl_deserialize {
                 const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
 
                 fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+                    rd.[<read_ $sign $bits>]()
+                }
+            }
+
+            impl DeserializeShrinkWrapOwned for [<$sign $bits>] {
+                const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
+
+                fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
                     rd.[<read_ $sign $bits>]()
                 }
             }
@@ -276,6 +304,19 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for Option<T> {
     }
 }
 
+impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for Option<T> {
+    const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        let is_some = rd.read_bool()?;
+        if is_some {
+            Ok(Some(rd.read_owned()?))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 impl<T: SerializeShrinkWrap, E: SerializeShrinkWrap> SerializeShrinkWrap for Result<T, E> {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
@@ -308,6 +349,21 @@ impl<'i, T: DeserializeShrinkWrap<'i>, E: DeserializeShrinkWrap<'i>> Deserialize
     }
 }
 
+impl<T: DeserializeShrinkWrapOwned, E: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned
+    for Result<T, E>
+{
+    const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        let is_ok = rd.read_bool()?;
+        if is_ok {
+            Ok(Ok(rd.read_owned()?))
+        } else {
+            Ok(Err(rd.read_owned()?))
+        }
+    }
+}
+
 macro_rules! impl_tuple {
     ($($types:ident),* ; $($indices: literal),*) => {
         paste! {
@@ -327,6 +383,17 @@ macro_rules! impl_tuple {
 
                 fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
                     $(let [<_ $indices>] = rd.read()?;)*
+                    Ok(( $([<_ $indices>]),* ))
+                }
+            }
+
+            impl<$($types: DeserializeShrinkWrapOwned),*> DeserializeShrinkWrapOwned
+                for ($($types),*)
+            {
+                const ELEMENT_SIZE: ElementSize = add_recursive!($($types),*);
+
+                fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+                    $(let [<_ $indices>] = rd.read_owned()?;)*
                     Ok(( $([<_ $indices>]),* ))
                 }
             }
@@ -383,6 +450,21 @@ impl<'i, const N: usize, T: DeserializeShrinkWrap<'i> + Default + Copy> Deserial
     }
 }
 
+impl<const N: usize, T: DeserializeShrinkWrapOwned + Default + Copy> DeserializeShrinkWrapOwned
+    for [T; N]
+{
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        let mut array: [T; N] = [T::default(); N];
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..N {
+            array[i] = rd.read_owned()?;
+        }
+        Ok(array)
+    }
+}
+
 impl SerializeShrinkWrap for () {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
 
@@ -392,9 +474,17 @@ impl SerializeShrinkWrap for () {
 }
 
 impl<'i> DeserializeShrinkWrap<'i> for () {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
 
     fn des_shrink_wrap<'di>(_rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        Ok(())
+    }
+}
+
+impl DeserializeShrinkWrapOwned for () {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+
+    fn des_shrink_wrap_owned(_rd: &mut BufReader<'_>) -> Result<Self, Error> {
         Ok(())
     }
 }

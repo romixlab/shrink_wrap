@@ -48,8 +48,19 @@ impl ItemEnum {
         let enum_des = CGEnumDes {
             item_enum: self,
             no_alloc,
+            owned: false
         };
         let lifetime = enum_lifetime(self, no_alloc);
+        let enum_des_owned = if no_alloc && self.potential_lifetimes() {
+            None
+        } else {
+            let enum_des = CGEnumDes {
+                item_enum: self,
+                no_alloc,
+                owned: false
+            };
+            Some(enum_des)
+        };
 
         let mut unknown_unsized = vec![];
         let mut sum = self.size_assumption.unwrap_or(ObjectSize::Unsized); // enum is Unsized by default.
@@ -101,6 +112,7 @@ impl ItemEnum {
             enum_name,
             enum_ser,
             enum_des,
+            enum_des_owned,
             lifetime,
             &self.cfg,
             element_size,
@@ -190,6 +202,7 @@ struct CGEnumSer<'a> {
 struct CGEnumDes<'a> {
     item_enum: &'a ItemEnum,
     no_alloc: bool,
+    owned: bool
 }
 
 fn write_discriminant(repr: Repr, tokens: &mut TokenStream) {
@@ -321,6 +334,7 @@ impl ToTokens for CGEnumDes<'_> {
         let known_variants = CGEnumVariantsDes {
             item_enum: self.item_enum,
             no_alloc: self.no_alloc,
+            owned: self.owned
         };
         // tokens.append_all(trace_extended_key_val(
         //     "Deserialize enum",
@@ -340,6 +354,7 @@ impl ToTokens for CGEnumDes<'_> {
 struct CGEnumVariantsDes<'a> {
     item_enum: &'a ItemEnum,
     no_alloc: bool,
+    owned: bool,
 }
 
 impl Variant {
@@ -378,7 +393,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                         // ));
                         field
                             .ty
-                            .buf_read(field_name, self.no_alloc, handle_eob, &mut des_fields);
+                            .buf_read(field_name, self.no_alloc, self.owned, handle_eob, &mut des_fields);
                     }
                     tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name{ #(#field_names),* } }))
                 }
@@ -396,7 +411,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                         //     "Deserialize unnamed field",
                         //     field_name.to_string().as_str(),
                         // ));
-                        ty.buf_read(&field_name, self.no_alloc, handle_eob, &mut des_fields);
+                        ty.buf_read(&field_name, self.no_alloc, self.owned, handle_eob, &mut des_fields);
                     }
                     tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name( #(#field_names),* ) }))
                 }

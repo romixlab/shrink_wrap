@@ -293,9 +293,11 @@ impl Type {
         &self,
         variable_name: &Ident,
         _no_alloc: bool,
+        owned: bool,
         handle_eob: TokenStream,
         tokens: &mut TokenStream,
     ) {
+        let read = if owned { quote! { read_owned } } else { quote! { read } }; 
         let read_fn = match self {
             Type::Bool | Type::IsOk(_) | Type::IsSome(_) => "read_bool",
             Type::U4 => "read_u4",
@@ -305,7 +307,7 @@ impl Type {
             Type::U64 => "read_u64",
             Type::U128 => "read_u128",
             Type::UNib32 => {
-                tokens.append_all(quote! { let #variable_name = rd.read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
                 return;
             }
             Type::ULeb32 => unimplemented!("uleb32"),
@@ -349,23 +351,23 @@ impl Type {
                 // let ty_def = ty.def(_no_alloc);
                 // tokens.append_all(quote! { let #variable_name = unsafe { core::mem::transmute::<_, [#ty_def; #len]>(#variable_name) }; });
                 // return;
-                tokens.append_all(quote! { let #variable_name = rd.read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
                 return;
             }
             Type::Tuple(_) => {
-                tokens.append_all(quote! { let #variable_name = rd.read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
                 return;
             }
             Type::Vec(_inner_ty) => {
                 // TODO: how to handle eob to be zero length?
-                tokens.append_all(quote! { let #variable_name = rd.read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
                 return;
             }
             Type::External(_, _) | Type::String | Type::RefBox(_) => {
                 tokens.append_all(quote! {
                     // let size = rd.read_unib32_rev()? as usize;
                     // let mut rd_split = rd.split(size)?;
-                    let #variable_name = rd.read()?;
+                    let #variable_name = rd.#read()?;
                 });
                 return;
             }
@@ -373,9 +375,9 @@ impl Type {
                 let is_ok = &flag_ident;
                 tokens.append_all(quote! {
                     let #variable_name = if #is_ok {
-                        Ok(rd.read()?)
+                        Ok(rd.#read()?)
                     } else {
-                        Err(rd.read()?)
+                        Err(rd.#read()?)
                     };
                 });
                 return;
@@ -384,7 +386,7 @@ impl Type {
                 let is_some = &flag_ident;
                 tokens.append_all(quote! {
                     let #variable_name = if #is_some {
-                        Some(rd.read() #handle_eob)
+                        Some(rd.#read() #handle_eob)
                     } else {
                         None
                     };

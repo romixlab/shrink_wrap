@@ -161,7 +161,7 @@ impl SerializeShrinkWrap for ElementSize {
 }
 
 impl<'i> DeserializeShrinkWrap<'i> for ElementSize {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 2 };
+    const ELEMENT_SIZE: ElementSize = <Self as SerializeShrinkWrap>::ELEMENT_SIZE;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let discriminant = rd.read_un8(2)?;
@@ -174,6 +174,14 @@ impl<'i> DeserializeShrinkWrap<'i> for ElementSize {
                 return Err(Error::EnumFutureVersionOrMalformedData);
             }
         })
+    }
+}
+
+impl DeserializeShrinkWrapOwned for ElementSize {
+    const ELEMENT_SIZE: ElementSize = <Self as SerializeShrinkWrap>::ELEMENT_SIZE;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        DeserializeShrinkWrap::des_shrink_wrap(rd)
     }
 }
 

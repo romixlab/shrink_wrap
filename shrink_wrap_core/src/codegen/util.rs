@@ -7,10 +7,25 @@ pub(crate) fn serdes_scaffold(
     ty_name: &Ident,
     ser: impl ToTokens,
     des: impl ToTokens,
+    des_owned: Option<impl ToTokens>,
     lifetime: TokenStream,
     cfg: &Option<Cfg>,
     element_size: TokenStream,
 ) -> TokenStream {
+    let des_owned = if let Some(des_owned) = des_owned {
+        quote! {
+            #cfg
+            impl DeserializeShrinkWrapOwned for #ty_name {
+                const ELEMENT_SIZE: ElementSize = #element_size;
+
+                fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, ShrinkWrapError> {
+                    #des_owned
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
     quote! {
         #cfg
         impl #lifetime SerializeShrinkWrap for #ty_name #lifetime {
@@ -29,6 +44,8 @@ pub(crate) fn serdes_scaffold(
                 #des
             }
         }
+        
+        #des_owned
     }
 }
 

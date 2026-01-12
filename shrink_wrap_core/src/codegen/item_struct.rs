@@ -44,11 +44,17 @@ impl ItemStruct {
         let struct_des = CGStructDes {
             item_struct: self,
             no_alloc,
+            owned: false,
         };
-        let lifetime = if no_alloc && self.potential_lifetimes() {
-            quote!(<'i>)
+        let (lifetime, struct_des_owned) = if no_alloc && self.potential_lifetimes() {
+            (quote!(<'i>), None)
         } else {
-            quote!()
+            let struct_des_owned = CGStructDes {
+                item_struct: self,
+                no_alloc,
+                owned: true,
+            };
+            (quote!(), Some(struct_des_owned))
         };
 
         let mut unknown_unsized = vec![];
@@ -79,6 +85,7 @@ impl ItemStruct {
             struct_name,
             struct_ser,
             struct_des,
+            struct_des_owned,
             lifetime,
             &self.cfg,
             element_size,
@@ -116,6 +123,7 @@ struct CGStructSer<'a> {
 struct CGStructDes<'a> {
     item_struct: &'a ItemStruct,
     no_alloc: bool,
+    owned: bool,
 }
 
 impl ToTokens for CGStructSer<'_> {
@@ -166,7 +174,7 @@ impl ToTokens for CGStructDes<'_> {
             // ));
             struct_field
                 .ty
-                .buf_read(field_name, self.no_alloc, handle_eob, tokens);
+                .buf_read(field_name, self.no_alloc, self.owned, handle_eob, tokens);
         }
         let struct_name = &self.item_struct.ident;
         tokens.append_all(quote! {

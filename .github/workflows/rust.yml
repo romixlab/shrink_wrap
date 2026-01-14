@@ -1,0 +1,200 @@
+name: "CI"
+
+# From https://github.com/ameknite/rust-ci-cd-template/blob/main/.github/workflows/ci.yaml
+# --all-features removed as it leads to a linker crash, likely because of defmt
+
+on:
+  merge_group:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-build:
+    name: Cargo Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: cargo build
+        run: cargo b --workspace --all-targets
+
+  cargo-fmt:
+    name: Cargo fmt
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+
+      - name: Rustfmt Check
+        run: cargo fmt --all --check
+
+  cargo-clippy:
+    name: Cargo clippy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+
+      - name: Clippy Check
+        run: cargo clippy --workspace --all-targets -- -Dwarnings
+
+  cargo-doc:
+    name: Cargo doc
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cargo doc test
+        run: cargo doc --workspace
+
+  cargo-test-doc:
+    name: Cargo test doc
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cargo test doc
+        run: cargo test --doc --workspace
+
+  cargo-next-test:
+    name: Cargo test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Cargo test
+        run: cargo nextest run --workspace --all-targets --no-tests=pass
+
+  typos-cli:
+    name: typos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v6
+
+      - name: Install Typos
+        uses: taiki-e/install-action@v2
+        with:
+          tool: typos-cli
+
+      - name: run typos
+        run: typos
+
+  coverage:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        run: rustup update stable
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate code coverage
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: false
+
+  #  taplo-toml-fmt:
+  #    name: taplo fmt
+  #    runs-on: ubuntu-latest
+  #
+  #    steps:
+  #      - name: Fetch Repository
+  #        uses: actions/checkout@v6
+  #
+  #      - name: Install Taplo
+  #        uses: taiki-e/install-action@v2
+  #        with:
+  #          tool: taplo-cli
+  #
+  #      - name: Run Taplo
+  #        id: taplo
+  #        run: taplo fmt --check --diff
+
+#  markdownlint:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Fetch Repository
+#        uses: actions/checkout@v6
+#
+#      - name: markdownlint-cli2-action
+#        uses: DavidAnson/markdownlint-cli2-action@v22
+#        with:
+#          globs: '**/*.md'
+
+#  yamlfmt:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Fetch Repository
+#        uses: actions/checkout@v6
+#
+#      - uses: actions/setup-go@v6
+#        with:
+#          go-version: stable
+#          cache: false
+#
+#      - name: Install yamlfmt
+#        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+#
+#      - name: Run yamlfmt
+#        run: yamlfmt --lint .
+
+#  cargo-deny:
+#    uses: ./.github/workflows/cargo_deny.yaml
+#
+#  check-msrv:
+#    uses: ./.github/workflows/check_msrv.yaml
+#
+#  cargo-miri:
+#    uses: ./.github/workflows/cargo_miri.yaml

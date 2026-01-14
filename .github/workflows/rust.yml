@@ -143,6 +143,14 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
 
+  semver-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+
   #  taplo-toml-fmt:
   #    name: taplo fmt
   #    runs-on: ubuntu-latest

@@ -1,6 +1,7 @@
 # shrink_wrap
 
 ![Crates.io Version](https://img.shields.io/crates/v/shrink_wrap)
+[![CI](https://github.com/romixlab/shrink_wrap/actions/workflows/rust.yml/badge.svg)](https://github.com/romixlab/shrink_wrap/actions/workflows/rust.yml)
 [![codecov](https://codecov.io/github/romixlab/shrink_wrap/graph/badge.svg?token=PNRZ4BA0H3)](https://codecov.io/github/romixlab/shrink_wrap)
 
 <p align="center">

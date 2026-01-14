@@ -25,14 +25,14 @@ fn tuple_of_bits() {
 
     let x: (bool, bool, bool, bool, bool, bool, bool, bool) =
         DeserializeShrinkWrap::from_ww_bytes(bytes).unwrap();
-    assert_eq!(x.0, true);
-    assert_eq!(x.1, false);
-    assert_eq!(x.2, true);
-    assert_eq!(x.3, false);
-    assert_eq!(x.4, true);
-    assert_eq!(x.5, true);
-    assert_eq!(x.6, false);
-    assert_eq!(x.7, false);
+    assert!(x.0);
+    assert!(!x.1);
+    assert!(x.2);
+    assert!(!x.3);
+    assert!(x.4);
+    assert!(x.5);
+    assert!(!x.6);
+    assert!(!x.7);
 }
 
 #[test]

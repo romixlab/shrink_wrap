@@ -9,7 +9,7 @@ macro_rules! un {
         paste! {
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
             #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-            #[doc = $bits "-bit unsigned number, backed by u" $base_bits ", serialized as " $bits " bits with alignemnt of 1 bit."]
+            #[doc = $bits "-bit unsigned number, backed by u" $base_bits ", serialized as " $bits " bits with alignment of 1 bit."]
             pub struct [<U $bits>]([<u $base_bits>]);
             impl [<U $bits>] {
                 #[inline(always)]

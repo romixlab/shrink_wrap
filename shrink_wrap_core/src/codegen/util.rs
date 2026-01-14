@@ -44,7 +44,7 @@ pub(crate) fn serdes_scaffold(
                 #des
             }
         }
-        
+
         #des_owned
     }
 }

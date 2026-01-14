@@ -48,7 +48,7 @@ impl ItemEnum {
         let enum_des = CGEnumDes {
             item_enum: self,
             no_alloc,
-            owned: false
+            owned: false,
         };
         let lifetime = enum_lifetime(self, no_alloc);
         let enum_des_owned = if no_alloc && self.potential_lifetimes() {
@@ -57,7 +57,7 @@ impl ItemEnum {
             let enum_des = CGEnumDes {
                 item_enum: self,
                 no_alloc,
-                owned: false
+                owned: false,
             };
             Some(enum_des)
         };
@@ -202,7 +202,7 @@ struct CGEnumSer<'a> {
 struct CGEnumDes<'a> {
     item_enum: &'a ItemEnum,
     no_alloc: bool,
-    owned: bool
+    owned: bool,
 }
 
 fn write_discriminant(repr: Repr, tokens: &mut TokenStream) {
@@ -334,7 +334,7 @@ impl ToTokens for CGEnumDes<'_> {
         let known_variants = CGEnumVariantsDes {
             item_enum: self.item_enum,
             no_alloc: self.no_alloc,
-            owned: self.owned
+            owned: self.owned,
         };
         // tokens.append_all(trace_extended_key_val(
         //     "Deserialize enum",
@@ -391,9 +391,13 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                         //     "Deserialize named field",
                         //     field.ident.to_string().as_str(),
                         // ));
-                        field
-                            .ty
-                            .buf_read(field_name, self.no_alloc, self.owned, handle_eob, &mut des_fields);
+                        field.ty.buf_read(
+                            field_name,
+                            self.no_alloc,
+                            self.owned,
+                            handle_eob,
+                            &mut des_fields,
+                        );
                     }
                     tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name{ #(#field_names),* } }))
                 }
@@ -411,7 +415,13 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                         //     "Deserialize unnamed field",
                         //     field_name.to_string().as_str(),
                         // ));
-                        ty.buf_read(&field_name, self.no_alloc, self.owned, handle_eob, &mut des_fields);
+                        ty.buf_read(
+                            &field_name,
+                            self.no_alloc,
+                            self.owned,
+                            handle_eob,
+                            &mut des_fields,
+                        );
                     }
                     tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name( #(#field_names),* ) }))
                 }

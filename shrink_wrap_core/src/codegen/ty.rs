@@ -297,7 +297,11 @@ impl Type {
         handle_eob: TokenStream,
         tokens: &mut TokenStream,
     ) {
-        let read = if owned { quote! { read_owned } } else { quote! { read } }; 
+        let read = if owned {
+            quote! { read_owned }
+        } else {
+            quote! { read }
+        };
         let read_fn = match self {
             Type::Bool | Type::IsOk(_) | Type::IsSome(_) => "read_bool",
             Type::U4 => "read_u4",

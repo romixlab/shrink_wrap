@@ -198,7 +198,6 @@ impl<'i> BufWriter<'i> {
 
     /// Write the provided slice to the buffer as is. Note that you won't be able to read it back
     /// with BufReader without knowing the length, which is not written in this case.
-    /// See [BufWriter::write_bytes()] for variable length slices.
     pub fn write_raw_slice(&mut self, val: &[u8]) -> Result<(), Error> {
         self.align_byte();
         if self.bytes_left() < val.len() {

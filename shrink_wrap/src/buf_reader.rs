@@ -232,7 +232,7 @@ impl<'i> BufReader<'i> {
     /// Then [split](BufReader::split) reader is used to actually deserialize the value.
     ///
     /// Note that values deserialized with this method must be serialized with [write](crate::BufWriter::write).
-    /// Values serialized with [ser_shrink_wrap](SerializeShrinkWrap::ser_shrink_wrap) must be
+    /// Values serialized with [ser_shrink_wrap](crate::SerializeShrinkWrap::ser_shrink_wrap) must be
     /// deserialized with [des_shrink_wrap](DeserializeShrinkWrap::des_shrink_wrap).
     pub fn read<T: DeserializeShrinkWrap<'i>>(&mut self) -> Result<T, Error> {
         if matches!(T::ELEMENT_SIZE, ElementSize::Unsized) {

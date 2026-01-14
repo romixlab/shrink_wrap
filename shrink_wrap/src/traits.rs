@@ -64,13 +64,13 @@ pub trait DeserializeShrinkWrapOwned: Sized {
 /// UnsizedFinalStructure is almost like Unsized, but postpones the size calculation and encoding to a parent object.
 /// Another way to look at it is its like a "flattening" operation - child Unsized objects are using the same size space at the back of the buffer.
 ///
-/// As an example, consider Vec<T> - it is marked UnsizedFinalStructure. String is Unsized.
+/// As an example, consider `Vec<T>` - it is marked UnsizedFinalStructure. String is Unsized.
 /// `Vec<Vec<String>>` is serialized as: `[s00 s01 s10 s11 s11_len s10_len s1_len s01_len s00_len s0_len outer_len]`.
 /// If Vec where Unsized instead, then [write](BufWriter::write) would calculate the size in bytes of each serialized sub-vector as well.
 /// Serialized buffer would then be: `[s00 s01 s01_len s00_len s0_len s10 s11 s11_len s10_len s1_len s1_size_bytes s0_size_bytes outer_len]`.
 /// More space is used to encode lengths in bytes, in addition, padding nibbles will be inserted so that objects are on byte-boundaries,
 /// wasting space further.
-/// See tests, there is one with Vec<Vec<String>>.
+/// See tests, there is one with `Vec<Vec<String>>`.
 ///
 /// This works for both owned and borrowed objects on std and on no_std without allocator.
 ///

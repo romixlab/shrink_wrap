@@ -144,11 +144,11 @@ pub fn take_ww_repr_attr(attrs: &mut Vec<syn::Attribute>) -> Result<Repr, String
         .ok_or("ww_repr attribute is required")?;
     let attr = attrs.remove(attr_idx);
     let Meta::List(meta_list) = attr.meta else {
-        return Err("expected #[repr(u1..u32 / nib16)]".into());
+        return Err("expected #[repr(u1..u32 / unib32)]".into());
     };
     let repr = meta_list.tokens.to_string();
     let Some(repr) = Repr::parse_str(repr.as_str()) else {
-        return Err("expected #[repr(u1..u32 / nib16)]".into());
+        return Err("expected #[repr(u1..u32 / unib32)]".into());
     };
     Ok(repr)
 }

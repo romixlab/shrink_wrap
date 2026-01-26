@@ -312,6 +312,14 @@ impl<'i> DeserializeShrinkWrap<'i> for UN {
     }
 }
 
+impl DeserializeShrinkWrapOwned for UN {
+    const ELEMENT_SIZE: ElementSize = <UN as SerializeShrinkWrap>::ELEMENT_SIZE;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        UN::des_shrink_wrap(rd)
+    }
+}
+
 impl SerializeShrinkWrap for IN {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
@@ -325,6 +333,14 @@ impl<'i> DeserializeShrinkWrap<'i> for IN {
 
     fn des_shrink_wrap<'di>(_rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         todo!()
+    }
+}
+
+impl DeserializeShrinkWrapOwned for IN {
+    const ELEMENT_SIZE: ElementSize = <UN as SerializeShrinkWrap>::ELEMENT_SIZE;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        IN::des_shrink_wrap(rd)
     }
 }
 

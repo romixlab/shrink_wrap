@@ -12,6 +12,7 @@ pub use ref_box::RefBox;
 pub mod ref_vec;
 pub use ref_vec::{RefVec, RefVecIter};
 pub mod traits;
+pub use shrink_wrap_derive::ww_repr;
 pub use traits::{
     DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, SerializeShrinkWrap,
 };

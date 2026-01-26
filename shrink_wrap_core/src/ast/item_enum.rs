@@ -5,7 +5,7 @@ use crate::ast::path::Path;
 use crate::ast::repr::Repr;
 use crate::ast::ty::Type;
 use crate::ast::util::{Cfg, Version};
-use proc_macro2::Ident;
+use proc_macro2::{Ident, Span};
 use syn::LitStr;
 
 #[derive(Clone, Debug)]
@@ -66,6 +66,24 @@ impl ItemEnum {
             }
         }
         false
+    }
+
+    pub fn native_repr(&self) -> Ident {
+        match self.repr {
+            Repr::U(bits) => {
+                let ty = if bits <= 8 {
+                    "u8"
+                } else if bits <= 16 {
+                    "u16"
+                } else if bits <= 32 {
+                    "u32"
+                } else {
+                    panic!("only up to u32 enum discriminants are currently supported");
+                };
+                Ident::new(ty, Span::call_site())
+            }
+            Repr::UNib32 => Ident::new("u32", Span::call_site()),
+        }
     }
 }
 

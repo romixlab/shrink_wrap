@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 
 mod shrink_wrap;
-mod ww_repr;
+// mod ww_repr;
 
 /// Use Rust definition of an enum or struct to derive SerializeShrinkWrap and DeserializeShrinkWrap implementations.
 /// This attribute macro re-writes type definition, which allows for some additional functionality:
@@ -25,9 +25,9 @@ pub fn derive_shrink_wrap_derive(item: TokenStream) -> TokenStream {
     shrink_wrap::shrink_wrap_derive(item.into()).into()
 }
 
-/// Allows to use u1, u2, ..., u32 or UNib32 (variable length, 1 or more nibbles) for enum discriminant,
-/// when serializing and deserializing with ShrinkWrap.
-#[proc_macro_attribute]
-pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
-    ww_repr::ww_repr(attr.into(), item.into()).into()
-}
+// Allows to use u1, u2, ..., u32 or UNib32 (variable length, 1 or more nibbles) for enum discriminant,
+// when serializing and deserializing with ShrinkWrap.
+// #[proc_macro_attribute]
+// pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
+//     ww_repr::ww_repr(attr.into(), item.into()).into()
+// }

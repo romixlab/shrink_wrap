@@ -19,27 +19,31 @@ impl ItemEnum {
         let derive = strings_to_derive(&self.derive);
         let docs = &self.docs;
         let cfg = &self.cfg;
-        let base_ty = ww_discriminant_type(self);
         let assert_size = if let Some(size) = &self.size_assumption {
             size.assert_element_size(&self.ident, &self.cfg)
         } else {
             quote! {}
         };
+        // let base_ty = ww_discriminant_type(self);
+        let native_repr = self.native_repr();
+        let enum_discriminant = enum_discriminant(self, lifetime.clone());
         let ts = quote! {
             #cfg
             #docs
             #derive
-            #[ww_repr(#base_ty)]
+            #[repr(#native_repr)]
+            // #[ww_repr(#base_ty)]
             pub enum #enum_name #lifetime { #variants }
+
             #assert_size
+
+            #cfg
+            #enum_discriminant
         };
-        // if !item_enum.explicit_ww_repr {
-        //     ts.append_all(enum_discriminant(item_enum, lifetime));
-        // }
         ts
     }
 
-    pub fn serdes_rust(&self, no_alloc: bool) -> TokenStream {
+    pub fn serdes_rust(&self, no_alloc: bool, skip_owned: bool) -> TokenStream {
         let enum_name = &self.ident;
         let enum_ser = CGEnumSer {
             item_enum: self,
@@ -50,16 +54,17 @@ impl ItemEnum {
             no_alloc,
             owned: false,
         };
-        let lifetime = enum_lifetime(self, no_alloc);
-        let enum_des_owned = if no_alloc && self.potential_lifetimes() {
-            None
+        let (lifetime, enum_des_owned) = if no_alloc && self.potential_lifetimes() {
+            (quote!(<'i>), None)
+        } else if skip_owned {
+            (quote!(), None)
         } else {
-            let enum_des = CGEnumDes {
+            let enum_des_owned = CGEnumDes {
                 item_enum: self,
                 no_alloc,
-                owned: false,
+                owned: true,
             };
-            Some(enum_des)
+            (quote!(), Some(enum_des_owned))
         };
 
         let mut unknown_unsized = vec![];
@@ -128,27 +133,22 @@ pub fn enum_lifetime(item_enum: &ItemEnum, no_alloc: bool) -> TokenStream {
     }
 }
 
-fn ww_discriminant_type(item_enum: &ItemEnum) -> Ident {
-    let ty = format!("u{}", item_enum.repr.required_bits());
-    Ident::new(ty.as_str(), Span::call_site())
-}
-
-// fn enum_discriminant_type(item_enum: &ItemEnum) -> Ident {
-//     let ty = format!("u{}", item_enum.repr.std_bits());
+// fn ww_discriminant_type(item_enum: &ItemEnum) -> Ident {
+//     let ty = format!("u{}", item_enum.repr.required_bits());
 //     Ident::new(ty.as_str(), Span::call_site())
 // }
-//
-// pub fn enum_discriminant(item_enum: &ItemEnum, lifetime: TokenStream) -> TokenStream {
-//     let enum_name: Ident = (&item_enum.ident).into();
-//     let ty = enum_discriminant_type(item_enum);
-//     quote! {
-//         impl #lifetime #enum_name #lifetime {
-//             pub fn discriminant(&self) -> #ty {
-//                 unsafe { *<*const _>::from(self).cast::<#ty>() }
-//             }
-//         }
-//     }
-// }
+
+pub fn enum_discriminant(item_enum: &ItemEnum, lifetime: TokenStream) -> TokenStream {
+    let enum_name = &item_enum.ident;
+    let native_repr = item_enum.native_repr();
+    quote! {
+        impl #lifetime #enum_name #lifetime {
+            pub fn discriminant(&self) -> #native_repr {
+                unsafe { *<*const _>::from(self).cast::<#native_repr>() }
+            }
+        }
+    }
+}
 
 struct CGEnumFieldsDef<'a> {
     variants: &'a [Variant],

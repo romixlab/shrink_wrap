@@ -40,11 +40,11 @@ fn shrink_wrap_attr_inner(mut file: File) -> Result<TokenStream, String> {
         Item::Enum(item_enum) => {
             let ww_item_enum = ItemEnum::from_syn(item_enum)?;
             ts.append_all(ww_item_enum.def_rust(no_alloc));
-            ts.append_all(ww_item_enum.serdes_rust(no_alloc));
+            ts.append_all(ww_item_enum.serdes_rust(no_alloc, false));
             if let Some(feature) = &generate_owned {
                 let enum_owned = ww_item_enum.to_owned(feature.clone());
                 ts.append_all(enum_owned.def_rust(false));
-                ts.append_all(enum_owned.serdes_rust(false));
+                ts.append_all(enum_owned.serdes_rust(false, false));
             }
         }
         Item::Struct(item_struct) => {
@@ -72,7 +72,7 @@ fn shrink_wrap_derive_inner(mut file: File) -> Result<TokenStream, String> {
         Item::Enum(item_enum) => {
             let ww_item_enum = ItemEnum::from_syn(item_enum)?;
             let no_alloc = !item_enum.generics.params.is_empty();
-            ts.append_all(ww_item_enum.serdes_rust(no_alloc));
+            ts.append_all(ww_item_enum.serdes_rust(no_alloc, false));
         }
         Item::Struct(item_struct) => {
             let ww_item_struct = ItemStruct::from_syn(item_struct)?;

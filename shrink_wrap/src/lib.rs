@@ -80,5 +80,5 @@ pub mod prelude {
         DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, SerializeShrinkWrap,
     };
     pub use crate::un::*;
-    pub use shrink_wrap_derive::{ShrinkWrap, derive_shrink_wrap, ww_repr};
+    pub use shrink_wrap_derive::{ShrinkWrap, derive_shrink_wrap};
 }

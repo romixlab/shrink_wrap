@@ -48,17 +48,15 @@ impl ItemStruct {
         };
         let (lifetime, struct_des_owned) = if no_alloc && self.potential_lifetimes() {
             (quote!(<'i>), None)
+        } else if skip_owned {
+            (quote!(), None)
         } else {
-            if skip_owned {
-                (quote!(), None)
-            } else {
-                let struct_des_owned = CGStructDes {
-                    item_struct: self,
-                    no_alloc,
-                    owned: true,
-                };
-                (quote!(), Some(struct_des_owned))
-            }
+            let struct_des_owned = CGStructDes {
+                item_struct: self,
+                no_alloc,
+                owned: true,
+            };
+            (quote!(), Some(struct_des_owned))
         };
 
         let mut unknown_unsized = vec![];

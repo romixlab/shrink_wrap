@@ -35,7 +35,7 @@ impl ItemStruct {
         ts
     }
 
-    pub fn serdes_rust(&self, no_alloc: bool) -> TokenStream {
+    pub fn serdes_rust(&self, no_alloc: bool, skip_owned: bool) -> TokenStream {
         let struct_name = &self.ident;
         let struct_ser = CGStructSer {
             item_struct: self,
@@ -49,12 +49,16 @@ impl ItemStruct {
         let (lifetime, struct_des_owned) = if no_alloc && self.potential_lifetimes() {
             (quote!(<'i>), None)
         } else {
-            let struct_des_owned = CGStructDes {
-                item_struct: self,
-                no_alloc,
-                owned: true,
-            };
-            (quote!(), Some(struct_des_owned))
+            if skip_owned {
+                (quote!(), None)
+            } else {
+                let struct_des_owned = CGStructDes {
+                    item_struct: self,
+                    no_alloc,
+                    owned: true,
+                };
+                (quote!(), Some(struct_des_owned))
+            }
         };
 
         let mut unknown_unsized = vec![];

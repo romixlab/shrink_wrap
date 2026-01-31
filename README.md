@@ -36,7 +36,7 @@ streams, [global traits](https://github.com/vhrdtech/ww_stdlib) and backward/for
 
 ### On no_std
 
-```
+```toml
 [dependencies]
 shrink_wrap = { version = "0.1.0", default-features = false }
 ```
@@ -45,7 +45,7 @@ To make this crate `no_std`.
 
 ### In API or data type crates for both std and no_std
 
-```
+```toml
 [dependencies]
 shrink_wrap = { version = "0.1.0", default-features = false }
 

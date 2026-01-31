@@ -52,7 +52,7 @@ impl<'i> BufReader<'i> {
     /// but will use an alignment of 1 bit instead.
     pub fn read_u4(&mut self) -> Result<u8, Error> {
         self.align_nibble();
-        if (self.byte_idx >= self.len_bytes) && (self.nibbles_in_byte_left() == 0) {
+        if self.nibbles_in_byte_left() == 0 {
             return Err(Error::OutOfBoundsReadU4);
         }
         if self.bit_idx == 7 {
@@ -358,11 +358,19 @@ impl<'i> BufReader<'i> {
     }
 
     fn nibbles_in_byte_left(&self) -> u8 {
-        match (self.bit_idx != 7, self.is_at_bit7_rev) {
-            (false, false) => 2,
-            (false, true) => 1,
-            (true, false) => 1,
-            (true, true) => 0,
+        if self.byte_idx >= self.len_bytes {
+            0
+        } else {
+            let is_last_byte = self.byte_idx + 1 == self.len_bytes;
+            match (is_last_byte, self.bit_idx != 7, self.is_at_bit7_rev) {
+                (true, false, false) => 2,
+                (true, false, true) => 1,
+                (true, true, false) => 1,
+                (true, true, true) => 0,
+                (false, _, _) if self.bit_idx == 7 => 2,
+                (false, _, _) if self.bit_idx == 3 => 1,
+                _ => 0,
+            }
         }
     }
 

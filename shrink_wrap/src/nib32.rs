@@ -144,6 +144,7 @@ mod test {
         let mut rd = BufReader::new(&buf);
         assert_eq!(UNib32::read_forward(&mut rd), Ok(UNib32(u32::MAX)));
         assert_eq!(rd.read_u4(), Ok(0));
+        assert_eq!(rd.bytes_left(), 0);
         assert_eq!(rd.nibbles_left(), 0);
     }
 

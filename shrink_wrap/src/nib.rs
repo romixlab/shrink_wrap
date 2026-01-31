@@ -69,3 +69,37 @@ impl DeserializeShrinkWrapOwned for Nibble {
         Ok(Nibble(rd.read_u4()?))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{BufReader, BufWriter, DeserializeShrinkWrapOwned, Nibble};
+
+    #[test]
+    fn sanity_check() {
+        assert_eq!(Nibble::new(7), Some(Nibble::new_masked(7)));
+        assert_eq!(Nibble::zero().value(), 0);
+        assert_eq!(Nibble::one().value(), 1);
+        assert_eq!(Nibble::max().value(), 15);
+        assert_eq!(Nibble::new_masked(0xFF).0, 0xF);
+        assert_eq!(Nibble::new(0xFF), None);
+    }
+
+    #[test]
+    fn serdes() {
+        let mut buf = [0u8; 1];
+        let mut wr = BufWriter::new(&mut buf[..]);
+        wr.write(&Nibble::one()).unwrap();
+        wr.write(&Nibble::max()).unwrap();
+        let bytes = wr.finish().unwrap();
+
+        let mut rd = BufReader::new(bytes);
+        let one: Nibble = rd.read().unwrap();
+        let f: Nibble = rd.read().unwrap();
+        assert_eq!(one.value(), 1);
+        assert_eq!(f.value(), 0xF);
+
+        let mut rd = BufReader::new(bytes);
+        let one = Nibble::des_shrink_wrap_owned(&mut rd).unwrap();
+        assert_eq!(one.value(), 1);
+    }
+}

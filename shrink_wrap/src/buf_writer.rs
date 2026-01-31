@@ -579,4 +579,33 @@ mod tests {
         let buf = wr.finish().unwrap();
         assert_eq!(buf, hex!("20 52 B9 6C 03"))
     }
+
+    #[test]
+    fn integers() {
+        let mut buf = [0; 64];
+        let mut wr = BufWriter::new(&mut buf);
+        wr.write_u8(120).unwrap();
+        wr.write_u16(420).unwrap();
+        wr.write_u32(1_048_576).unwrap();
+        wr.write_u64(u64::MAX - 123).unwrap();
+        wr.write_u128(u128::MAX - 256).unwrap();
+        let buf = wr.finish().unwrap();
+        assert_eq!(
+            buf,
+            hex!("78 A401 00001000 84FFFFFFFFFFFFFFFF FEFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+        );
+
+        let mut buf = [0; 64];
+        let mut wr = BufWriter::new(&mut buf);
+        wr.write_i8(-120).unwrap();
+        wr.write_i16(-420).unwrap();
+        wr.write_i32(-1_048_576).unwrap();
+        wr.write_i64(i64::MIN + 123).unwrap();
+        wr.write_i128(i128::MIN + 256).unwrap();
+        let buf = wr.finish().unwrap();
+        assert_eq!(
+            buf,
+            hex!("88 5CFE 0000F0FF 7B00000000000080 00010000000000000000000000000080")
+        );
+    }
 }

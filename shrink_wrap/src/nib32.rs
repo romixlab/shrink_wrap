@@ -84,7 +84,7 @@ impl UNib32 {
         for i in 0..=10 {
             let nib = rd.read_u4_rev()?;
             if i == 10 {
-                // 11th nibble should be the last for u16
+                // 11th nibble should be the last for u32
                 if nib & ONE_MORE_NIBBLE != 0 {
                     return Err(Error::MalformedUNib32);
                 }
@@ -132,7 +132,10 @@ impl Debug for UNib32 {
 #[cfg(test)]
 mod test {
     use crate::nib32::UNib32;
-    use crate::{BufReader, BufWriter, Error};
+    use crate::{
+        BufReader, BufWriter, DeserializeShrinkWrap, DeserializeShrinkWrapOwned, Error,
+        SerializeShrinkWrap,
+    };
 
     #[test]
     fn u32_max_plus1() {
@@ -150,6 +153,11 @@ mod test {
         let buf = [0xff, 0xff, 0xff, 0xff, 0xff, 0xf0];
         let mut rd = BufReader::new(&buf);
         assert_eq!(UNib32::read_forward(&mut rd), Err(Error::MalformedUNib32));
+        assert_eq!(rd.nibbles_left(), 1);
+
+        let buf = [0x0f, 0xff, 0xff, 0xff, 0xff, 0xff];
+        let mut rd = BufReader::new(&buf);
+        assert_eq!(UNib32::read_reversed(&mut rd), Err(Error::MalformedUNib32));
         assert_eq!(rd.nibbles_left(), 1);
     }
 
@@ -247,7 +255,8 @@ mod test {
             2_097_152..=16_777_215 => 8,
             16_777_216..=134_217_727 => 9,
             134_217_728..=1_073_741_823 => 10,
-            1_073_741_824..=4_294_967_295 => 11,
+            // 1_073_741_824..=4_294_967_295 => 11,
+            _ => 11, // make IDE happy
         }
     }
 
@@ -269,4 +278,14 @@ mod test {
     //         assert_eq!(len_nibbles(i), UNib32(i).len_nibbles());
     //     }
     // }
+
+    #[test]
+    fn traits() {
+        let mut buf = [0; 64];
+        let bytes = UNib32(123).to_ww_bytes(&mut buf).unwrap();
+        let num = UNib32::from_ww_bytes(bytes).unwrap();
+        assert_eq!(num, UNib32(123));
+        let num = UNib32::from_ww_bytes_owned(bytes).unwrap();
+        assert_eq!(num, UNib32(123));
+    }
 }

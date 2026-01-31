@@ -410,10 +410,15 @@ mod tests {
     }
 
     #[test]
-    fn float() {
-        let buf = [0, 0, 0x80, 0x3E];
+    fn floats() {
+        let buf = hex!("0000803E");
         let mut rd = BufReader::new(&buf);
         assert_eq!(rd.read_f32(), Ok(0.25));
+        assert_eq!(rd.bytes_left(), 0);
+
+        let buf = hex!("000000000000D03F");
+        let mut rd = BufReader::new(&buf);
+        assert_eq!(rd.read_f64(), Ok(0.25));
         assert_eq!(rd.bytes_left(), 0);
     }
 
@@ -539,5 +544,37 @@ mod tests {
         assert_eq!(rd.nibbles_left(), 0);
         assert_eq!(rd.nibbles_in_byte_left(), 0);
         assert_eq!(rd.bits_in_byte_left(), 3);
+
+        // read_bool meets read_u4_rev
+        let mut rd = rd_seed;
+        rd.read_u16().unwrap();
+        rd.read_u4().unwrap();
+        rd.read_u4_rev().unwrap();
+        assert!(rd.read_bool().is_err());
+
+        // read_u8 meets read_u4_rev
+        let mut rd = rd_seed;
+        rd.read_u16().unwrap();
+        rd.read_u4_rev().unwrap();
+        assert!(rd.read_u8().is_err());
+    }
+
+    #[test]
+    fn integers() {
+        let buf = hex!("12 1234 12345678 123456789ABCDEF0 12003411562278339A44BC55DE66F077");
+        let mut rd = BufReader::new(&buf);
+        assert_eq!(rd.read_u8().unwrap(), 0x12);
+        assert_eq!(rd.read_u16().unwrap(), 0x3412);
+        assert_eq!(rd.read_u32().unwrap(), 0x78563412);
+        assert_eq!(rd.read_u64().unwrap(), 0xF0DEBC9A78563412);
+        assert_eq!(rd.read_u128().unwrap(), 0x77F066DE55BC449A3378225611340012);
+
+        let buf = hex!("88 5CFE 0000F0FF 7B00000000000080 00010000000000000000000000000080");
+        let mut rd = BufReader::new(&buf);
+        assert_eq!(rd.read_i8(), Ok(-120));
+        assert_eq!(rd.read_i16(), Ok(-420));
+        assert_eq!(rd.read_i32(), Ok(-1_048_576));
+        assert_eq!(rd.read_i64(), Ok(i64::MIN + 123));
+        assert_eq!(rd.read_i128(), Ok(i128::MIN + 256));
     }
 }

@@ -4,7 +4,7 @@ use crate::un::read_unx;
 use crate::{DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, Error};
 
 /// Buffer reader that treats input as a stream of bits, nibbles or bytes.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct BufReader<'i> {
     buf: &'i [u8],
@@ -52,7 +52,7 @@ impl<'i> BufReader<'i> {
     /// but will use an alignment of 1 bit instead.
     pub fn read_u4(&mut self) -> Result<u8, Error> {
         self.align_nibble();
-        if self.nibbles_left() == 0 {
+        if (self.byte_idx >= self.len_bytes) && (self.nibbles_in_byte_left() == 0) {
             return Err(Error::OutOfBoundsReadU4);
         }
         if self.bit_idx == 7 {
@@ -353,11 +353,22 @@ impl<'i> BufReader<'i> {
     }
 
     /// Returns the number of nibbles left, taking into account that buffer is read from both sides.
-    #[inline]
     pub fn nibbles_left(&self) -> usize {
-        self.bytes_left() * 2
-            + if self.bit_idx == 3 { 1 } else { 0 } // already read one nibble from the last byte, but one remains
-            + if self.is_at_bit7_rev { 1 } else { 0 } // already read one nibble from the back, but one remains
+        self.bytes_left() * 2 + self.nibbles_in_byte_left() as usize
+    }
+
+    fn nibbles_in_byte_left(&self) -> u8 {
+        match (self.bit_idx != 7, self.is_at_bit7_rev) {
+            (false, false) => 2,
+            (false, true) => 1,
+            (true, false) => 1,
+            (true, true) => 0,
+        }
+    }
+
+    /// Returns the number of bits left, taking into account that buffer is read from both sides.
+    pub fn bits_left(&self) -> usize {
+        self.bytes_left() * 8 + self.bits_in_byte_left() as usize
     }
 
     fn bits_in_byte_left(&self) -> u8 {
@@ -498,5 +509,35 @@ mod tests {
         assert_eq!(rd.read_un8(5), Ok(5));
         assert_eq!(rd.read_un32(17), Ok(58_800));
         assert_eq!(rd.read_bool(), Ok(false));
+    }
+
+    #[test]
+    fn sanity_left() {
+        let buf = [1, 2, 3];
+        let rd_seed = BufReader::new(&buf);
+
+        // read_u4_rev after read_u4
+        let mut rd = rd_seed;
+        rd.read_u16().unwrap();
+        rd.read_u4().unwrap();
+        assert_eq!(rd.nibbles_left(), 1);
+        assert_eq!(rd.nibbles_in_byte_left(), 1);
+        assert_eq!(rd.bits_in_byte_left(), 4);
+        rd.read_u4_rev().unwrap();
+        assert_eq!(rd.nibbles_left(), 0);
+        assert_eq!(rd.nibbles_in_byte_left(), 0);
+        assert_eq!(rd.bits_in_byte_left(), 0);
+
+        // read_u4_rev after read u1
+        let mut rd = rd_seed;
+        rd.read_u16().unwrap();
+        rd.read_un8(1).unwrap();
+        assert_eq!(rd.bits_in_byte_left(), 7);
+        assert_eq!(rd.nibbles_left(), 1);
+        assert_eq!(rd.nibbles_in_byte_left(), 1);
+        rd.read_u4_rev().unwrap();
+        assert_eq!(rd.nibbles_left(), 0);
+        assert_eq!(rd.nibbles_in_byte_left(), 0);
+        assert_eq!(rd.bits_in_byte_left(), 3);
     }
 }

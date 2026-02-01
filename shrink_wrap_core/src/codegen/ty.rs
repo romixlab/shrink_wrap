@@ -119,6 +119,7 @@ impl Type {
         }
     }
 
+    // TODO: make arg_pos_def2 behavior default one
     pub fn arg_pos_def(&self, no_alloc: bool) -> TokenStream {
         match self {
             Type::String => {
@@ -144,6 +145,16 @@ impl Type {
                 }
             }
             _ => self.def(no_alloc),
+        }
+    }
+
+    pub fn arg_pos_def2(&self, no_alloc: bool) -> TokenStream {
+        if self.potential_lifetimes() && !no_alloc {
+            let mut ty_owned = self.clone();
+            ty_owned.make_owned();
+            ty_owned.arg_pos_def(no_alloc)
+        } else {
+            self.arg_pos_def(no_alloc)
         }
     }
 
@@ -294,7 +305,7 @@ impl Type {
         variable_name: &Ident,
         _no_alloc: bool,
         owned: bool,
-        handle_eob: TokenStream,
+        handle_err: TokenStream,
         tokens: &mut TokenStream,
     ) {
         let read = if owned {
@@ -311,7 +322,7 @@ impl Type {
             Type::U64 => "read_u64",
             Type::U128 => "read_u128",
             Type::UNib32 => {
-                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
             Type::ULeb32 => unimplemented!("uleb32"),
@@ -328,50 +339,22 @@ impl Type {
             Type::ILeb128 => unimplemented!("ileb128"),
             Type::F32 => "read_f32",
             Type::F64 => "read_f64",
-            // Type::Bytes => "read_bytes",
-            // Type::String => {
-            //     tokens.append_all(quote! {
-            //         let str_len = rd.read_unib32_rev()? as usize;
-            //         let mut rd_split = rd.split(str_len)?;
-            //     });
-            //     if no_alloc {
-            //         tokens.append_all(
-            //             quote! { let #variable_name = rd_split.read_raw_str() #handle_eob; },
-            //         );
-            //         return;
-            //     } else {
-            //         tokens.append_all(quote! { let #variable_name = rd_split.read_raw_str() #handle_eob .to_string(); });
-            //         return;
-            //     }
-            // }
             Type::Array(_len, _ty) => {
-                // tokens.append_all(quote! {
-                //     let mut #variable_name: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
-                //     for i in 0..#len {
-                //         let elem = rd.read()?;
-                //         #variable_name[i] = MaybeUninit::new(elem);
-                //     }
-                // });
-                // let ty_def = ty.def(_no_alloc);
-                // tokens.append_all(quote! { let #variable_name = unsafe { core::mem::transmute::<_, [#ty_def; #len]>(#variable_name) }; });
-                // return;
-                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
             Type::Tuple(_) => {
-                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
             Type::Vec(_inner_ty) => {
                 // TODO: how to handle eob to be zero length?
-                tokens.append_all(quote! { let #variable_name = rd.#read()?; });
+                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
             Type::External(_, _) | Type::String | Type::RefBox(_) => {
                 tokens.append_all(quote! {
-                    // let size = rd.read_unib32_rev()? as usize;
-                    // let mut rd_split = rd.split(size)?;
-                    let #variable_name = rd.#read()?;
+                    let #variable_name = rd.#read() #handle_err;
                 });
                 return;
             }
@@ -379,9 +362,9 @@ impl Type {
                 let is_ok = &flag_ident;
                 tokens.append_all(quote! {
                     let #variable_name = if #is_ok {
-                        Ok(rd.#read()?)
+                        Ok(rd.#read() #handle_err)
                     } else {
-                        Err(rd.#read()?)
+                        Err(rd.#read() #handle_err)
                     };
                 });
                 return;
@@ -390,7 +373,7 @@ impl Type {
                 let is_some = &flag_ident;
                 tokens.append_all(quote! {
                     let #variable_name = if #is_some {
-                        Some(rd.#read() #handle_eob)
+                        Some(rd.#read() #handle_err)
                     } else {
                         None
                     };
@@ -399,6 +382,6 @@ impl Type {
             }
         };
         let read_fn = Ident::new(read_fn, Span::call_site());
-        tokens.append_all(quote! { let #variable_name = rd.#read_fn() #handle_eob; })
+        tokens.append_all(quote! { let #variable_name = rd.#read_fn() #handle_err; })
     }
 }

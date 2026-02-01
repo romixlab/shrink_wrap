@@ -1,5 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
+use std::fmt::{Display, Formatter};
 use syn::LitStr;
 
 #[derive(Clone, Debug)]
@@ -26,5 +27,17 @@ impl ToTokens for Docs {
         for doc in &self.docs {
             tokens.extend(quote!(#[doc = #doc]));
         }
+    }
+}
+
+impl Display for Docs {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (i, doc) in self.docs.iter().enumerate() {
+            write!(f, "{}", doc.value())?;
+            if i + 1 < self.docs.len() {
+                writeln!(f)?;
+            }
+        }
+        Ok(())
     }
 }

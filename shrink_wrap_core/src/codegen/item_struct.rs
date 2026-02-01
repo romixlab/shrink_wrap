@@ -20,6 +20,7 @@ impl ItemStruct {
         let derive = strings_to_derive(&self.derive);
         let docs = &self.docs;
         let cfg = &self.cfg;
+        let cfg_attr_defmt = &self.defmt;
         let assert_size = if let Some(size) = &self.size_assumption {
             size.assert_element_size(&self.ident, &self.cfg)
         } else {
@@ -29,6 +30,7 @@ impl ItemStruct {
             #cfg
             #docs
             #derive
+            #cfg_attr_defmt
             pub struct #ident #lifetime { #fields }
             #assert_size
         };

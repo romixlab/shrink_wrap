@@ -1,8 +1,10 @@
+use crate::ast::util::CfgAttrDefmt;
 use crate::ast::value::Value;
 use crate::ast::{Field, ItemStruct, Type};
 use crate::transform::docs_util::add_notes;
 use crate::transform::syn_util::{
-    collect_docs_attrs, collect_unknown_attributes, take_derive_attr, take_size_assumption,
+    collect_docs_attrs, collect_unknown_attributes, take_defmt_attr, take_derive_attr,
+    take_size_assumption,
 };
 use crate::transform::util::{
     FieldPath, FieldPathRoot, check_flag_order, create_flags, transform_field,
@@ -26,6 +28,7 @@ impl ItemStruct {
         let mut docs = collect_docs_attrs(&mut attrs);
         add_notes(&mut docs, size_assumption, false);
         let derive = take_derive_attr(&mut attrs);
+        let defmt = take_defmt_attr(&mut attrs)?.map(CfgAttrDefmt);
         collect_unknown_attributes(&mut attrs);
         create_flags(&mut fields, &explicit_flags);
         check_flag_order(&fields)?;
@@ -38,6 +41,7 @@ impl ItemStruct {
             size_assumption,
             fields,
             cfg: None,
+            defmt,
         })
     }
 }

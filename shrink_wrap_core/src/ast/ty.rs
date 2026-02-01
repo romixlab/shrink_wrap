@@ -19,6 +19,7 @@ pub enum Type {
     ULeb64,
     ULeb128,
 
+    // TODO: remove I4, add UB, IB
     I4,
     I8,
     I16,

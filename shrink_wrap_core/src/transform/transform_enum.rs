@@ -1,9 +1,10 @@
 use crate::ast::ItemEnum;
 use crate::ast::item_enum::{Fields, Variant};
+use crate::ast::util::CfgAttrDefmt;
 use crate::transform::docs_util::add_notes;
 use crate::transform::syn_util::{
-    collect_docs_attrs, collect_unknown_attributes, take_derive_attr, take_since_attr,
-    take_size_assumption, take_ww_repr_attr,
+    collect_docs_attrs, collect_unknown_attributes, take_defmt_attr, take_derive_attr,
+    take_since_attr, take_size_assumption, take_ww_repr_attr,
 };
 use crate::transform::transform_struct::{change_is_ok_to_is_some, propagate_default_to_flags};
 use crate::transform::util::{
@@ -52,6 +53,7 @@ impl ItemEnum {
         let mut docs = collect_docs_attrs(&mut attrs);
         add_notes(&mut docs, size_assumption, true);
         let derive = take_derive_attr(&mut attrs);
+        let defmt = take_defmt_attr(&mut attrs)?.map(CfgAttrDefmt);
         collect_unknown_attributes(&mut attrs);
         Ok(ItemEnum {
             docs,
@@ -62,6 +64,7 @@ impl ItemEnum {
             variants,
             size_assumption,
             cfg: None,
+            defmt,
         })
     }
 }

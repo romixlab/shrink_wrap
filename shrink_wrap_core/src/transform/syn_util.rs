@@ -192,6 +192,28 @@ pub fn take_owned_attr(attrs: &mut Vec<syn::Attribute>) -> Result<Option<LitStr>
     Ok(Some(feature))
 }
 
+pub(crate) fn take_defmt_attr(attrs: &mut Vec<syn::Attribute>) -> Result<Option<LitStr>, String> {
+    let attr_idx = attrs
+        .iter()
+        .enumerate()
+        .find(|(_, a)| a.path().is_ident("defmt"))
+        .map(|(idx, _)| idx);
+    let Some(attr_idx) = attr_idx else {
+        return Ok(None);
+    };
+    let attr = attrs.remove(attr_idx);
+    let Meta::NameValue(named_value) = attr.meta else {
+        return Err("expected #[defmt = \"feature_name\"]".into());
+    };
+    let Expr::Lit(expr_lit) = named_value.value else {
+        return Err("expected #[defmt = \"feature_name\"]".into());
+    };
+    let Lit::Str(feature) = expr_lit.lit else {
+        return Err("expected #[defmt = \"feature_name\"]".into());
+    };
+    Ok(Some(feature))
+}
+
 pub(crate) fn take_derive_attr(attrs: &mut Vec<syn::Attribute>) -> Vec<Path> {
     let mut derive = vec![];
     for attr in attrs.iter() {

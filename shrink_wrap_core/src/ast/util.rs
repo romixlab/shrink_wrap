@@ -18,3 +18,13 @@ impl ToTokens for Cfg {
         tokens.extend(quote! { #[cfg(feature = #feature)] });
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct CfgAttrDefmt(pub LitStr);
+
+impl ToTokens for CfgAttrDefmt {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let feature = &self.0;
+        tokens.extend(quote! { #[cfg_attr(feature = #feature, derive(defmt::Format))] });
+    }
+}

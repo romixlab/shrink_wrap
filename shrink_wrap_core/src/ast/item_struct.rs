@@ -2,7 +2,7 @@ use crate::ast::docs::Docs;
 use crate::ast::object_size::ObjectSize;
 use crate::ast::path::Path;
 use crate::ast::ty::Type;
-use crate::ast::util::{Cfg, Version};
+use crate::ast::util::{Cfg, CfgAttrDefmt, Version};
 use crate::ast::value::Value;
 use proc_macro2::{Ident, Span};
 use syn::LitStr;
@@ -15,6 +15,7 @@ pub struct ItemStruct {
     pub ident: Ident,
     pub fields: Vec<Field>,
     pub cfg: Option<Cfg>,
+    pub defmt: Option<CfgAttrDefmt>,
 }
 
 #[derive(Clone, Debug)]
@@ -35,6 +36,7 @@ impl ItemStruct {
         for f in &mut owned.fields {
             f.ty.make_owned();
         }
+        owned.defmt = None;
         owned
     }
 

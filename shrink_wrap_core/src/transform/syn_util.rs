@@ -241,6 +241,14 @@ pub fn collect_unknown_attributes(attrs: &mut Vec<syn::Attribute>) {
         if a.path().is_ident("shrink_wrap") {
             continue;
         }
+
+        // when used from wire_weaver introspect
+        if a.path().is_ident("derive_shrink_wrap") {
+            continue;
+        }
+        if a.path().is_ident("owned") {
+            continue;
+        }
         println!("Unknown attribute: {:?}", a.meta.path());
     }
 }

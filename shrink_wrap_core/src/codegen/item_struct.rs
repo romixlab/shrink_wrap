@@ -176,9 +176,14 @@ impl ToTokens for CGStructDes<'_> {
             //     "Deserialize struct field",
             //     struct_field.ident.to_string().as_str(),
             // ));
-            struct_field
-                .ty
-                .buf_read(field_name, self.no_alloc, self.owned, handle_eob, tokens);
+            struct_field.ty.buf_read(
+                field_name,
+                self.no_alloc,
+                self.owned,
+                handle_eob,
+                &quote! { _ },
+                tokens,
+            );
         }
         let struct_name = &self.item_struct.ident;
         tokens.append_all(quote! {

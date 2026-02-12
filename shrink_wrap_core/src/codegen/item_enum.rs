@@ -398,6 +398,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                             self.no_alloc,
                             self.owned,
                             handle_eob,
+                            &quote! { _ },
                             &mut des_fields,
                         );
                     }
@@ -422,6 +423,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                             self.no_alloc,
                             self.owned,
                             handle_eob,
+                            &quote! { _ },
                             &mut des_fields,
                         );
                     }

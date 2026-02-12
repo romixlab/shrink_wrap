@@ -318,6 +318,7 @@ impl Type {
         _no_alloc: bool,
         owned: bool,
         handle_err: TokenStream,
+        enforce_ty: &TokenStream,
         tokens: &mut TokenStream,
     ) {
         let read = if owned {
@@ -398,6 +399,6 @@ impl Type {
             }
         };
         let read_fn = Ident::new(read_fn, Span::call_site());
-        tokens.append_all(quote! { let #variable_name = rd.#read_fn() #handle_err; })
+        tokens.append_all(quote! { let #variable_name: #enforce_ty = rd.#read_fn() #handle_err; })
     }
 }

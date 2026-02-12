@@ -13,12 +13,21 @@ impl Docs {
         Docs { docs: Vec::new() }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.docs.is_empty()
+    }
+
     pub fn push(&mut self, s: LitStr) {
-        self.docs.push(s);
+        self.docs.push(LitStr::new(s.value().trim(), s.span()));
     }
 
     pub fn push_str(&mut self, s: impl AsRef<str>) {
-        self.docs.push(LitStr::new(s.as_ref(), Span::call_site()));
+        self.docs
+            .push(LitStr::new(s.as_ref().trim(), Span::call_site()));
+    }
+
+    pub fn first_line(&self) -> Option<String> {
+        self.docs.first().map(|s| s.value())
     }
 }
 

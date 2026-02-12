@@ -90,6 +90,8 @@ fn transform_path_segment(
         "Vec" | "RefVec" => transform_type_vec(path_segment, field_path)?,
         "Result" => transform_type_result(path_segment, field_path)?,
         "Option" => transform_type_option(path_segment, field_path)?,
+        "Range" => transform_type_range(path_segment, field_path)?,
+        "RangeInclusive" => transform_type_range_inclusive(path_segment, field_path)?,
         "RefBox" => transform_type_ref_box(path_segment, field_path)?,
         other_ty => {
             // u1, u2, .., u63, except u8, u16, ...
@@ -185,6 +187,37 @@ fn transform_type_option(path_segment: &PathSegment, path: &FieldPath) -> Result
     let inner_ty = transform_type(inner_ty.clone(), None, &path)?;
     let flag_ident = path.flag_ident();
     Ok(Type::Option(flag_ident, Box::new(inner_ty)))
+}
+
+fn transform_type_range(path_segment: &PathSegment, path: &FieldPath) -> Result<Type, String> {
+    let PathArguments::AngleBracketed(arg) = &path_segment.arguments else {
+        return Err("expected Range<T>, got Range or Range()".into());
+    };
+    let Some(arg) = arg.args.first() else {
+        return Err("expected Range<T>, got Range<T, ?>".into());
+    };
+    let GenericArgument::Type(inner_ty) = arg else {
+        return Err(format!("expected Range<T>, got {arg:?}"));
+    };
+    let inner_ty = transform_type(inner_ty.clone(), None, path)?;
+    Ok(Type::Range(Box::new(inner_ty)))
+}
+
+fn transform_type_range_inclusive(
+    path_segment: &PathSegment,
+    path: &FieldPath,
+) -> Result<Type, String> {
+    let PathArguments::AngleBracketed(arg) = &path_segment.arguments else {
+        return Err("expected RangeInclusive<T>, got RangeInclusive or RangeInclusive()".into());
+    };
+    let Some(arg) = arg.args.first() else {
+        return Err("expected RangeInclusive<T>, got RangeInclusive<T, ?>".into());
+    };
+    let GenericArgument::Type(inner_ty) = arg else {
+        return Err(format!("expected RangeInclusive<T>, got {arg:?}"));
+    };
+    let inner_ty = transform_type(inner_ty.clone(), None, path)?;
+    Ok(Type::RangeInclusive(Box::new(inner_ty)))
 }
 
 fn transform_type_ref_box(path_segment: &PathSegment, path: &FieldPath) -> Result<Type, String> {

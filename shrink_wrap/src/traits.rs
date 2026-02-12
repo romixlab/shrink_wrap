@@ -496,3 +496,63 @@ impl DeserializeShrinkWrapOwned for () {
         Ok(())
     }
 }
+
+impl<T: SerializeShrinkWrap> SerializeShrinkWrap for core::ops::Range<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        wr.write(&self.start)?;
+        wr.write(&self.end)?;
+        Ok(())
+    }
+}
+
+impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::Range<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        let start = rd.read()?;
+        let end = rd.read()?;
+        Ok(core::ops::Range { start, end })
+    }
+}
+
+impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::Range<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        let start = rd.read_owned()?;
+        let end = rd.read_owned()?;
+        Ok(core::ops::Range { start, end })
+    }
+}
+
+impl<T: SerializeShrinkWrap> SerializeShrinkWrap for core::ops::RangeInclusive<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        wr.write(self.start())?;
+        wr.write(self.end())?;
+        Ok(())
+    }
+}
+
+impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::RangeInclusive<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        let start = rd.read()?;
+        let end = rd.read()?;
+        Ok(core::ops::RangeInclusive::new(start, end))
+    }
+}
+
+impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::RangeInclusive<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        let start = rd.read_owned()?;
+        let end = rd.read_owned()?;
+        Ok(core::ops::RangeInclusive::new(start, end))
+    }
+}

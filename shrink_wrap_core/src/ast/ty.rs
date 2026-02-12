@@ -40,6 +40,8 @@ pub enum Type {
     Array(usize, Box<Type>),
     Tuple(Vec<Type>),
     Vec(Box<Type>),
+    Range(Box<Type>),
+    RangeInclusive(Box<Type>),
 
     // User defined type
     // TODO: use enum structs instead of tuples
@@ -191,6 +193,7 @@ impl Type {
                 return Some(sum);
             }
             Type::Vec(_) => return Some(ObjectSize::UnsizedFinalStructure),
+            Type::Range(ty) | Type::RangeInclusive(ty) => return ty.element_size(),
             Type::External(_, _) => return None, // cannot know if it's actually Unsized or not, const calculation will be performed instead
             Type::IsSome(_) | Type::IsOk(_) => return Some(ObjectSize::Sized { size_bits: 1 }),
             Type::Result(_, ok_err_ty) => {

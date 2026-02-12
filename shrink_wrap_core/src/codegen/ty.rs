@@ -107,6 +107,14 @@ impl Type {
                 let option_ty = option_ty.def(no_alloc);
                 quote! { Option<#option_ty> }
             }
+            Type::Range(ty) => {
+                let ty = ty.def(no_alloc);
+                quote! { core::ops::Range<#ty> }
+            }
+            Type::RangeInclusive(ty) => {
+                let ty = ty.def(no_alloc);
+                quote! { core::ops::RangeInclusive<#ty> }
+            }
             Type::IsSome(_) | Type::IsOk(_) => quote! { bool },
             Type::RefBox(box_ty) => {
                 let box_ty = box_ty.def(no_alloc);
@@ -288,7 +296,11 @@ impl Type {
                 }
                 return;
             }
-            Type::External(_, _) | Type::String | Type::RefBox(_) => {
+            Type::External(_, _)
+            | Type::String
+            | Type::RefBox(_)
+            | Type::Range(_)
+            | Type::RangeInclusive(_) => {
                 let field_path = field_path.by_ref();
                 // same as Sized, special handling of Unsized moved to the BufWriter::write and BufRead::read instead
                 tokens.append_all(quote! { wr.write(#field_path) #handle_eob; });
@@ -352,7 +364,11 @@ impl Type {
                 tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
-            Type::External(_, _) | Type::String | Type::RefBox(_) => {
+            Type::External(_, _)
+            | Type::String
+            | Type::RefBox(_)
+            | Type::Range(_)
+            | Type::RangeInclusive(_) => {
                 tokens.append_all(quote! {
                     let #variable_name = rd.#read() #handle_err;
                 });

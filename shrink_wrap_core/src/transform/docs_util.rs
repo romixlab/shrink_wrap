@@ -2,26 +2,23 @@ use crate::ast::docs::Docs;
 use crate::ast::object_size::ObjectSize;
 
 pub(crate) fn add_notes(docs: &mut Docs, size_assumption: Option<ObjectSize>, is_enum: bool) {
+    docs.push_str("");
     match size_assumption {
         Some(ObjectSize::Unsized) | None => {
-            docs.push_str("");
-            docs.push_str("NOTE: This type is evolvable with backwards and forwards");
-            docs.push_str("compatibility (reserved bits can be used, Option<T>, String or Vec<T> fields can be added to the back).");
+            docs.push_str("NOTE(shrink_wrap): Unsized: This type can be evolved with backwards and forwards compatibility.");
         }
         Some(ObjectSize::UnsizedFinalStructure)
         | Some(ObjectSize::Sized { .. })
         | Some(ObjectSize::SelfDescribing) => {
-            docs.push_str("");
             docs.push_str(
-                "NOTE: Structure of this type can no longer be changed without breaking compatibility,",
+                "NOTE(shrink_wrap): Structure of this type can no longer be changed without breaking compatibility,",
             );
             docs.push_str(
-                "only reserved bits can still be used to carry new information (if any).",
+                "NOTE(shrink_wrap): only reserved bits can still be used to carry new information (if any).",
             );
         }
     }
     if is_enum {
-        docs.push_str("");
         docs.push_str("Enum variants can be added if there is space left and if code already in use can handle them.")
     }
 }

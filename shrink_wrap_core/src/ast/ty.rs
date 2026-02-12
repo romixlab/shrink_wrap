@@ -148,6 +148,45 @@ impl Type {
         }
     }
 
+    pub fn visit_external_types_mut<F: FnMut(&mut Path, bool)>(&mut self, f: &mut F) {
+        match self {
+            Type::External(path, potential_lifetimes) => {
+                f(path, *potential_lifetimes);
+            }
+            Type::Option(_, some_ty) => {
+                some_ty.visit_external_types_mut(f);
+            }
+            Type::Result(_, ok_err_ty) => {
+                let (ok_ty, err_ty) = &mut **ok_err_ty;
+                ok_ty.visit_external_types_mut(f);
+                err_ty.visit_external_types_mut(f);
+            }
+            Type::Array(_, ty) => {
+                ty.visit_external_types_mut(f);
+            }
+            Type::Tuple(types) => {
+                for ty in types {
+                    ty.visit_external_types_mut(f);
+                }
+            }
+            Type::Vec(ty) => {
+                ty.visit_external_types_mut(f);
+            }
+            Type::RefBox(ty) => {
+                ty.visit_external_types_mut(f);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn prepend_ext_paths(&self, ident: &Ident) -> Type {
+        let mut ty = self.clone();
+        ty.visit_external_types_mut(&mut |path, _| {
+            path.prepend(ident);
+        });
+        ty
+    }
+
     /// Return ElementSize if it is known. None is returned for Unsized.
     pub fn element_size(&self) -> Option<ObjectSize> {
         let size_bits = match self {

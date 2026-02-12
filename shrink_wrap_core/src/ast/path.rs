@@ -28,6 +28,10 @@ impl Path {
                 Ident::new(format!("{}Owned", last_segment).as_str(), Span::call_site());
         }
     }
+
+    pub fn prepend(&mut self, segment: &Ident) {
+        self.segments.insert(0, segment.clone());
+    }
 }
 
 impl ToTokens for &Path {

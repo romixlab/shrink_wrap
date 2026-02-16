@@ -401,4 +401,11 @@ impl Type {
         let read_fn = Ident::new(read_fn, Span::call_site());
         tokens.append_all(quote! { let #variable_name: #enforce_ty = rd.#read_fn() #handle_err; })
     }
+
+    pub fn is_byte_slice(&self) -> bool {
+        let Type::Vec(inner) = self else {
+            return false;
+        };
+        matches!(inner.as_ref(), Type::U8)
+    }
 }

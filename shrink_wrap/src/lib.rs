@@ -20,6 +20,7 @@ pub use traits::{
 #[cfg(feature = "std")]
 pub mod alloc;
 pub mod nib;
+pub mod raw_slice;
 pub mod stack_vec;
 pub mod un;
 

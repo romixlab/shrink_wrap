@@ -1,27 +1,135 @@
+#[cfg(feature = "std")]
+use crate::BufWriterOwned;
+use crate::max_size::{MaxSize, write_max_size};
+use crate::refused::{ReadError, Slot};
 use crate::{BufReader, BufWriter, Error};
 use paste::paste;
 
 pub trait SerializeShrinkWrap {
     const ELEMENT_SIZE: ElementSize;
 
+    /// Whether [ser_shrink_wrap](Self::ser_shrink_wrap) can leave a length in the writer's reverse length FIFO
+    /// ([write_rev_len](BufWriter::write_rev_len): a list, a string, a nested `Unsized` value) for
+    /// [finish](BufWriter::finish) to encode.
+    ///
+    /// When it is `false`, [to_ww_bytes](Self::to_ww_bytes) ends with
+    /// [finish_no_lens](BufWriter::finish_no_lens) and the FIFO encoder is not linked at all, about 600 bytes on
+    /// a small CPU (docs/serdes/code_size.md). The bytes are the same either way.
+    ///
+    /// The default is `true` for everything but `Sized` types, which is always correct. `#[derive_shrink_wrap]`
+    /// sets it from the fields. Set it to `false` in a hand-written impl only when no path through
+    /// `ser_shrink_wrap` pushes a length, see [write_pushes_len].
+    const PUSHES_LEN: bool = !matches!(Self::ELEMENT_SIZE, ElementSize::Sized { .. });
+
+    /// Upper bound of what [ser_shrink_wrap](Self::ser_shrink_wrap) writes, `None` when there is none: something
+    /// in the type can grow without a limit (a `Vec`, `RefVec` or string without [MaxLen](crate::MaxLen), a
+    /// `RefBox`), or the impl does not say (the default). [MaxSize::buffer_len] of it is the length of a buffer
+    /// [to_ww_bytes](Self::to_ww_bytes) always fits into, see [max_size](crate::max_size).
+    ///
+    /// `#[derive_shrink_wrap]` sets it from the fields. In a hand-written impl, build it with the `const fn`s of
+    /// [max_size](crate::max_size) from what `ser_shrink_wrap` writes, or leave it `None`.
+    const MAX_SIZE: Option<MaxSize> = None;
+
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error>;
+
+    /// How `#[derive_shrink_wrap]` writes a field of this type ([BufWriter::write_field]). By default
+    /// [write](BufWriter::write), as before. `bool`, `u8`..`u32`, `i8`..`i32` and `f32` override it with their
+    /// `write_*_latch`: the error is kept in the writer for [latched](BufWriter::latched) and it always returns
+    /// `Ok`, so that the caller's error check folds away when it is inlined. A `transparent` struct forwards it to
+    /// its field, so a wrapper around a number is written exactly like the number.
+    #[doc(hidden)]
+    #[inline(always)]
+    fn ser_shrink_wrap_latch(&self, wr: &mut BufWriter) -> Result<(), Error>
+    where
+        Self: Sized,
+    {
+        wr.write(self)
+    }
 
     fn to_ww_bytes<'i>(&self, buf: &'i mut [u8]) -> Result<&'i [u8], Error> {
         let mut wr = BufWriter::new(buf);
         self.ser_shrink_wrap(&mut wr)?;
-        wr.finish_and_take()
+        wr.finish_for_and_take::<Self>()
     }
+}
+
+/// Whether [wr.write::\<T\>()](BufWriter::write) pushes a length: the size slot of an `Unsized` `T`, or whatever
+/// `T` pushes by itself. This is what a [PUSHES_LEN](SerializeShrinkWrap::PUSHES_LEN) of a type is made of:
+/// the `||` of it over everything the type writes.
+pub const fn write_pushes_len<T: SerializeShrinkWrap + ?Sized>() -> bool {
+    matches!(T::ELEMENT_SIZE, ElementSize::Unsized) || T::PUSHES_LEN
 }
 
 pub trait DeserializeShrinkWrap<'i>: Sized {
     const ELEMENT_SIZE: ElementSize;
 
+    /// `Some(n)` only for `u8`..`u128`, `i8`..`i128`, `f32` and `f64`, `n` being their size in bytes: a list of
+    /// them ([RefVec](crate::RefVec)) finds its end with one bounds check instead of decoding every element
+    /// (SW-37). Leave it `None` in every other impl, also in one that forwards `ELEMENT_SIZE` of such a type.
+    ///
+    /// It promises about [des_shrink_wrap](Self::des_shrink_wrap) what `ElementSize::Sized` does not: it is
+    /// [read_raw_slice(n)](BufReader::read_raw_slice) and nothing else, i.e. it aligns to a byte, takes exactly
+    /// `n` bytes, accepts every bit pattern and can only fail for too few bytes left. Types that are `Sized` but
+    /// not that plain keep the decode pass: `bool`, `u1`..`uN` and `Nibble` are bit-packed (no byte stride, and
+    /// the last byte can be shared with the lengths read from the back), an enum has discriminants to reject, a
+    /// struct's stride depends on alignment padding that `size_bits` does not count.
+    #[doc(hidden)]
+    const PLAIN_BYTES: Option<usize> = None;
+
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error>;
+
+    /// How `#[derive_shrink_wrap]` reads a field of this type ([BufReader::read_field]). By default
+    /// [read](BufReader::read), as before. `U1`..`U64` and `I2`..`I64` override it with a read that can only fail
+    /// for too few bits left and gives a value for every bit pattern (SW-38): the error is kept in the reader for
+    /// [latched](BufReader::latched), the value is then 0, and it always returns `Ok`, so that the caller's
+    /// error check folds away when it is inlined. The error kept is the first one and the one
+    /// [read](BufReader::read) would return, the reader state the same as after that read. `bool`, `u8`..`u32`,
+    /// `i8`..`i32` and `f32` override it with their `read_*_latch`, and a `transparent` struct forwards it to its
+    /// field.
+    #[doc(hidden)]
+    #[inline(always)]
+    fn des_shrink_wrap_latch(rd: &mut BufReader<'i>) -> Result<Self, Error> {
+        rd.read()
+    }
 
     fn from_ww_bytes(buf: &'i [u8]) -> Result<Self, Error> {
         let mut rd = BufReader::new(buf);
         let value = Self::des_shrink_wrap(&mut rd)?;
         Ok(value)
+    }
+
+    /// [from_ww_bytes](Self::from_ww_bytes), and for a value a `validate` hook refused, the value and the rule it
+    /// broke ([refused](crate::refused); `refused` feature). `slot` lives as long as the bytes, as the value may
+    /// keep a reader of them (a `RefVec`).
+    fn from_ww_bytes_explained(buf: &'i [u8], slot: &'i Slot) -> Result<Self, ReadError> {
+        let mut rd = BufReader::new(buf).with_refusal_slot(slot);
+        Self::des_shrink_wrap(&mut rd).map_err(|error| ReadError::of(error, slot))
+    }
+}
+
+/// Same as [SerializeShrinkWrap], but serializes into a growable [BufWriterOwned] and without
+/// the `u16::MAX` limit on lengths and Unsized object sizes.
+#[cfg(feature = "std")]
+pub trait SerializeShrinkWrapOwned {
+    const ELEMENT_SIZE: ElementSize;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error>;
+
+    /// [SerializeShrinkWrap::ser_shrink_wrap_latch] for the owned side, by default
+    /// [write](BufWriterOwned::write).
+    #[doc(hidden)]
+    #[inline(always)]
+    fn ser_shrink_wrap_owned_latch(&self, wr: &mut BufWriterOwned) -> Result<(), Error>
+    where
+        Self: Sized,
+    {
+        wr.write(self)
+    }
+
+    fn to_ww_bytes_owned(&self) -> Result<Vec<u8>, Error> {
+        let mut wr = BufWriterOwned::new();
+        self.ser_shrink_wrap_owned(&mut wr)?;
+        wr.finish_and_take()
     }
 }
 
@@ -30,10 +138,26 @@ pub trait DeserializeShrinkWrapOwned: Sized {
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error>;
 
+    /// [DeserializeShrinkWrap::des_shrink_wrap_latch] for the owned side, by default
+    /// [read_owned](BufReader::read_owned).
+    #[doc(hidden)]
+    #[inline(always)]
+    fn des_shrink_wrap_owned_latch(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        rd.read_owned()
+    }
+
     fn from_ww_bytes_owned(buf: &[u8]) -> Result<Self, Error> {
         let mut rd = BufReader::new(buf);
         let value = Self::des_shrink_wrap_owned(&mut rd)?;
         Ok(value)
+    }
+
+    /// [from_ww_bytes_owned](Self::from_ww_bytes_owned), and for a value a `validate` hook refused, the value and
+    /// the rule it broke ([refused](crate::refused); `refused` feature, on with `std`).
+    fn from_ww_bytes_explained(buf: &[u8]) -> Result<Self, ReadError> {
+        let slot = Slot::new();
+        let mut rd = BufReader::new(buf).with_refusal_slot(&slot);
+        Self::des_shrink_wrap_owned(&mut rd).map_err(|error| ReadError::of(error, &slot))
     }
 }
 
@@ -84,9 +208,10 @@ pub trait DeserializeShrinkWrapOwned: Sized {
 /// Only Unsized or UFS objects can contain UFS objects.
 ///
 /// Calculations are done during compile time thanks to const evaluation and static asserts are inserted to ensure correct behavior.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ElementSize {
     /// Element size is unknown and stored at the back of the buffer.
     /// Unsized structs and enums can be evolved over time without breaking compatibility.
@@ -112,9 +237,40 @@ pub enum ElementSize {
     /// Element size is not stored.
     SelfDescribing,
 
-    /// Element size is known and not stored in a buffer. Actual size in bits is not currently used for anything meaningful,
-    /// so some types are incorrectly reporting zero.
+    /// Element size is known and not stored in a buffer. `size_bits` is the exact number of bits the element takes
+    /// on the wire, alignment excluded: for an enum it is the discriminant plus the fields of a variant, and every
+    /// variant has the same size (see [one_of](ElementSize::one_of)).
     Sized { size_bits: usize },
+}
+
+// was originally implemented when calling write in server codegen, not knowing if object is plain or custom (e.g., &u8)
+impl<T: SerializeShrinkWrap> SerializeShrinkWrap for &T {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const PUSHES_LEN: bool = T::PUSHES_LEN;
+    const MAX_SIZE: Option<MaxSize> = T::MAX_SIZE;
+
+    fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        <T as SerializeShrinkWrap>::ser_shrink_wrap(self, wr)
+    }
+
+    #[inline(always)]
+    fn ser_shrink_wrap_latch(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        <T as SerializeShrinkWrap>::ser_shrink_wrap_latch(self, wr)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned for &T {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        <T as SerializeShrinkWrapOwned>::ser_shrink_wrap_owned(self, wr)
+    }
+
+    #[inline(always)]
+    fn ser_shrink_wrap_owned_latch(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        <T as SerializeShrinkWrapOwned>::ser_shrink_wrap_owned_latch(self, wr)
+    }
 }
 
 impl ElementSize {
@@ -139,6 +295,66 @@ impl ElementSize {
         }
     }
 
+    /// Size of an enum's payload: only one of the variants is on the wire, so their sizes are not summed.
+    ///
+    /// Variants of the same `Sized` size give that size. `Sized` variants of different sizes give `SelfDescribing`:
+    /// the discriminant tells how long the value is. Otherwise, the same precedence as in [add](ElementSize::add).
+    /// The discriminant itself is not counted here, `add` it to the result.
+    ///
+    /// A `sized` enum must have variants of one size, this one does not compile:
+    /// ```compile_fail
+    /// use shrink_wrap::prelude::*;
+    ///
+    /// #[derive_shrink_wrap(borrowed, ww_repr = u8, sized)]
+    /// enum Reading {
+    ///     Short(u8),
+    ///     Long(u32),
+    /// }
+    /// ```
+    pub const fn one_of(&self, other: ElementSize) -> ElementSize {
+        match (self, other) {
+            (
+                ElementSize::Sized { size_bits: size_a },
+                ElementSize::Sized { size_bits: size_b },
+            ) => {
+                if *size_a == size_b {
+                    ElementSize::Sized { size_bits: size_b }
+                } else {
+                    ElementSize::SelfDescribing
+                }
+            }
+            (_, other) => self.add(other),
+        }
+    }
+
+    /// True if every size is `Sized`, but they are not all the same: an enum with such variants cannot be `sized`.
+    pub const fn variants_differ(variants: &[ElementSize]) -> bool {
+        let mut first = None;
+        let mut differ = false;
+        let mut i = 0;
+        while i < variants.len() {
+            let ElementSize::Sized { size_bits } = variants[i] else {
+                return false;
+            };
+            match first {
+                None => first = Some(size_bits),
+                Some(first) => differ = differ || first != size_bits,
+            }
+            i += 1;
+        }
+        differ
+    }
+
+    /// Size of `count` elements one after another, as in an array `[T; count]`.
+    pub const fn repeat(&self, count: usize) -> ElementSize {
+        match self {
+            ElementSize::Sized { size_bits } => ElementSize::Sized {
+                size_bits: *size_bits * count,
+            },
+            other => *other,
+        }
+    }
+
     pub const fn is_unsized(&self) -> bool {
         matches!(self, ElementSize::Unsized)
     }
@@ -154,8 +370,18 @@ impl ElementSize {
 
 impl SerializeShrinkWrap for ElementSize {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 2 };
+    const MAX_SIZE: Option<MaxSize> = Some(MaxSize::bits(2));
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        wr.write_un8(2, self.discriminant())
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeShrinkWrapOwned for ElementSize {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 2 };
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
         wr.write_un8(2, self.discriminant())
     }
 }
@@ -187,9 +413,31 @@ impl DeserializeShrinkWrapOwned for ElementSize {
 
 impl SerializeShrinkWrap for bool {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 1 };
+    const MAX_SIZE: Option<MaxSize> = Some(MaxSize::bits(1));
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
         wr.write_bool(*self)
+    }
+
+    #[inline(always)]
+    fn ser_shrink_wrap_latch(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        wr.write_bool_latch(*self);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeShrinkWrapOwned for bool {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 1 };
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        wr.write_bool(*self)
+    }
+
+    #[inline(always)]
+    fn ser_shrink_wrap_owned_latch(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        wr.write_bool_latch(*self);
+        Ok(())
     }
 }
 
@@ -199,6 +447,11 @@ impl<'i> DeserializeShrinkWrap<'i> for bool {
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         rd.read_bool()
     }
+
+    #[inline(always)]
+    fn des_shrink_wrap_latch(rd: &mut BufReader<'i>) -> Result<Self, Error> {
+        Ok(rd.read_bool_latch())
+    }
 }
 
 impl DeserializeShrinkWrapOwned for bool {
@@ -207,43 +460,106 @@ impl DeserializeShrinkWrapOwned for bool {
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         rd.read_bool()
     }
+
+    #[inline(always)]
+    fn des_shrink_wrap_owned_latch(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        Ok(rd.read_bool_latch())
+    }
 }
 
+// `latch`: the type has `write_*_latch` / `read_*_latch`, see SerializeShrinkWrap::ser_shrink_wrap_latch
 macro_rules! impl_serialize {
     ($sign:ident, $bits:literal) => {
+        impl_serialize!(@impl $sign, $bits, {}, {});
+    };
+    ($sign:ident, $bits:literal, latch) => {
+        paste! {
+            impl_serialize!(@impl $sign, $bits, {
+                #[inline(always)]
+                fn ser_shrink_wrap_latch(&self, wr: &mut BufWriter) -> Result<(), Error> {
+                    wr.[<write_ $sign $bits _latch>](*self);
+                    Ok(())
+                }
+            }, {
+                #[inline(always)]
+                fn ser_shrink_wrap_owned_latch(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+                    wr.[<write_ $sign $bits _latch>](*self);
+                    Ok(())
+                }
+            });
+        }
+    };
+    (@impl $sign:ident, $bits:literal, {$($latch:tt)*}, {$($owned_latch:tt)*}) => {
         paste! {
             impl SerializeShrinkWrap for [<$sign $bits>] {
                 const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
+                const MAX_SIZE: Option<MaxSize> = Some(MaxSize::bytes($bits / 8));
 
                 fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
                     wr.[<write_ $sign $bits>](*self)
                 }
+
+                $($latch)*
+            }
+
+            #[cfg(feature = "std")]
+            impl SerializeShrinkWrapOwned for [<$sign $bits>] {
+                const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
+
+                fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+                    wr.[<write_ $sign $bits>](*self)
+                }
+
+                $($owned_latch)*
             }
         }
     };
 }
-impl_serialize!(u, 8);
-impl_serialize!(u, 16);
-impl_serialize!(u, 32);
+impl_serialize!(u, 8, latch);
+impl_serialize!(u, 16, latch);
+impl_serialize!(u, 32, latch);
 impl_serialize!(u, 64);
 impl_serialize!(u, 128);
-impl_serialize!(i, 8);
-impl_serialize!(i, 16);
-impl_serialize!(i, 32);
+impl_serialize!(i, 8, latch);
+impl_serialize!(i, 16, latch);
+impl_serialize!(i, 32, latch);
 impl_serialize!(i, 64);
 impl_serialize!(i, 128);
-impl_serialize!(f, 32);
+impl_serialize!(f, 32, latch);
 impl_serialize!(f, 64);
 
 macro_rules! impl_deserialize {
     ($sign:ident, $bits:literal) => {
+        impl_deserialize!(@impl $sign, $bits, {}, {});
+    };
+    ($sign:ident, $bits:literal, latch) => {
+        paste! {
+            impl_deserialize!(@impl $sign, $bits, {
+                #[inline(always)]
+                fn des_shrink_wrap_latch(rd: &mut BufReader<'i>) -> Result<Self, Error> {
+                    Ok(rd.[<read_ $sign $bits _latch>]())
+                }
+            }, {
+                #[inline(always)]
+                fn des_shrink_wrap_owned_latch(rd: &mut BufReader<'_>) -> Result<Self, Error> {
+                    Ok(rd.[<read_ $sign $bits _latch>]())
+                }
+            });
+        }
+    };
+    (@impl $sign:ident, $bits:literal, {$($latch:tt)*}, {$($owned_latch:tt)*}) => {
         paste! {
             impl<'i> DeserializeShrinkWrap<'i> for [<$sign $bits>] {
                 const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: $bits };
+                // See the constant's docs for what this promises about the read below, and
+                // tests/ref_vec_skip.rs, which holds every type of this macro to it.
+                const PLAIN_BYTES: Option<usize> = Some($bits / 8);
 
                 fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
                     rd.[<read_ $sign $bits>]()
                 }
+
+                $($latch)*
             }
 
             impl DeserializeShrinkWrapOwned for [<$sign $bits>] {
@@ -252,43 +568,92 @@ macro_rules! impl_deserialize {
                 fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
                     rd.[<read_ $sign $bits>]()
                 }
+
+                $($owned_latch)*
             }
         }
     };
 }
-impl_deserialize!(u, 8);
-impl_deserialize!(u, 16);
-impl_deserialize!(u, 32);
+impl_deserialize!(u, 8, latch);
+impl_deserialize!(u, 16, latch);
+impl_deserialize!(u, 32, latch);
 impl_deserialize!(u, 64);
 impl_deserialize!(u, 128);
-impl_deserialize!(i, 8);
-impl_deserialize!(i, 16);
-impl_deserialize!(i, 32);
+impl_deserialize!(i, 8, latch);
+impl_deserialize!(i, 16, latch);
+impl_deserialize!(i, 32, latch);
 impl_deserialize!(i, 64);
 impl_deserialize!(i, 128);
-impl_deserialize!(f, 32);
+impl_deserialize!(f, 32, latch);
 impl_deserialize!(f, 64);
 
-impl SerializeShrinkWrap for &'_ str {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
+impl SerializeShrinkWrap for &'_ [u8] {
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
-        wr.write_raw_str(self)
+        wr.write_rev_len(self.len())?;
+        wr.write_raw_slice(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeShrinkWrapOwned for &'_ [u8] {
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        wr.write_bytes(self)
+    }
+}
+
+impl SerializeShrinkWrap for &'_ str {
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+
+    fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        wr.write_str(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeShrinkWrapOwned for &'_ str {
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        wr.write_str(self)
     }
 }
 
 impl<'i> DeserializeShrinkWrap<'i> for &'i str {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        rd.read_raw_str()
+        rd.read_str()
     }
 }
 
+// Option<T> and Result<T, E> are SelfDescribing whatever T is, also for an Unsized T: the value inside goes through
+// `wr.write()`, which gives an Unsized T its own size slot, so the Option as a whole needs none from its parent.
+// `T::ELEMENT_SIZE.add(SelfDescribing)` would make Option<Unsized> Unsized, add a second slot and change the wire.
 impl<T: SerializeShrinkWrap> SerializeShrinkWrap for Option<T> {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+    const PUSHES_LEN: bool = write_pushes_len::<T>();
+    const MAX_SIZE: Option<MaxSize> = MaxSize::seq(Some(MaxSize::bits(1)), write_max_size::<T>());
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        match self {
+            Some(val) => {
+                wr.write_bool(true)?;
+                wr.write(val)
+            }
+            None => wr.write_bool(false),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned for Option<T> {
+    const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
         match self {
             Some(val) => {
                 wr.write_bool(true)?;
@@ -327,8 +692,33 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for Option<T> {
 
 impl<T: SerializeShrinkWrap, E: SerializeShrinkWrap> SerializeShrinkWrap for Result<T, E> {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+    const PUSHES_LEN: bool = write_pushes_len::<T>() || write_pushes_len::<E>();
+    const MAX_SIZE: Option<MaxSize> = MaxSize::seq(
+        Some(MaxSize::bits(1)),
+        MaxSize::one_of(write_max_size::<T>(), write_max_size::<E>()),
+    );
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        match self {
+            Ok(val) => {
+                wr.write_bool(true)?;
+                wr.write(val)
+            }
+            Err(err) => {
+                wr.write_bool(false)?;
+                wr.write(err)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: SerializeShrinkWrapOwned, E: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned
+    for Result<T, E>
+{
+    const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
         match self {
             Ok(val) => {
                 wr.write_bool(true)?;
@@ -376,9 +766,26 @@ macro_rules! impl_tuple {
     ($($types:ident),* ; $($indices: literal),*) => {
         paste! {
             impl<$($types: SerializeShrinkWrap),*> SerializeShrinkWrap for ($($types),*) {
-                const ELEMENT_SIZE: ElementSize = add_recursive!($($types),*);
+                // const ELEMENT_SIZE: ElementSize = add_recursive!($($types),*);
+                const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+                const PUSHES_LEN: bool = false $(|| write_pushes_len::<$types>())*;
+                const MAX_SIZE: Option<MaxSize> = {
+                    let size = Some(MaxSize::ZERO);
+                    $(let size = MaxSize::seq(size, write_max_size::<$types>());)*
+                    size
+                };
 
                 fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+                    $(wr.write(&self.$indices)?;)*
+                    Ok(())
+                }
+            }
+
+            #[cfg(feature = "std")]
+            impl<$($types: SerializeShrinkWrapOwned),*> SerializeShrinkWrapOwned for ($($types),*) {
+                const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+
+                fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
                     $(wr.write(&self.$indices)?;)*
                     Ok(())
                 }
@@ -387,7 +794,7 @@ macro_rules! impl_tuple {
             impl<'i, $($types: DeserializeShrinkWrap<'i>),*> DeserializeShrinkWrap<'i>
                 for ($($types),*)
             {
-                const ELEMENT_SIZE: ElementSize = add_recursive!($($types),*);
+                const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
                 fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
                     $(let [<_ $indices>] = rd.read()?;)*
@@ -398,7 +805,7 @@ macro_rules! impl_tuple {
             impl<$($types: DeserializeShrinkWrapOwned),*> DeserializeShrinkWrapOwned
                 for ($($types),*)
             {
-                const ELEMENT_SIZE: ElementSize = add_recursive!($($types),*);
+                const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
                 fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
                     $(let [<_ $indices>] = rd.read_owned()?;)*
@@ -409,11 +816,11 @@ macro_rules! impl_tuple {
     };
 }
 
-macro_rules! add_recursive {
-    () => {};
-    ($t: ident) => { $t::ELEMENT_SIZE };
-    ($t: ident, $($types: ident),*) => { $t::ELEMENT_SIZE.add(add_recursive!($($types),*)) };
-}
+// macro_rules! add_recursive {
+//     () => {};
+//     ($t: ident) => { $t::ELEMENT_SIZE };
+//     ($t: ident, $($types: ident),*) => { $t::ELEMENT_SIZE.add(add_recursive!($($types),*)) };
+// }
 
 impl_tuple!(A, B; 0, 1);
 impl_tuple!(A, B, C; 0, 1, 2);
@@ -424,9 +831,23 @@ impl_tuple!(A, B, C, D, E, F, G; 0, 1, 2, 3, 4, 5, 6);
 impl_tuple!(A, B, C, D, E, F, G, H; 0, 1, 2, 3, 4, 5, 6, 7);
 
 impl<const N: usize, T: SerializeShrinkWrap> SerializeShrinkWrap for [T; N] {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+    const PUSHES_LEN: bool = write_pushes_len::<T>();
+    const MAX_SIZE: Option<MaxSize> = MaxSize::repeat(write_max_size::<T>(), N);
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
+        for elem in self {
+            wr.write(elem)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<const N: usize, T: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned for [T; N] {
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
         for elem in self {
             wr.write(elem)?;
         }
@@ -437,7 +858,7 @@ impl<const N: usize, T: SerializeShrinkWrap> SerializeShrinkWrap for [T; N] {
 impl<'i, const N: usize, T: DeserializeShrinkWrap<'i> + Default + Copy> DeserializeShrinkWrap<'i>
     for [T; N]
 {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let mut array: [T; N] = [T::default(); N];
@@ -458,25 +879,40 @@ impl<'i, const N: usize, T: DeserializeShrinkWrap<'i> + Default + Copy> Deserial
     }
 }
 
-impl<const N: usize, T: DeserializeShrinkWrapOwned + Default + Copy> DeserializeShrinkWrapOwned
-    for [T; N]
-{
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+/// Any element type, also one that isn't `Copy` (`[String; 2]`, an owned struct with a `String`).
+impl<const N: usize, T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for [T; N] {
+    const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        let mut array: [T; N] = [T::default(); N];
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..N {
-            array[i] = rd.read_owned()?;
+        let mut err = None;
+        // elements after the first error are not read
+        let array: [Option<T>; N] = core::array::from_fn(|_| {
+            if err.is_some() {
+                return None;
+            }
+            rd.read_owned().map_err(|e| err = Some(e)).ok()
+        });
+        if let Some(e) = err {
+            return Err(e);
         }
-        Ok(array)
+        Ok(array.map(|elem| elem.expect("read without an error")))
     }
 }
 
 impl SerializeShrinkWrap for () {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+    const MAX_SIZE: Option<MaxSize> = Some(MaxSize::ZERO);
 
     fn ser_shrink_wrap(&self, _wr: &mut BufWriter) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeShrinkWrapOwned for () {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+
+    fn ser_shrink_wrap_owned(&self, _wr: &mut BufWriterOwned) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -497,8 +933,46 @@ impl DeserializeShrinkWrapOwned for () {
     }
 }
 
+/// Zero bits like `()`, for any `T`: a field that only carries a type parameter (a unit marker) costs nothing on
+/// the wire, and `T` needs no impls (DER-15).
+impl<T: ?Sized> SerializeShrinkWrap for core::marker::PhantomData<T> {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+    const MAX_SIZE: Option<MaxSize> = Some(MaxSize::ZERO);
+
+    fn ser_shrink_wrap(&self, _wr: &mut BufWriter) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: ?Sized> SerializeShrinkWrapOwned for core::marker::PhantomData<T> {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+
+    fn ser_shrink_wrap_owned(&self, _wr: &mut BufWriterOwned) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+impl<'i, T: ?Sized> DeserializeShrinkWrap<'i> for core::marker::PhantomData<T> {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+
+    fn des_shrink_wrap<'di>(_rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
+        Ok(core::marker::PhantomData)
+    }
+}
+
+impl<T: ?Sized> DeserializeShrinkWrapOwned for core::marker::PhantomData<T> {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
+
+    fn des_shrink_wrap_owned(_rd: &mut BufReader<'_>) -> Result<Self, Error> {
+        Ok(core::marker::PhantomData)
+    }
+}
+
 impl<T: SerializeShrinkWrap> SerializeShrinkWrap for core::ops::Range<T> {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
+    const PUSHES_LEN: bool = write_pushes_len::<T>();
+    const MAX_SIZE: Option<MaxSize> = MaxSize::repeat(write_max_size::<T>(), 2);
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
         wr.write(&self.start)?;
@@ -507,8 +981,19 @@ impl<T: SerializeShrinkWrap> SerializeShrinkWrap for core::ops::Range<T> {
     }
 }
 
+#[cfg(feature = "std")]
+impl<T: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned for core::ops::Range<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        wr.write(&self.start)?;
+        wr.write(&self.end)?;
+        Ok(())
+    }
+}
+
 impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::Range<T> {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let start = rd.read()?;
@@ -518,7 +1003,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::
 }
 
 impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::Range<T> {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         let start = rd.read_owned()?;
@@ -528,7 +1013,9 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::Ra
 }
 
 impl<T: SerializeShrinkWrap> SerializeShrinkWrap for core::ops::RangeInclusive<T> {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
+    const PUSHES_LEN: bool = write_pushes_len::<T>();
+    const MAX_SIZE: Option<MaxSize> = MaxSize::repeat(write_max_size::<T>(), 2);
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
         wr.write(self.start())?;
@@ -537,8 +1024,19 @@ impl<T: SerializeShrinkWrap> SerializeShrinkWrap for core::ops::RangeInclusive<T
     }
 }
 
+#[cfg(feature = "std")]
+impl<T: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned for core::ops::RangeInclusive<T> {
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
+        wr.write(self.start())?;
+        wr.write(self.end())?;
+        Ok(())
+    }
+}
+
 impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::RangeInclusive<T> {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let start = rd.read()?;
@@ -548,7 +1046,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::
 }
 
 impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::RangeInclusive<T> {
-    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
+    const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         let start = rd.read_owned()?;

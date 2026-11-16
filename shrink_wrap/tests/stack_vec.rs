@@ -8,8 +8,7 @@ struct DynamicThings<'i> {
     c: RefVec<'i, MoreDynamic<'i>>,
 }
 
-#[derive_shrink_wrap]
-#[derive(Clone)]
+#[derive_shrink_wrap(derive(Clone))]
 struct MoreDynamic<'i> {
     d: RefVec<'i, u8>,
 }
@@ -30,7 +29,7 @@ fn stack_vec() {
             ],
         },
     };
-    let mut on_stack = StackVec::<32, _>::some(obj).unwrap();
+    let mut on_stack = AnyOnStack::<32, _>::some(obj).unwrap();
     assert_eq!(
         on_stack.bytes(),
         hex!("0102030405 616263 060708 0 3 090A0B 0 3 0 4 4 2 3 5")

@@ -4,8 +4,10 @@ use crate::{
 };
 
 /// 4 bits, serialized with alignment of four-bits.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct Nibble(u8);
 
 impl Nibble {
@@ -48,9 +50,19 @@ impl Nibble {
 
 impl SerializeShrinkWrap for Nibble {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 4 };
+    const MAX_SIZE: Option<crate::max_size::MaxSize> = Some(crate::max_size::MaxSize::nibbles(1));
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
-        wr.write_u4(self.value())
+        wr.write_nib(*self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl crate::SerializeShrinkWrapOwned for Nibble {
+    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 4 };
+
+    fn ser_shrink_wrap_owned(&self, wr: &mut crate::BufWriterOwned) -> Result<(), Error> {
+        wr.write_nib(*self)
     }
 }
 
@@ -58,7 +70,7 @@ impl<'i> DeserializeShrinkWrap<'i> for Nibble {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 4 };
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(Nibble(rd.read_u4()?))
+        rd.read_nib()
     }
 }
 
@@ -66,7 +78,7 @@ impl DeserializeShrinkWrapOwned for Nibble {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 4 };
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(Nibble(rd.read_u4()?))
+        rd.read_nib()
     }
 }
 

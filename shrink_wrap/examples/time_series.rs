@@ -1,6 +1,6 @@
 //! Encoded sizes of synthetic time-series data: raw `Vec<T>` vs `Series<T>` (SW-60), which picks the smallest of
 //! raw/delta/delta-of-delta (integers, SW-31) or plain/XOR (floats, SW-32) per column. Referenced from
-//! `docs/serdes/series.md`.
+//! `docs/series.md`.
 //!
 //! Run with `cargo run --example time_series`.
 

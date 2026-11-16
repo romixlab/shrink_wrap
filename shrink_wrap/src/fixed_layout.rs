@@ -13,7 +13,7 @@
 //!   [BufReader](crate::BufReader) or [BufWriter](crate::BufWriter), nothing generic. Same bytes as
 //!   `ser_shrink_wrap`. A short buffer or an unknown tag is an error, never a panic;
 //! - [FixedLayout], whose [write_c](FixedLayout::write_c) prints the matching C reader ([write_c_header]): a view
-//!   checked against the buffer's length, and readers that take the view (SW-79, `docs/c.md`).
+//!   checked against the buffer's length, and readers that take the view (SW-79, <https://ww.vhrd.tech/c/>).
 //!
 //! # What has a fixed layout
 //!

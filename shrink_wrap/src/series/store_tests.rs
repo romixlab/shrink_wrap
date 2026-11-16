@@ -229,7 +229,7 @@ fn init_store_of_another_store_panics() {
     super::init_store_in::<Liar, 4>(&mut slot);
 }
 
-/// Two data variants: the store keeps both fields (docs/serdes/series.md).
+/// Two data variants: the store keeps both fields (docs/series.md).
 #[derive_shrink_wrap(owned, series, ww_repr = u4, no_future_version, derive(Clone, Debug, PartialEq))]
 enum Two {
     A(u32),

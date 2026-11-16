@@ -117,7 +117,7 @@ impl<'i> BufReader<'i> {
 
     // The integer and bool reads go through read_bit and read_le32: one copy of the bounds checks, and a
     // Result<u32, Error> comes back in two registers on 32-bit CPUs, where Result<bool, Error> or Result<u8, Error>
-    // would go through memory at every call (docs/serdes/code_size.md).
+    // would go through memory at every call (docs/code_size.md).
     #[inline(never)]
     #[cfg_attr(shrink_wrap_optimize, optimize(speed))]
     fn read_bit(&mut self) -> Result<u32, Error> {
@@ -373,7 +373,7 @@ impl<'i> BufReader<'i> {
     ///
     /// The `_latch` reads are what `#[derive_shrink_wrap]` generates for plain fields: a run of them is followed
     /// by one `rd.latched()?` instead of an error check after each read, which is about half the code on small
-    /// CPUs (docs/serdes/code_size.md). A read that fails gives 0, so do the `_latch` reads after it, and every
+    /// CPUs (docs/code_size.md). A read that fails gives 0, so do the `_latch` reads after it, and every
     /// read with a `Result` returns the kept error until it is taken here: don't use the values before
     /// `latched()` returned `Ok`, in particular not as a loop bound.
     #[inline]

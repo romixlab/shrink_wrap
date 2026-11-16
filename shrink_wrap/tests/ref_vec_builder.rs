@@ -626,7 +626,7 @@ fn u8_builder_round_trip() {
     assert_eq!(inner.read_u8(), Ok(0x42));
 }
 
-/// The examples of `docs/serdes/special_types.md#refvecbuilder-lists-written-in-place`.
+/// The examples of `docs/special_types.md#refvecbuilder-lists-written-in-place`.
 #[test]
 fn docs_examples() {
     let adc_read = |ch: u16| U12::new(0x100 * ch + 0x23).unwrap();

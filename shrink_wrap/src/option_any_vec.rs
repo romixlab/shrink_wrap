@@ -1,6 +1,6 @@
 //! [OptionAnyVec]: a zero-copy, no_std and no-alloc array of heterogeneous `Option<Any>` slots (SW-55).
 //!
-//! Layout, see `docs/serdes/shrink_wrap.md` for the details and byte-verified examples:
+//! Layout, see `docs/shrink_wrap.md` for the details and byte-verified examples:
 //!
 //! `|presence header|values of the present slots, in slot order, no padding between them|reverse UNib32 lengths|`
 //!

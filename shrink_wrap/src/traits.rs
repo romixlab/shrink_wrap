@@ -14,7 +14,7 @@ pub trait SerializeShrinkWrap {
     ///
     /// When it is `false`, [to_ww_bytes](Self::to_ww_bytes) ends with
     /// [finish_no_lens](BufWriter::finish_no_lens) and the FIFO encoder is not linked at all, about 600 bytes on
-    /// a small CPU (docs/serdes/code_size.md). The bytes are the same either way.
+    /// a small CPU (docs/code_size.md). The bytes are the same either way.
     ///
     /// The default is `true` for everything but `Sized` types, which is always correct. `#[derive_shrink_wrap]`
     /// sets it from the fields. Set it to `false` in a hand-written impl only when no path through

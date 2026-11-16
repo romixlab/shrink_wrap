@@ -17,7 +17,7 @@ mod ww_repr;
 /// * Support for `#[flag]` field attributes to manually position where `Option` and `Result` flags are
 ///   placed in the binary form (for space savings and/or backwards compatibility).
 /// * `#[since = "w1.2"]` on fields and variants: the wire revision of the API that added them (EVO-24), kept
-///   for the API model, see `docs/evolution/rules.md`.
+///   for the API model, see <https://ww.vhrd.tech/evolution/rules/>.
 ///
 /// # Attribute arguments
 ///

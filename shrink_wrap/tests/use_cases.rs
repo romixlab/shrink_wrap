@@ -1,4 +1,4 @@
-//! The worked examples of `docs/serdes/use_cases.md`: every size and byte sequence the page quotes is asserted here.
+//! The worked examples of `docs/use_cases.md`: every size and byte sequence the page quotes is asserted here.
 
 use hex_literal::hex;
 use shrink_wrap::BufReader;

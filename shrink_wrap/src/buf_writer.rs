@@ -649,7 +649,7 @@ impl<'i> BufWriter<'i> {
 
     /// Align to byte and write the `len` (1 to 4) low bytes of `val` in Little Endian.
     // All the integer writes up to 32 bits go through here: one copy of the bounds checks, and no call into
-    // memcpy for 2 or 4 bytes (docs/serdes/code_size.md).
+    // memcpy for 2 or 4 bytes (docs/code_size.md).
     #[inline(never)]
     fn write_le32(&mut self, mut val: u32, len: usize) -> Result<(), Error> {
         self.align_byte();
@@ -690,7 +690,7 @@ impl<'i> BufWriter<'i> {
     ///
     /// The `_latch` writes are what `#[derive_shrink_wrap]` generates for plain fields: a run of them is followed
     /// by one `wr.latched()?` instead of an error check after each write, which is about half the code on small
-    /// CPUs (docs/serdes/code_size.md). A write that fails writes nothing, and the writes after it go on.
+    /// CPUs (docs/code_size.md). A write that fails writes nothing, and the writes after it go on.
     #[inline]
     pub fn latched(&mut self) -> Result<(), Error> {
         // not `self.latch.take()`, which stores `None` back also when there is nothing to clear: the derive calls
@@ -1125,7 +1125,7 @@ impl<'i> BufWriter<'i> {
     /// the slice containing written data, the same bytes `finish` gives.
     ///
     /// Without a call to `finish` the code that encodes the lengths is not linked, about 600 bytes on a small
-    /// CPU (docs/serdes/code_size.md). If a length was pushed after all, this panics in a debug build and returns
+    /// CPU (docs/code_size.md). If a length was pushed after all, this panics in a debug build and returns
     /// [Error::LenFifoNotEmpty] in a release one. Prefer [finish_for](Self::finish_for), which picks by the type.
     pub fn finish_no_lens(&mut self) -> Result<&[u8], Error> {
         self.latched()?;

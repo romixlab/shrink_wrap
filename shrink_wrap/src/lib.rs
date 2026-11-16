@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // The `optimize-speed` feature (Rust 1.101 or nightly, see build.rs): the per-item bit primitives and Series loops are
-// optimized for speed in a firmware built for size, see docs/serdes/code_size.md ("Hot paths at opt-level z")
+// optimized for speed in a firmware built for size, see docs/code_size.md ("Hot paths at opt-level z")
 #![cfg_attr(shrink_wrap_optimize_gate, feature(optimize_attribute))]
 #![cfg_attr(
     shrink_wrap_optimize_gate,

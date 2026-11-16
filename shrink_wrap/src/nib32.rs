@@ -18,7 +18,7 @@ const ONE_MORE_NIBBLE: u8 = 0b1000;
 impl UNib32 {
     pub const fn len_nibbles(&self) -> usize {
         // A loop rather than `bits.div_ceil(3)`: no division routine on CPUs without a divider (RV32I, Cortex-M0),
-        // which is 170 bytes of code there, see docs/serdes/code_size.md.
+        // which is 170 bytes of code there, see docs/code_size.md.
         let mut val = self.0 >> 3;
         let mut nibbles = 1;
         while val != 0 {

@@ -1,0 +1,67 @@
+[package]
+name = "shrink_wrap_fuzz"
+version = "0.0.0"
+edition = "2024"
+description = "cargo-fuzz targets of shrink_wrap's readers and writers"
+license = "MIT"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# Built by cargo-fuzz on a nightly toolchain with its own flags: not a member of the root workspace.
+[workspace]
+
+[dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = "0.4"
+shrink_wrap = { path = "../shrink_wrap" }
+
+[[bin]]
+name = "shrink-wrap-tail-size"
+path = "src/shrink_wrap_tail_size.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink-wrap-ref-vec"
+path = "src/shrink_wrap_ref_vec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink-wrap-latched"
+path = "src/shrink_wrap_latched.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink-wrap-option-any-vec"
+path = "src/shrink_wrap_option_any_vec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink-wrap-series-columns"
+path = "src/shrink_wrap_series_columns.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink-wrap-series-type"
+path = "src/shrink_wrap_series_type.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink-wrap-nesting"
+path = "src/shrink_wrap_nesting.rs"
+test = false
+doc = false
+bench = false

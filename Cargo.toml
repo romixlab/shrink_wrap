@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["shrink_wrap", "shrink_wrap_derive", "size_bench"]
+# cargo-fuzz targets and the bare-metal images, each a workspace of its own (nightly)
+exclude = ["fuzz", "size_bench/fw"]
 
 [workspace.package]
 authors = ["Roman Isaikin <romix.lab@gmail.com>"]

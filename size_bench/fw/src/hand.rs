@@ -3,15 +3,7 @@
 //! request and reply enums. What the same job costs when written by hand.
 
 use crate::types::{I2cSlave, I2cTiming, RxFrame, UartFormat, Wave};
-use core::hint::black_box;
-
-fn src<T>(v: T) -> T {
-    black_box(v)
-}
-
-fn sink<T>(v: T) {
-    black_box(&v);
-}
+use size_bench_rt::{sink, src};
 
 /// Reader over a message; past the end it reads zeros.
 #[derive(Clone, Copy)]

@@ -1,17 +1,9 @@
 //! The `busgen` case in the head+tail encoding (SW-46): the same request and reply enums and the same handler,
 //! the plain structs fixed-layout, the rest `head_tail`, lists as `head_tail::List`.
 
-use core::hint::black_box;
 use shrink_wrap::head_tail::List;
 use shrink_wrap::prelude::*;
-
-fn src<T>(v: T) -> T {
-    black_box(v)
-}
-
-fn sink<T>(v: T) {
-    black_box(&v);
-}
+use size_bench_rt::{sink, src};
 
 #[derive_shrink_wrap(borrowed, fixed_layout, derive(Clone, Copy))]
 pub struct Wave {

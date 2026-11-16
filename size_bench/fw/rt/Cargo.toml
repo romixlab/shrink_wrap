@@ -1,0 +1,11 @@
+[package]
+name = "size_bench_rt"
+version = "0.1.0"
+edition = "2024"
+description = "What every size_bench firmware image shares: entry point, buffers, panic handler, linker script"
+license = "MIT"
+publish = false
+
+[features]
+# The firmware's own byte-wise `memcpy` instead of the word-wise one of `compiler_builtins`
+byte_memcpy = []

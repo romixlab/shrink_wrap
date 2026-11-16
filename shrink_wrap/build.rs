@@ -23,11 +23,12 @@ fn main() {
         .nth(2)
         .and_then(|m| m.parse::<u32>().ok())
         .unwrap_or(0);
-    if minor >= 101 {
-        println!("cargo::rustc-cfg=shrink_wrap_optimize");
-    } else if version.contains("-nightly") || version.contains("-dev") {
+    // A 1.101 nightly may predate the stabilization: a nightly always gets the feature gate
+    if version.contains("-nightly") || version.contains("-dev") {
         println!("cargo::rustc-cfg=shrink_wrap_optimize");
         println!("cargo::rustc-cfg=shrink_wrap_optimize_gate");
+    } else if minor >= 101 {
+        println!("cargo::rustc-cfg=shrink_wrap_optimize");
     } else {
         println!(
             "cargo::warning=shrink_wrap: `optimize-speed` needs Rust 1.101 or a nightly compiler, ignored on {}",

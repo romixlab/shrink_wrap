@@ -12,7 +12,6 @@ repository = "https://github.com/romixlab/shrink_wrap"
 license = "MIT"
 
 [workspace.dependencies]
-shrink_wrap = { version = "0.2.0", path = "./shrink_wrap", default-features = false }
 shrink_wrap_derive = { version = "0.2.0", path = "./shrink_wrap_derive" }
 
 anyhow = "1"

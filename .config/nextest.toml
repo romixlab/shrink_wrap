@@ -1,0 +1,9 @@
+# Timeouts here are hang detectors, not speed checks: a test is marked SLOW after 15 s and killed after 30 s, wide
+# enough that a loaded PC can't fail a test that would pass on a quiet one.
+[profile.default]
+slow-timeout = { period = "15s", terminate-after = 2 }
+
+# CI runners (and coverage instrumentation) are slower: never less time than the default
+[profile.ci]
+slow-timeout = { period = "15s", terminate-after = 2 }
+fail-fast = false

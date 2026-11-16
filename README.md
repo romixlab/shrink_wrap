@@ -1,8 +1,7 @@
 # ShrinkWrap
 
 ![Crates.io Version](https://img.shields.io/crates/v/shrink_wrap)
-[![CI](https://github.com/vhrdtech/wire_weaver/actions/workflows/ci.yml/badge.svg)](https://github.com/vhrdtech/wire_weaver/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/github/vhrdtech/wire_weaver/graph/badge.svg)](https://codecov.io/github/vhrdtech/wire_weaver)
+[![CI](https://github.com/romixlab/shrink_wrap/actions/workflows/ci.yml/badge.svg)](https://github.com/romixlab/shrink_wrap/actions/workflows/ci.yml)
 
 <p align="center">
 <picture>
@@ -18,7 +17,7 @@
 - Support for user-defined types - structs, enums (plain and with data fields), tuples.
 - Support for dynamically sized objects (strings, vectors or any user type).
 - Rich type system.
-  - [Full list of supported types](https://vhrdtech.github.io/wire_weaver/types)
+  - [Full list of supported types](https://ww.vhrd.tech/types/)
 - Backwards and Forwards compatibility (older device with new software / old software with newer device).
 - No allocation.
 - 1-bit, 4-bit and 1-byte alignment.
@@ -35,22 +34,41 @@ This crate is a core piece of [WireWeaver](https://github.com/vhrdtech/wire_weav
 code generator with support for methods (RPC), properties,
 streams, [global traits](https://github.com/vhrdtech/ww_stdlib) and backward/forward compatibility.
 
+## Documentation
+
+The pages in [`docs/`](docs) describe the format, the derive macro and its directives, the special types, `Series`,
+the layouts and what the code costs on small CPUs. They are published as the SerDes section of the
+[WireWeaver book](https://ww.vhrd.tech/serdes/shrink_wrap/), which assembles them from this repository, so their links
+to other parts of the book work there.
+
+## Repository layout
+
+| Path | What |
+| --- | --- |
+| `shrink_wrap/` | the wire format: `BufReader`, `BufWriter`, the serdes traits, the special types, `Series` |
+| `shrink_wrap_derive/` | `#[derive_shrink_wrap]` |
+| `size_bench/` | code size of shrink_wrap on small CPUs: the runner, its firmware images (`fw/`) and their runtime (`fw/rt`) |
+| `fuzz/` | cargo-fuzz targets of the readers and writers |
+| `docs/` | the pages of the format |
+
+`just --list` shows the recipes: `just test`, `just lint`, `just fuzz <target>`, `just size-bench`, `just miri`.
+
 ## Recommended way to depend on this crate
 
 ### On no_std
 
 ```toml
 [dependencies]
-shrink_wrap = { version = "0.1.0", default-features = false }
+shrink_wrap = { git = "https://github.com/romixlab/shrink_wrap", default-features = false }
 ```
 
-To make this crate `no_std`.
+To make this crate `no_std`. Releases up to 0.1.2 are on crates.io.
 
 ### In API or data type crates for both std and no_std
 
 ```toml
 [dependencies]
-shrink_wrap = { version = "0.1.0", default-features = false }
+shrink_wrap = { git = "https://github.com/romixlab/shrink_wrap", default-features = false }
 
 [features]
 default = ["std"]
@@ -77,3 +95,7 @@ Then use your crate with `default-features = false` on `no_std`.
 - Can use, e.g., `U1` which takes only one bit as enum discriminant!
 - Can use uninitialised buffers when writing, so no need to spend time on zero-filling.
 - Downside is - buffer length need to be known, usually not a problem or taken care of by transport layer.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

@@ -2,7 +2,8 @@
 
 shrink_wrap was developed inside the wire_weaver repo from May 2024, moved to its own repo
 ([romixlab/shrink_wrap](https://github.com/romixlab/shrink_wrap)) in December 2025, where 0.1.0 to 0.1.2 were released,
-and moved back into wire_weaver in February 2026.
+moved back into wire_weaver in February 2026, and back to romixlab/shrink_wrap in November 2026 with its history,
+its fuzz targets, its size bench and its docs pages.
 
 ## Unreleased
 
@@ -10,6 +11,8 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### ⚠️ Breaking
 
+- Repository: shrink_wrap and shrink_wrap_derive live in romixlab/shrink_wrap again; take them by git from there, not from wire_weaver.
+- `size_bench` drops its `reply` and `finish_for` cases (a WireWeaver reply); wire_weaver's `just size-bench-reply` measures them (TEST-17).
 - Wire (EVO-81, follows SW-81): the borrowed derive writes an empty `RefVec<u8>` field that starts mid-byte one byte shorter, as the owned derive always did. A value with such a field now has other bytes than before; old bytes read the same where the list ends a size-delimited body, and were misread by every reader where a mid-byte field follows. Frozen goldens holding such a value are re-sealed with an `EVO-81` mark.
 - `#[common]` is gone (STD-16): an API's error enum holds its own variants only, the common errors travel beside it (`ww_api::Error`).
 - A `#[cfg]`'d-out enum variant reads as the enum's `#[future_version]` variant (`Unknown(d)`) when the enum has one, instead of `Error::EnumVariantDisabled`; writing `Unknown(d)` of a discriminant compiled out in this build is allowed and gives the same bytes back. Enums without a `#[future_version]` variant still say `EnumVariantDisabled`. An `Unsized` enum gets `Unknown(u32)` by default (SW-47), so code matching `Err(EnumVariantDisabled)` on such an enum gets `Ok(Unknown(d))` now. For a request a firmware leaves out (`ww_client_server`'s `multi` and `streams` features), so it answers "not supported" instead of failing to read the request.
@@ -19,10 +22,13 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### 🐛 Fixes
 
+- `optimize-speed` builds on a 1.101 nightly from before `#[optimize]` was stable: every nightly gets the feature gate (SW-74).
 - The borrowed derive wrote one extra padding byte for an empty `RefVec<u8>` field that started mid-byte (`RefVec::ser_shrink_wrap_vec_u8` aligned to a byte, SW-81); every other writer and every reader take nothing for an empty list. Bytes change only for such a value: `struct { a: bool, b: RefVec<u8> }` with `b` empty was `80 00`, now `80`, as the owned type always wrote; old bytes still read the same. A field after such an empty list that starts mid-byte was read one byte early, so a device built before the fix corrupts it (`struct { a: bool, b: RefVec<u8>, c: bool }` `{true, [], true}` read back `c = false`) or fails with `OutOfBoundsReadUN`; rebuild such devices.
 
 ### 🚀 Features
 
+- `size_bench` is a library too: `Bench` measures any firmware crate of the same shape; `size_bench_rt` is what the images share (TEST-17).
+- The seven `shrink-wrap-*` fuzz targets run here (`just fuzz`, a smoke run in `just test`), with the docs pages of the format in `docs/` (SW-22).
 - `#[derive_shrink_wrap]` and `#[common]` find `shrink_wrap` and `ww_error` through `ww_api`'s re-exports when the user's `Cargo.toml` names neither crate (API-68), as before through `wire_weaver`'s: the lookup is `shrink_wrap` (`ww_error`), then `ww_api`, then `wire_weaver`, which re-exports `ww_api`. The `#[common]` error names all three.
 - `RefVec` implements `Hash`, element by element as its `PartialEq` compares (P2401#15nov-1358).
 - `shrink_wrap::GENERATION` is the line of the crate's wire version, `[package.metadata.wire_weaver] wire = "w1.0"` in its `Cargo.toml` (EVO-71), still 1. New `generation_from_manifest!()` and `wire_line::line_of_manifest`: a `const fn` that reads `wire = "wN.M"` from the calling crate's `Cargo.toml` through `include_str!`, no build script, `no_std`; a missing or malformed line is a compile error. `ww_framer`, `ww_link` and `ww_client_server` take their `GENERATION` from it too, and every API bundle now names `shrink_wrap`'s wire line in `ext_wire`.

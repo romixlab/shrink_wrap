@@ -16,14 +16,70 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 - Wire (EVO-81, follows SW-81): the borrowed derive writes an empty `RefVec<u8>` field that starts mid-byte one byte shorter, as the owned derive always did. A value with such a field now has other bytes than before; old bytes read the same where the list ends a size-delimited body, and were misread by every reader where a mid-byte field follows. Frozen goldens holding such a value are re-sealed with an `EVO-81` mark.
 - `#[common]` is gone (STD-16): an API's error enum holds its own variants only, the common errors travel beside it (`ww_api::Error`).
 - A `#[cfg]`'d-out enum variant reads as the enum's `#[future_version]` variant (`Unknown(d)`) when the enum has one, instead of `Error::EnumVariantDisabled`; writing `Unknown(d)` of a discriminant compiled out in this build is allowed and gives the same bytes back. Enums without a `#[future_version]` variant still say `EnumVariantDisabled`. An `Unsized` enum gets `Unknown(u32)` by default (SW-47), so code matching `Err(EnumVariantDisabled)` on such an enum gets `Ok(Unknown(d))` now. For a request a firmware leaves out (`ww_client_server`'s `multi` and `streams` features), so it answers "not supported" instead of failing to read the request.
-
 - The generated C readers of `fixed_layout` and `head_tail` types (`FixedLayout::write_c`, `HeadTail::write_c_ht`, `fixed_layout::write_c_header`, `head_tail::write_c_header`) take a checked view instead of a bare pointer (SW-79): C that parses untrusted bytes can no longer read a field without the length check. `<name>_view(buf, len, &v)` checks the whole value (flags, tags, nested values, list counts; an unknown tag is refused) and makes a `<name>_view_t` with `p` and `len` (the value's length); every field reader takes that view (by value for a fixed layout, by pointer for `head_tail`). Readers stay in the view: an index past an array or list reads 0; an `Option` / `Result` payload is `int <name>_<field>(v, T *out)` (`_ok` / `_err` for a `Result`), an enum variant `int <enum>_as_<variant>(v, &out)` with readers on the variant's view, and an item of a list of fixed-layout types `int <name>_<list>(v, i, &out)`, each returning -1 when it is not there. A caller that ignores a -1 reads zeros, never through `NULL`: on an empty view (a refused `_view`, or a zero-initialized one) every reader reads 0, a byte-array reader returns `NULL` and every `int` reader -1, and a failed `int` reader leaves an empty view in `*out`, never a `NULL` pointer. A type longer than 65535 bytes is an `#error` where `size_t` can't count it (a 16-bit target), instead of a length check cut to 16 bits. Gone: `<enum>_len(tag)`, `<name>_tail_t` and `<name>_tail(h, &t, end, &tl)` (the walk is `<name>__walk`, for the views of the types that hold one; enter through `<name>_view`). New in the preludes: `SW_NODISCARD` (`warn_unused_result` on gcc / clang, on every view function and `int` reader) and `sw_ht_take_items`, which refuses a list before `count * size` could wrap on a 16-bit `size_t`. C users regenerate their header and replace `x_field(p)` with `x_view(p, len, &v)` once, then `x_field(v)`; see `docs/c.md#generated-readers`. Tests `c_views_check_bounds` in `tests/fixed_layout.rs` and `tests/head_tail.rs` (AddressSanitizer, every truncation, empty, NULL, changed and random buffers, against Rust; every reader also called on the empty view of each refused case, and must read 0). The Rust side and the wire bytes are unchanged.
 - `--cfg shrink_wrap_hot="inline"` / `"optimize"` is gone, replaced by cargo features (SW-74): `shrink_wrap_hot="inline"` is now the `fast-io` feature, `"optimize"` the `optimize-speed` feature (it no longer needs a nightly compiler from Rust 1.101, where `#[optimize]` is stable), and the two can be combined. A firmware that set the cfg in its `rustflags` drops it and names the feature on its `shrink_wrap` dependency (`features = ["fast-io"]`); the cfg no longer does anything. `std` turns `fast-io` on, so host builds are unchanged in speed and a `no_std` firmware unchanged in size. See `docs/serdes/code_size.md#hot-paths-at-opt-level-z`.
-
-### 🐛 Fixes
-
-- `optimize-speed` builds on a 1.101 nightly from before `#[optimize]` was stable: every nightly gets the feature gate (SW-74).
-- The borrowed derive wrote one extra padding byte for an empty `RefVec<u8>` field that started mid-byte (`RefVec::ser_shrink_wrap_vec_u8` aligned to a byte, SW-81); every other writer and every reader take nothing for an empty list. Bytes change only for such a value: `struct { a: bool, b: RefVec<u8> }` with `b` empty was `80 00`, now `80`, as the owned type always wrote; old bytes still read the same. A field after such an empty list that starts mid-byte was read one byte early, so a device built before the fix corrupts it (`struct { a: bool, b: RefVec<u8>, c: bool }` `{true, [], true}` read back `c = false`) or fails with `OutOfBoundsReadUN`; rebuild such devices.
+* `Delta`, `DeltaOfDelta` and `XorFloat` (SW-31, SW-32) are removed, with `DeltaOwned`, `DeltaOfDeltaOwned`,
+  `XorFloatOwned`, `DeltaIter`, `DeltaOfDeltaIter`, `XorFloatIter` and `DeltaInt`: `Series<T>` (SW-60) covers them
+  with the same codes (its numeric columns' prefix coder is the SW-31 code with the delta or delta of delta
+  predictor, its float columns' XOR codec is the SW-32 code) plus packed, constant and plain coders and the choice of
+  the smallest per column. Migrate a field `Delta<'i, T>` / `DeltaOfDelta<'i, T>` / `XorFloat<'i, T>` to
+  `Series<'i, T>` (`..Owned<T>` to `SeriesOwned<T>`, `::new(&values)` stays); a fixed codec where a small MCU wants
+  one pass is `Series::with_policy(&values, DeltaPacked)`. The bytes differ (a `Series` has a count, a 4-bit header
+  per column and pads to a byte): data written with the old types must be rewritten. `XorBits` stays (float
+  columns). The prelude exports `Series` / `SeriesOwned` in their place.
+- `SeriesColumns::write_group` takes the codec policy as a type parameter, `policy: &P` with
+  `P: SeriesPolicy + ?Sized`, instead of `&CodecPolicy` (SW-63): a hand-written impl adds `P` to its generics and
+  the bound to its where clause, and passes `policy` on as before (`policy.numeric()` / `policy.float()` where it
+  read the fields). Derived impls follow by themselves.
+- `Series<'i, T, P = CodecPolicy>` has the policy as a type parameter (SW-63); `Series<'i, T>` is the same type as
+  before. `Series::with_policy` and `SeriesOwned::as_borrowed_with` take any `SeriesPolicy`.
+- `#[derive_shrink_wrap(.., series)]` also implements `SeriesStore` (SW-62), which needs every field's type to have
+  one: a `series` type with a field of a type that has none (a type with a `#[series(opaque)]` field, a hand-written
+  `SeriesColumns` impl) fails to compile until it says `series(no_store)`.
+- `RefVecU8Builder` is removed, folded into `RefVecBuilder<u8>` (SW-61). Replace
+  `let b = RefVecU8Builder::new(&mut wr)?; /* writes */ b.finish(&mut wr)?;` with
+  `let mut b = RefVecBuilder::<u8>::new(&mut wr)?; b.write_bytes_with(&mut wr, |wr| { /* writes */ })?;
+  b.finish(&mut wr)?;`. Same bytes, except that an empty blob after bit-sized fields no longer aligns to a byte
+  first: it is now the same as an empty `RefVec<u8>`, as readers always expected.
+- Enum variants from a newer version by default (SW-47): `#[derive_shrink_wrap]` adds `#[future_version]
+  Unknown(u32)` to every `Unsized` enum (the default) that has a free discriminant in its `ww_repr` and doesn't have
+  such a variant already. Same wire, `ELEMENT_SIZE` and `MAX_SIZE`, but a new Rust variant: exhaustive matches need
+  an `Unknown(_)` arm, fieldless enums can't be cast with `as` anymore, `Copy` enums grow. Opt out with the
+  `no_future_version` argument (an enum that is complete by nature, or one whose readers must fail on a newer value),
+  name it with `future_version = <Name>` when `Unknown` is a variant of its own. `final_structure`,
+  `self_describing` and `sized` enums only get it when written. See `docs/serdes/derive.md`.
+- `#[derive_shrink_wrap(..)]` takes all options as arguments instead of separate attributes: `#[owned = "std"]`
+  becomes `owned(feature = "std")`, `#[final_structure]` / `#[self_describing]` / `#[sized]` become arguments of the
+  same name, `#[ww_repr(u2)]` becomes `ww_repr = u2`, and `derive(..)`, `cfg_attr_borrowed(..)` / `cfg_attr_owned(..)`
+  replace separate `#[derive]` / `#[cfg_attr]`. See `docs/serdes/derive.md`.
+- Naming scheme: borrowed and plain types carry no postfix, allocating ones end with `Owned`.
+  New `DeserializeShrinkWrapOwned` and `SerializeShrinkWrapOwned` (std) traits for the owned variants.
+- `shrink_wrap_core` is merged into `shrink_wrap_derive`; `derive_shrink_wrap` and `ww_repr` are also re-exported
+  from the `shrink_wrap` crate root. `ww_repr` is no longer in `shrink_wrap::prelude`, import it from the crate root.
+- Wire format: `u4` is now 1-bit aligned like `u1`..`u3`, the 4-bit aligned type is `Nibble`; strings, tuples and arrays
+  are `UnsizedFinalStructure`, same as `Vec<T>`.
+- `StackVec` renamed to `AnyOnStack`.
+- `Error::OutOfBoundsWriteUN`, `OutOfBoundsReadUN` and `OutOfBoundsSplit` no longer carry a `UNib32` (the bit count
+  or length asked for), and `Error` is `#[repr(u32)]` with no payloads at all: a `Result<u32, Error>` then comes
+  back in two registers instead of through memory on 32-bit CPUs (SW-34). Match on the bare variants.
+- `BufWriter`: `write_raw_str()` → `write_str()`, `write_u4()` → `write_nib()` (or `write_nib_masked()` for a raw
+  `u8`), `write_u16_rev()` / `update_u16_rev()` / `u16_rev_pos()` / `U16RevPos` → `write_rev_len()` /
+  `update_rev_len()` / `rev_len_pos()` / `RevPos`, `encode_nib16_rev()` → `encode_len_fifo()`.
+  `BufReader`: `read_raw_str(self)` → `read_str(&mut self)`, `read_unib32_rev()` → `read_rev_len()`.
+- `Error::StrTooLong`, `VecTooLong` and `ItemTooLong` are merged into `Error::LenTooLong`.
+- `defmt-extended` and `tracing-extended` features removed (trace logging of reads/writes, didn't work out and was
+  broken); drop them from your `Cargo.toml`. `shrink_wrap` no longer depends on `tracing`.
+- A `sized` enum whose variants differ in size no longer compiles (SW-35): `sized enum X: variants differ in size
+  (A: 8 bits, B: 32 bits); use self_describing ..`. Replace `sized` with `self_describing` on it, and on every `sized`
+  type that contains it: the bytes stay the same, nothing has to be done on the other end. Such an enum never had
+  one size, its `ELEMENT_SIZE` was wrong.
+- `ELEMENT_SIZE` of `sized` / `self_describing` types changes where it was wrong (SW-35), the wire format does not:
+    - enums: `Sized { size_bits }` is the discriminant plus one variant, it was the sum of all variants without
+      the discriminant (`ww_repr = u8` with `A(u8)` and `B(u8)`: 16 bits, was 16 by accident; `ww_repr = u2` without
+      fields: 2 bits, was 0);
+    - user types inside `[T; N]`, tuples, `Range<T>` and `Option<T>` / `Result<T, E>` fields are counted, they were
+      left out: a `sized` type with an `Option<UserType>` field no longer compiles (it is `self_describing`);
+    - `Range<T>` and `RangeInclusive<T>` are two `T`, not one.
 
 ### 🚀 Features
 
@@ -198,7 +254,6 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
   with its field by name. Before, the derive panicked on a tuple struct. See `docs/types.md`.
 - `validate = path` directive of `#[derive_shrink_wrap]` (SW-58): a function called on every struct value just read, its
   error fails the read. See `docs/serdes/derive.md`.
-
 - `ArrayString<N>` / `ArrayVec<T, N>` (SW-57), new modules `array_string` and `array_vec`: owned, no-alloc values
   backed by a fixed-size `[u8; N]` / `[MaybeUninit<T>; N]`, same bytes on the wire as `&str`/`String` and
   `Vec<T>`, for places an owned value is needed without an allocator (a `value_on_changed` field of a string or
@@ -322,75 +377,6 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
   directly instead of going through the `SerializeShrinkWrap`/`DeserializeShrinkWrap` traits. Tests
   `tests/wire_as.rs`, `tests/max_size.rs`, `tests/pushes_len.rs`, round-trip proptests in
   `shrink_wrap::nib32`. Docs `docs/serdes/wire_format.md`, `docs/serdes/derive_reference.md`.
-
-### ⚠️ Breaking
-
-* `Delta`, `DeltaOfDelta` and `XorFloat` (SW-31, SW-32) are removed, with `DeltaOwned`, `DeltaOfDeltaOwned`,
-  `XorFloatOwned`, `DeltaIter`, `DeltaOfDeltaIter`, `XorFloatIter` and `DeltaInt`: `Series<T>` (SW-60) covers them
-  with the same codes (its numeric columns' prefix coder is the SW-31 code with the delta or delta of delta
-  predictor, its float columns' XOR codec is the SW-32 code) plus packed, constant and plain coders and the choice of
-  the smallest per column. Migrate a field `Delta<'i, T>` / `DeltaOfDelta<'i, T>` / `XorFloat<'i, T>` to
-  `Series<'i, T>` (`..Owned<T>` to `SeriesOwned<T>`, `::new(&values)` stays); a fixed codec where a small MCU wants
-  one pass is `Series::with_policy(&values, DeltaPacked)`. The bytes differ (a `Series` has a count, a 4-bit header
-  per column and pads to a byte): data written with the old types must be rewritten. `XorBits` stays (float
-  columns). The prelude exports `Series` / `SeriesOwned` in their place.
-- `SeriesColumns::write_group` takes the codec policy as a type parameter, `policy: &P` with
-  `P: SeriesPolicy + ?Sized`, instead of `&CodecPolicy` (SW-63): a hand-written impl adds `P` to its generics and
-  the bound to its where clause, and passes `policy` on as before (`policy.numeric()` / `policy.float()` where it
-  read the fields). Derived impls follow by themselves.
-- `Series<'i, T, P = CodecPolicy>` has the policy as a type parameter (SW-63); `Series<'i, T>` is the same type as
-  before. `Series::with_policy` and `SeriesOwned::as_borrowed_with` take any `SeriesPolicy`.
-- `#[derive_shrink_wrap(.., series)]` also implements `SeriesStore` (SW-62), which needs every field's type to have
-  one: a `series` type with a field of a type that has none (a type with a `#[series(opaque)]` field, a hand-written
-  `SeriesColumns` impl) fails to compile until it says `series(no_store)`.
-- `RefVecU8Builder` is removed, folded into `RefVecBuilder<u8>` (SW-61). Replace
-  `let b = RefVecU8Builder::new(&mut wr)?; /* writes */ b.finish(&mut wr)?;` with
-  `let mut b = RefVecBuilder::<u8>::new(&mut wr)?; b.write_bytes_with(&mut wr, |wr| { /* writes */ })?;
-  b.finish(&mut wr)?;`. Same bytes, except that an empty blob after bit-sized fields no longer aligns to a byte
-  first: it is now the same as an empty `RefVec<u8>`, as readers always expected.
-- Enum variants from a newer version by default (SW-47): `#[derive_shrink_wrap]` adds `#[future_version]
-  Unknown(u32)` to every `Unsized` enum (the default) that has a free discriminant in its `ww_repr` and doesn't have
-  such a variant already. Same wire, `ELEMENT_SIZE` and `MAX_SIZE`, but a new Rust variant: exhaustive matches need
-  an `Unknown(_)` arm, fieldless enums can't be cast with `as` anymore, `Copy` enums grow. Opt out with the
-  `no_future_version` argument (an enum that is complete by nature, or one whose readers must fail on a newer value),
-  name it with `future_version = <Name>` when `Unknown` is a variant of its own. `final_structure`,
-  `self_describing` and `sized` enums only get it when written. See `docs/serdes/derive.md`.
-- `#[derive_shrink_wrap(..)]` takes all options as arguments instead of separate attributes: `#[owned = "std"]`
-  becomes `owned(feature = "std")`, `#[final_structure]` / `#[self_describing]` / `#[sized]` become arguments of the
-  same name, `#[ww_repr(u2)]` becomes `ww_repr = u2`, and `derive(..)`, `cfg_attr_borrowed(..)` / `cfg_attr_owned(..)`
-  replace separate `#[derive]` / `#[cfg_attr]`. See `docs/serdes/derive.md`.
-- Naming scheme: borrowed and plain types carry no postfix, allocating ones end with `Owned`.
-  New `DeserializeShrinkWrapOwned` and `SerializeShrinkWrapOwned` (std) traits for the owned variants.
-- `shrink_wrap_core` is merged into `shrink_wrap_derive`; `derive_shrink_wrap` and `ww_repr` are also re-exported
-  from the `shrink_wrap` crate root. `ww_repr` is no longer in `shrink_wrap::prelude`, import it from the crate root.
-- Wire format: `u4` is now 1-bit aligned like `u1`..`u3`, the 4-bit aligned type is `Nibble`; strings, tuples and arrays
-  are `UnsizedFinalStructure`, same as `Vec<T>`.
-- `StackVec` renamed to `AnyOnStack`.
-- `Error::OutOfBoundsWriteUN`, `OutOfBoundsReadUN` and `OutOfBoundsSplit` no longer carry a `UNib32` (the bit count
-  or length asked for), and `Error` is `#[repr(u32)]` with no payloads at all: a `Result<u32, Error>` then comes
-  back in two registers instead of through memory on 32-bit CPUs (SW-34). Match on the bare variants.
-- `BufWriter`: `write_raw_str()` → `write_str()`, `write_u4()` → `write_nib()` (or `write_nib_masked()` for a raw
-  `u8`), `write_u16_rev()` / `update_u16_rev()` / `u16_rev_pos()` / `U16RevPos` → `write_rev_len()` /
-  `update_rev_len()` / `rev_len_pos()` / `RevPos`, `encode_nib16_rev()` → `encode_len_fifo()`.
-  `BufReader`: `read_raw_str(self)` → `read_str(&mut self)`, `read_unib32_rev()` → `read_rev_len()`.
-- `Error::StrTooLong`, `VecTooLong` and `ItemTooLong` are merged into `Error::LenTooLong`.
-- `defmt-extended` and `tracing-extended` features removed (trace logging of reads/writes, didn't work out and was
-  broken); drop them from your `Cargo.toml`. `shrink_wrap` no longer depends on `tracing`.
-
-- A `sized` enum whose variants differ in size no longer compiles (SW-35): `sized enum X: variants differ in size
-  (A: 8 bits, B: 32 bits); use self_describing ..`. Replace `sized` with `self_describing` on it, and on every `sized`
-  type that contains it: the bytes stay the same, nothing has to be done on the other end. Such an enum never had
-  one size, its `ELEMENT_SIZE` was wrong.
-- `ELEMENT_SIZE` of `sized` / `self_describing` types changes where it was wrong (SW-35), the wire format does not:
-    - enums: `Sized { size_bits }` is the discriminant plus one variant, it was the sum of all variants without
-      the discriminant (`ww_repr = u8` with `A(u8)` and `B(u8)`: 16 bits, was 16 by accident; `ww_repr = u2` without
-      fields: 2 bits, was 0);
-    - user types inside `[T; N]`, tuples, `Range<T>` and `Option<T>` / `Result<T, E>` fields are counted, they were
-      left out: a `sized` type with an `Option<UserType>` field no longer compiles (it is `self_describing`);
-    - `Range<T>` and `RangeInclusive<T>` are two `T`, not one.
-
-### 🚀 Features
-
 - No length FIFO code for types without lengths, and a smaller one for the others (SW-36), same wire format. On
   RV32IC an encoder of a struct of plain fields is 964 bytes instead of 1476, of four integers 462 instead of 996;
   one with a list 1142 instead of 1378. All numbers in `docs/serdes/code_size.md`.
@@ -497,6 +483,8 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### 🐛 Fixes
 
+- `optimize-speed` builds on a 1.101 nightly from before `#[optimize]` was stable: every nightly gets the feature gate (SW-74).
+- The borrowed derive wrote one extra padding byte for an empty `RefVec<u8>` field that started mid-byte (`RefVec::ser_shrink_wrap_vec_u8` aligned to a byte, SW-81); every other writer and every reader take nothing for an empty list. Bytes change only for such a value: `struct { a: bool, b: RefVec<u8> }` with `b` empty was `80 00`, now `80`, as the owned type always wrote; old bytes still read the same. A field after such an empty list that starts mid-byte was read one byte early, so a device built before the fix corrupts it (`struct { a: bool, b: RefVec<u8>, c: bool }` `{true, [], true}` read back `c = false`) or fails with `OutOfBoundsReadUN`; rebuild such devices.
 - `shrink_wrap_derive`: `#[since = ".."]` on a field or variant is kept as written and no longer parsed as `x.y.z`: anything else (`#[since = "w1.2"]`, EVO-24) panicked the derive. What it names is `wire_weaver_core`'s to check.
 - `derive_shrink_wrap`: `#[cfg_attr(pred, ..)]` on a field or enum variant holding an attribute the derive reads (`default = ..`, `flag`, `id`, `series`, `slot`, `since`, `common`, `display`, `future_version`) was dropped without a word, so `#[cfg_attr(feature = "shrink_wrap", default = 7)]` made a required field (rustc doesn't expand `cfg_attr` inside an attribute macro's item). It is read as if `pred` holds, and the type fails to compile where `pred` doesn't (the same rule as `#[cfg_attr(pred, wire(W))]`, DER-19); a `cfg_attr` mixing these with other attributes is an error. The form a crate with `shrink_wrap` optional uses (API-60, `exact_units`).
 - `derive_shrink_wrap`: attributes it doesn't read on a field, a tuple variant's field or an enum variant (`#[serde(rename = ..)]`, `#[cfg_attr(feature = "defmt", defmt(..))]`, any other `#[cfg_attr(..)]`) were dropped with an "Unknown attribute" line on stdout. They stay on the generated field or variant as written, of the type with the item's own name (the borrowed `Type<'i>`, or `TypeOwned` as written; an owned mirror may not derive what they belong to), and rustc expands their `cfg_attr`s there. A misspelled attribute is now a compile error instead of nothing: `#[discriminant = N]` was never one of the derive's (write `Variant = N`); `#[id = N]` is still accepted and not used. Test `tests/field_attributes.rs`.
@@ -587,9 +575,6 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
   history bounded by `TailSize` slots (SW-18), request/reply frames over streams (`UVlq32` length, size cap), gossip
   payloads under a 4 KiB cap (schema choice vs compression), and where SW-28 compression wrappers would pay (time
   series). `tests/use_cases.rs` asserts every size and byte sequence quoted.
-
-### 📚 Documentation
-
 - Docs: product names written WireWeaver and ShrinkWrap in prose.
 
 ## [0.1.2] - 2026-01-07 #2

@@ -1,0 +1,147 @@
+name: CI
+
+# clippy and rustdoc use --all-features to cover feature gated code. Tests can't: with `defmt` enabled, host test
+# binaries fail to link, as there is no defmt global logger.
+
+on:
+  merge_group:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          components: rustfmt
+          cache: false
+      - run: cargo fmt --all --check
+
+  cargo-sort:
+    name: cargo sort
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-sort
+      # --grouped keeps the blank line separated groups in [workspace.dependencies]
+      - run: cargo sort --workspace --grouped --check
+
+  typos:
+    name: typos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: crate-ci/typos@v1
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          components: clippy
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  doc:
+    name: rustdoc
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - run: cargo doc --workspace --no-deps --all-features
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      # the C readers of fixed_layout and head_tail types are built with the runner's cc and run here too
+      - run: cargo nextest run --workspace --all-targets --profile ci
+      # nextest does not run doctests
+      - run: cargo test --workspace --doc
+
+  c-readers:
+    name: C readers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: just lint-c
+
+  no-std:
+    name: no_std builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          target: thumbv6m-none-eabi,thumbv7em-none-eabihf,riscv32i-unknown-none-elf
+      - run: cargo check -p shrink_wrap --no-default-features --target thumbv6m-none-eabi
+      - run: cargo check -p shrink_wrap --no-default-features --features fast-io,refused,defmt,serde --target thumbv7em-none-eabihf
+      - run: cargo check -p shrink_wrap --no-default-features --features fast-io --target riscv32i-unknown-none-elf
+
+  miri:
+    name: miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: nightly
+          components: miri, rust-src
+          cache: false
+      - run: cargo +nightly miri test -p shrink_wrap --lib cells_tests
+
+  fuzz:
+    name: fuzz smoke run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: nightly
+          cache-workspaces: fuzz
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz,just
+      - run: just fuzz-smoke
+
+  semver-checks:
+    name: semver checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-semver-checks
+      # Default features only: older releases don't build with all of them (defmt).
+      - run: cargo semver-checks --package shrink_wrap --package shrink_wrap_derive --default-features

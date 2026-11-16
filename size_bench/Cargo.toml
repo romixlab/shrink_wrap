@@ -11,5 +11,8 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
-object = { version = "0.40", default-features = false, features = ["elf", "read_core", "std"] }
-rustc-demangle = "0.1"
+object = { workspace = true, features = ["elf", "read_core", "std"] }
+rustc-demangle.workspace = true
+
+[lints]
+workspace = true

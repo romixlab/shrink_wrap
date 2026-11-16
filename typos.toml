@@ -1,13 +1,7 @@
 # https://github.com/crate-ci/typos/blob/master/docs/reference.md
 
-[files]
-extend-exclude = []
-
-[default.extend-identifiers]
-
 [default.extend-words]
-## Project-specific acronym
+# un = unsigned bit-sized integer (UN, U1..U64)
 unx = "unx"
-
-[default]
-extend-ignore-identifiers-re = []
+# ser = serialize (ser/des)
+ser = "ser"

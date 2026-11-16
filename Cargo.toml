@@ -5,6 +5,7 @@ members = ["shrink_wrap", "shrink_wrap_derive", "size_bench"]
 [workspace.package]
 authors = ["Roman Isaikin <romix.lab@gmail.com>"]
 edition = "2024"
+rust-version = "1.88"
 repository = "https://github.com/romixlab/shrink_wrap"
 license = "MIT"
 
@@ -15,11 +16,36 @@ shrink_wrap_derive = { version = "0.2.0", path = "./shrink_wrap_derive" }
 anyhow = "1"
 clap = "4.5"
 defmt = "1.1"
+either = { version = "1", default-features = false }
 hex-literal = "1"
+object = { version = "0.40", default-features = false }
+paste = "1"
 proc-macro-crate = "3"
 proc-macro2 = "1.0"
 proptest = "1.11"
 quote = "1.0"
+rustc-demangle = "0.1"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "1.0"
 syn = { version = "3", features = ["full", "extra-traits"] }
+
+[workspace.lints.rust]
+unused_lifetimes = "warn"
+# `cargo fuzz` builds with `--cfg fuzzing`: entry points for fuzz/ to the crate-internal series column codecs
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+
+[profile.dev]
+split-debuginfo = "unpacked"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.test]
+split-debuginfo = "unpacked"
+
+[profile.deploy]
+inherits = "release"
+incremental = true

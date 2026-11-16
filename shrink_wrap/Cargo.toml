@@ -31,8 +31,8 @@ defmt = ["dep:defmt"]
 
 [dependencies]
 defmt = { workspace = true, optional = true }
-either = { version = "1", default-features = false }
-paste = "1"
+either.workspace = true
+paste.workspace = true
 serde = { workspace = true, optional = true }
 shrink_wrap_derive.workspace = true
 
@@ -42,6 +42,5 @@ proptest.workspace = true
 serde = { workspace = true, features = ["std"] }
 serde_json.workspace = true
 
-[lints.rust]
-# `cargo fuzz` builds with `--cfg fuzzing`: entry points for fuzz/ to the crate-internal series column codecs
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+[lints]
+workspace = true

@@ -16,4 +16,5 @@ proc-macro2.workspace = true
 quote.workspace = true
 syn = { workspace = true, features = ["full", "extra-traits", "printing"] }
 
-# sha2 = "0.11"
+[lints]
+workspace = true

@@ -5,6 +5,11 @@ export CARGO_BUILD_JOBS := if jobs != "" { jobs } else { env_var_or_default('CAR
 export NEXTEST_TEST_THREADS := if jobs != "" { jobs } else { env_var_or_default('NEXTEST_TEST_THREADS', 'num-cpus') }
 
 fuzz_targets := "tail-size ref-vec latched option-any-vec series-columns series-type nesting"
+# cargo-fuzz defaults its fuzz target to the triple its own binary was built for; a
+# prebuilt cargo-fuzz release (taiki-e/install-action's cargo-binstall fallback uses
+# one) is a static musl build, so that default becomes a musl target this host never
+# installed. Passing the host's own triple keeps the fuzz build on it regardless.
+fuzz_host_triple := `rustc -vV | sed -n 's/^host: //p'`
 
 # List all available targets
 default:
@@ -73,12 +78,12 @@ fuzz-install:
 # (fuzz/artifacts) stay out of git
 [working-directory('fuzz')]
 fuzz target seconds="":
-    cargo +nightly fuzz run shrink-wrap-{{ target }} -- -max_len=4096 {{ if seconds == "" { "" } else { "-max_total_time=" + seconds } }}
+    cargo +nightly fuzz run --target {{ fuzz_host_triple }} shrink-wrap-{{ target }} -- -max_len=4096 {{ if seconds == "" { "" } else { "-max_total_time=" + seconds } }}
 
 # Every fuzz target for 20000 runs: a smoke run, part of `just test`
 [working-directory('fuzz')]
 fuzz-smoke:
-    for t in {{ fuzz_targets }}; do cargo +nightly fuzz run -O shrink-wrap-$t -- -runs=20000 -max_len=4096 || exit 1; done
+    for t in {{ fuzz_targets }}; do cargo +nightly fuzz run -O --target {{ fuzz_host_triple }} shrink-wrap-$t -- -runs=20000 -max_len=4096 || exit 1; done
 
 # A library has nothing to put on PATH: builds it with the deploy profile, as a dependent's release build would
 install:

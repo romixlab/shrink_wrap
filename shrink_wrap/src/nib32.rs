@@ -364,13 +364,10 @@ mod test {
         const SIZE: usize = 8;
         let mut buf = [0u8; SIZE];
         let mut wr = BufWriter::new(&mut buf);
-        // UNib32(num).write_reversed(&mut wr).unwrap();
         wr.write_rev_len(num).unwrap();
-        // assert_eq!(SIZE * 2 - wr.nibbles_left(), nib_count);
         let buf = wr.finish().unwrap();
         let mut rd = BufReader::new(buf);
         assert_eq!(UNib32::read_reversed(&mut rd), Ok(UNib32(num as u32)));
-        // assert_eq!(buf, repr);
     }
 
     #[test]
@@ -379,17 +376,6 @@ mod test {
             test_reversed(i);
         }
     }
-
-    // #[test]
-    // fn unib32_round_trip() {
-    //     let mut buf = [0u8; 8];
-    //     for i in 0..=u32::MAX {
-    //         let mut wr = BufWriter::new(&mut buf);
-    //         UNib32(i).write_forward(&mut wr).unwrap();
-    //         let mut rd = BufReader::new(&buf);
-    //         assert_eq!(UNib32::read_forward(&mut rd), Ok(UNib32(i)));
-    //     }
-    // }
 
     fn len_nibbles(num: u32) -> usize {
         match num {
@@ -419,13 +405,6 @@ mod test {
             assert_eq!(len_nibbles(max), UNib32(max).len_nibbles());
         }
     }
-
-    // #[test]
-    // fn len_nibbles_round_trip() {
-    //     for i in 0..=u32::MAX {
-    //         assert_eq!(len_nibbles(i), UNib32(i).len_nibbles());
-    //     }
-    // }
 
     #[test]
     fn traits() {

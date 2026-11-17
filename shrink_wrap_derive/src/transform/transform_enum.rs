@@ -72,9 +72,6 @@ impl ItemEnum {
         }
         let mut attrs = item_enum.attrs.clone();
         let docs = collect_docs_attrs(&mut attrs);
-        // if add_evolve_docs {
-        //     add_notes(&mut docs, size_assumption, true); TODO: add docs back
-        // }
 
         attrs.retain(|a| !a.path().is_ident("repr"));
         Ok(ItemEnum {

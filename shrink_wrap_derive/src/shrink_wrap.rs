@@ -974,8 +974,6 @@ enum TyKind {
     /// Have to specify whether borrowed or owned variant is wanted.
     /// In this case no new type is generated and both owned and borrowed traits are derived on one type if requested.
     Ambiguous,
-    // Mix of a plain (non-`Owned`) type name and alloc types, or `Owned` type name and reference types
-    // Confusing,
 }
 
 impl TyKind {
@@ -987,10 +985,8 @@ impl TyKind {
         };
         let is_explicit_owned = name.ends_with("Owned");
         let types = collect_referenced_types(item);
-        // const AMBIGUOUS_ERR: &str = "";
         if types.is_empty() {
             return Ok((Self::Ambiguous, name));
-            // return Err(AMBIGUOUS_ERR.into());
         }
         let any_lifetimes = types.iter().any(|t| t.has_lifetime);
         let any_alloc_types = types.iter().any(|t| ALLOC_TYPES.contains(&t.name.as_str()));

@@ -693,10 +693,6 @@ fn write_discriminant(repr: Repr, tokens: &mut TokenStream) {
 impl ToTokens for CGEnumSer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         // TODO: forbid empty enums or not?
-        // tokens.append_all(trace_extended_key_val(
-        //     "Serialize enum",
-        //     self.item_enum.ident.to_string().as_str(),
-        // ));
         if let Some(fv) = self.item_enum.future_version {
             // a known one would be read back as that variant, without its fields
             let ident = &fv.ident;
@@ -743,10 +739,6 @@ impl ToTokens for CGEnumSer<'_> {
                             fields_names.push(quote!(#field_name)); // do not create a match arm with a flag, because it's not a part of an enum
                             FieldPath::Ref(quote!(#field_name))
                         };
-                        // tokens.append_all(trace_extended_key_val(
-                        //     "Serialize named field",
-                        //     field.ident.to_string().as_str(),
-                        // ));
                         field.ty.buf_write(
                             field_path,
                             self.is_ref,
@@ -780,10 +772,6 @@ impl ToTokens for CGEnumSer<'_> {
                             fields_numbers.push(field_name.clone()); // do not create a match arm with a flag, because it's not a part of an enum
                             FieldPath::Ref(quote!(#field_name))
                         };
-                        // tokens.append_all(trace_extended_key_val(
-                        //     "Serialize unnamed field",
-                        //     field_name.to_string().as_str(),
-                        // ));
                         ty.buf_write(
                             field_path,
                             self.is_ref,
@@ -852,10 +840,6 @@ impl ToTokens for CGEnumDes<'_> {
             is_ref: self.is_ref,
             decoded_apart: unit_run.clone(),
         };
-        // tokens.append_all(trace_extended_key_val(
-        //     "Deserialize enum",
-        //     self.item_enum.ident.to_string().as_str(),
-        // ));
         let read_discriminant = read_discriminant(self.item_enum.repr);
         let error = self.item_enum.crate_path.error();
         // A latched discriminant that failed to read is 0, so is one read after an earlier latched read failed:
@@ -1011,10 +995,6 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                         }
                         let handle_eob = quote! { ? };
                         // let x = rd.read_()?; or let x = rd.read_().unwrap_or(default);
-                        // tokens.append_all(trace_extended_key_val(
-                        //     "Deserialize unnamed field",
-                        //     field_name.to_string().as_str(),
-                        // ));
                         ty.buf_read(
                             &field_name,
                             !self.is_ref,

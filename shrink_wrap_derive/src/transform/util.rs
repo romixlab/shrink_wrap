@@ -24,9 +24,6 @@ pub(crate) enum FieldSelector {
     NamedField(Ident),
     Tuple(u32),
     Array(usize),
-    // ResultIfOk,
-    // ResultIfErr,
-    // OptionIsSome,
 }
 
 #[derive(Debug)]
@@ -231,23 +228,6 @@ pub(crate) fn check_tail_bytes_position(types: &[&Type]) -> Result<(), String> {
     }
     Ok(())
 }
-
-// fn transform_const(item_const: &syn::ItemConst) -> Result<ItemConst, String> {
-//     let ty = transform_type(
-//         item_const.ty.deref().clone(),
-//         None,
-//         &FieldPath::new(FieldPathRoot::Argument(item_const.ident.clone())),
-//     )?;
-//     let mut attrs = item_const.attrs.clone();
-//     let docs = collect_docs_attrs(&mut attrs);
-//     collect_unknown_attributes(&mut attrs);
-//     Ok(ItemConst {
-//         docs,
-//         ident: item_const.ident.clone().into(),
-//         ty,
-//         value: item_const.expr.deref().clone(),
-//     })
-// }
 
 /// Signedness of an integer type that can be a `#[wire(W)]` field or its wire type (DER-19), `None` for any other
 /// type. `wire` picks the wire side: no 128-bit types there (`WireAs` goes through 64 bits), but sub-byte, nibble and

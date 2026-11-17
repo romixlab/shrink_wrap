@@ -83,8 +83,6 @@ impl<'i> EitherAnyVec<'i> {
 
 impl EitherAnyVecBuilder {
     pub fn new(wr: &BufWriter<'_>) -> Self {
-        // let wr = BufWriter::new(buf);
-        // let unsized_builder = UnsizedBuilder::new(&mut wr)?;
         let items = wr.save_state();
         Self {
             // unsized_builder,
@@ -180,7 +178,6 @@ impl EitherAnyVecBuilder {
     /// Finalize the BufWriter and get result bytes
     pub fn finish_and_take(self, mut wr: BufWriter<'_>) -> Result<&[u8], Error> {
         wr.restore_state(self.items);
-        // self.unsized_builder.finish(&mut wr)?;
         wr.finish_and_take()
     }
 }

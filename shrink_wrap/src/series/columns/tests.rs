@@ -182,7 +182,7 @@ fn design_examples() {
         )
         .map(|_| ())
     };
-    // IvSample { v: Volt { prefix, value: U16 }, i: Ampere { prefix, value: I32 } }
+    // the columns of an IvSample: a Volt (prefix, U16 value) and an Ampere (prefix, I32 value)
     let (bytes, _) = write_with(|wr| {
         put_nib(wr, 4)?; // n
         put_nib(wr, 2)?; // field count
@@ -342,7 +342,7 @@ fn numeric128() {
     let signed = [0i128, -1, i128::MIN, i128::MAX, -5].map(|v| v as u128);
     check::numeric128(&mut [0; 128], true, &signed);
     let (bytes, _) = write_with(|wr| write_numeric128(wr, true, [-1i128 as u128].into_iter()));
-    // zigzag(-1) = 1
+    // -1 zigzags to 1
     assert_eq!(
         bytes[..],
         [0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10]

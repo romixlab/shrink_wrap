@@ -517,7 +517,6 @@ mod tests {
         let mut wr = BufWriter::new(&mut buf);
         wr.write(&arr).unwrap();
         let buf = wr.finish_and_take().unwrap();
-        // println!("{:02X?}", buf);
         assert_eq!(
             buf,
             hex!(

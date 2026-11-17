@@ -161,21 +161,6 @@ pub trait DeserializeShrinkWrapOwned: Sized {
     }
 }
 
-// pub fn to_ww_bytes<'i, T: SerializeShrinkWrap>(
-//     buf: &'i mut [u8],
-//     value: &T,
-// ) -> Result<&'i [u8], Error> {
-//     let mut wr = BufWriter::new(buf);
-//     value.ser_shrink_wrap(&mut wr)?;
-//     wr.finish_and_take()
-// }
-
-// pub fn from_ww_bytes<'i, T: DeserializeShrinkWrap<'i>>(buf: &'i [u8]) -> Result<T, Error> {
-//     let mut rd = BufReader::new(buf);
-//     let value = T::des_shrink_wrap(&mut rd)?;
-//     Ok(value)
-// }
-
 /// Core type governing how objects are serialized and composed together.
 ///
 /// Structs and enums are Unsized by default to promote potential future changes with backwards and forwards compatibility.
@@ -766,7 +751,6 @@ macro_rules! impl_tuple {
     ($($types:ident),* ; $($indices: literal),*) => {
         paste! {
             impl<$($types: SerializeShrinkWrap),*> SerializeShrinkWrap for ($($types),*) {
-                // const ELEMENT_SIZE: ElementSize = add_recursive!($($types),*);
                 const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
                 const PUSHES_LEN: bool = false $(|| write_pushes_len::<$types>())*;
                 const MAX_SIZE: Option<MaxSize> = {
@@ -816,12 +800,6 @@ macro_rules! impl_tuple {
     };
 }
 
-// macro_rules! add_recursive {
-//     () => {};
-//     ($t: ident) => { $t::ELEMENT_SIZE };
-//     ($t: ident, $($types: ident),*) => { $t::ELEMENT_SIZE.add(add_recursive!($($types),*)) };
-// }
-
 impl_tuple!(A, B; 0, 1);
 impl_tuple!(A, B, C; 0, 1, 2);
 impl_tuple!(A, B, C, D; 0, 1, 2, 3);
@@ -866,15 +844,6 @@ impl<'i, const N: usize, T: DeserializeShrinkWrap<'i> + Default + Copy> Deserial
         for i in 0..N {
             array[i] = rd.read()?;
         }
-
-        // let mut array: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
-        //
-        // for i in 0..N {
-        //     let elem = rd.read()?;
-        //     array[i] = MaybeUninit::new(elem);
-        // }
-        //
-        // let array = unsafe { core::mem::transmute::<_, [T; N]>(array) };
         Ok(array)
     }
 }

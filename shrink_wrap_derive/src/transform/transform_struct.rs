@@ -57,9 +57,6 @@ impl ItemStruct {
         }
         let mut attrs = item_struct.attrs.clone();
         let docs = collect_docs_attrs(&mut attrs);
-        // if add_evolve_docs {
-        //     add_notes(&mut docs, size_assumption, false);
-        // }
         let display = take_display_attr(&mut attrs)?;
         let repr = take_repr_attrs(&mut attrs);
 

@@ -159,7 +159,7 @@ impl<'i> BufReader<'i> {
     }
 
     /// Align to nibble and read one [Nibble].
-    /// Note that there is a method read_un8(4, val), that will also read 4 bits from the buffer,
+    /// There is a method read_un8(4, val), that will also read 4 bits from the buffer,
     /// but will use an alignment of 1 bit instead.
     pub fn read_nib(&mut self) -> Result<Nibble, Error> {
         self.kept()?;
@@ -701,7 +701,7 @@ impl<'i> BufReader<'i> {
     /// A value that is not `Sized` or `SelfDescribing` is read one level deeper, see
     /// [with_max_depth](Self::with_max_depth).
     ///
-    /// Note that values deserialized with this method must be serialized with [write](crate::BufWriter::write).
+    /// Values deserialized with this method must be serialized with [write](crate::BufWriter::write).
     /// Values serialized with [ser_shrink_wrap](crate::SerializeShrinkWrap::ser_shrink_wrap) must be
     /// deserialized with [des_shrink_wrap](DeserializeShrinkWrap::des_shrink_wrap).
     pub fn read<T: DeserializeShrinkWrap<'i>>(&mut self) -> Result<T, Error> {

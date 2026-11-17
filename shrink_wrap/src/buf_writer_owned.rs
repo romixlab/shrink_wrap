@@ -107,7 +107,7 @@ impl BufWriterOwned {
     }
 
     /// Align to nibble and write one [Nibble], 4 lower bits are used, and higher bits are ignored.
-    /// Note that there is a method write_un8(4, val), that will also write 4 bits to the buffer,
+    /// There is a method write_un8(4, val), that will also write 4 bits to the buffer,
     /// but will use an alignment of 1 bit instead.
     pub fn write_nib(&mut self, val: Nibble) -> Result<(), Error> {
         self.align_nibble();
@@ -378,7 +378,7 @@ impl BufWriterOwned {
         self.write_raw_slice(&val.to_bits().to_le_bytes())
     }
 
-    /// Write the provided slice to the buffer as is. Note that you won't be able to read it back
+    /// Write the provided slice to the buffer as is. You won't be able to read it back
     /// with BufReader without knowing the length, which is not written in this case.
     /// See also [Self::write_bytes].
     pub fn write_raw_slice(&mut self, val: &[u8]) -> Result<(), Error> {
@@ -445,7 +445,7 @@ impl BufWriterOwned {
     /// If the value is Unsized, then size is calculated and pushed to the reverse FIFO as u32,
     /// which is later encoded to reverse UNib32.
     ///
-    /// Note that for serializing root structs or enums, it's better to call ser_shrink_wrap_owned directly,
+    /// For serializing root structs or enums, it's better to call ser_shrink_wrap_owned directly,
     /// as it avoids wasting space for the object size, which is known from the buffer size itself.
     ///
     /// Values serialized with this method must be deserialized with [read](crate::BufReader::read)

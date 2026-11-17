@@ -596,7 +596,7 @@ Not `shrink_wrap`'s to fix, but worth more than each code change:
     - **It replaces `memcpy` for the whole firmware**, every crate in it: HAL, drivers, buffer copies of the
       transport, not only `shrink_wrap`'s moves.
     - **The loop can be turned back into a call of `memcpy`**: LLVM recognizes a byte copy loop and replaces it with
-      `memcpy`, which here is the function itself, an endless recursion. `compiler_builtins` is built with
+      `memcpy`, which is then the function itself, an endless recursion. `compiler_builtins` is built with
       `#![no_builtins]` against this; the code below uses a volatile store. With the nightly of October 2026 LLVM
       leaves the loop alone without it as well, in `memcpy` and in `__aeabi_memcpy`, but nothing promises that.
       Check the disassembly when changing it.

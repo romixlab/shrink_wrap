@@ -447,7 +447,7 @@ impl<'i> BufWriter<'i> {
     }
 
     /// Align to nibble and write one [Nibble], 4 lower bits are used, and higher bits are ignored.
-    /// Note that there is a method write_un8(4, val), that will also write 4 bits to the buffer,
+    /// There is a method write_un8(4, val), that will also write 4 bits to the buffer,
     /// but will use an alignment of 1 bit instead.
     pub fn write_nib(&mut self, val: Nibble) -> Result<(), Error> {
         // align_nibble() and the write in one: the bits left over in a half written nibble are cleared with it
@@ -877,7 +877,7 @@ impl<'i> BufWriter<'i> {
         Ok(())
     }
 
-    /// Write the provided slice to the buffer as is. Note that you won't be able to read it back
+    /// Write the provided slice to the buffer as is. You won't be able to read it back
     /// with BufReader without knowing the length, which is not written in this case.
     /// See also [Self::write_bytes].
     pub fn write_raw_slice(&mut self, val: &[u8]) -> Result<(), Error> {
@@ -989,7 +989,7 @@ impl<'i> BufWriter<'i> {
     /// If the value is Unsized, then size is calculated and written to the back of the buffer as u16.
     /// Which is later encoded to reverse UNib32.
     ///
-    /// Note that for serializing root structs or enums, it's better to call ser_shrink_wrap directly,
+    /// For serializing root structs or enums, it's better to call ser_shrink_wrap directly,
     /// as it avoids wasting space for the object size, which is known from the buffer size itself.
     ///
     /// Values serialized with this method must be deserialized with [read](crate::BufReader::read).
@@ -1164,7 +1164,7 @@ impl<'i> BufWriter<'i> {
         Ok(&self.buf[0..len])
     }
 
-    /// Return the buffer, note that buffer is not set to zero and might contain old data.
+    /// Return the buffer, which is not set to zero and might contain old data.
     pub fn deinit(self) -> &'i mut [u8] {
         self.buf
     }
@@ -1197,7 +1197,7 @@ impl<'i> BufWriter<'i> {
     }
 
     /// Return the number of bytes left.
-    /// Note that there might be space for some bits or a nibble when this function returns 0.
+    /// There might be space for some bits or a nibble when this function returns 0.
     #[inline]
     pub fn bytes_left(&self) -> usize {
         if self.byte_idx >= self.len_bytes {
@@ -1210,7 +1210,7 @@ impl<'i> BufWriter<'i> {
         }
     }
 
-    /// Returns the number of nibbles left. Note that there might be space for 0 to 3 bits when this function returns 0.
+    /// Returns the number of nibbles left. There might be space for 0 to 3 bits when this function returns 0.
     #[inline]
     pub fn nibbles_left(&self) -> usize {
         self.bytes_left() * 2 + if self.bit_idx == 3 { 1 } else { 0 }

@@ -14,7 +14,7 @@ use either::Either;
 /// Including user defined structs with dynamic size, etc.
 /// Elements don't have to be of the same type, hence there is no generic parameter.
 ///
-/// Note that EitherVec is a low-level machinery that requires knowledge of types for each element, but it can allow for
+/// EitherVec is a low-level machinery that requires knowledge of types for each element, but it can allow for
 /// pretty neat optimizations. Length is not stored, as it is implied from type knowledge.
 /// It is used to implemenent multi-calls and multi-read/write operations with arbitrary types in wire_weaver (storing `Result<Any, E>`).
 ///

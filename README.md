@@ -84,7 +84,7 @@ Then use your crate with `default-features = false` on `no_std`.
   - `#[owned = "feature"]` attribute to generate TyOwned from Ty<'i> and serdes code for it as well.
 - `BufWriter` and `BufReader` that do low-level work with byte buffers, can be used stand-alone as well.
 - Main trick is keeping lengths of objects in the back of the buffer and read/write from both ends.
-- In order to avoid temporary allocations (or two buffers) during serialization, back of the buffer is used as a stack
+- To avoid temporary allocations (or two buffers) during serialization, back of the buffer is used as a stack
   as well.
 - Two forms of variable length numbers are used - UNib32 and ReverseUNib32 (nibble based).
 - Rust type system and const evaluation is leveraged to automatically compose objects inside of objects:

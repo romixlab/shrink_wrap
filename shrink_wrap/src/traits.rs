@@ -229,7 +229,7 @@ pub enum ElementSize {
     ///
     /// If UnsizedFinalStructure is stored in a parent type (struct or enum), parent must NOT encode reverse UNib32 sizes
     /// of such an object, nor its overall size. Deserializing works without reading the object's size.
-    /// UnsizedFinalStructure type is essentially flattened onto a parent type.
+    /// UnsizedFinalStructure type is flattened onto a parent type.
     /// Reverse UNib32 sizes in the back of a buffer are shared with a parent type.
     UnsizedFinalStructure,
 
@@ -277,7 +277,7 @@ impl ElementSize {
     pub const fn add(&self, other: ElementSize) -> ElementSize {
         // Order is very important here, size requirement is bumped from Sized to SelfDescribing to Unsized.
         // UFS is a bit tricky, it is "contagious", so that Vec<T> with T Unsized is UFS.
-        // Note that structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
+        // Structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
         // performed, otherwise it would have been a compatibility problem.
         match (self, other) {
             (ElementSize::UnsizedFinalStructure, _) => ElementSize::UnsizedFinalStructure,

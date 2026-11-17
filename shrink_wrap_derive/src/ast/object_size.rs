@@ -138,7 +138,7 @@ impl ObjectSize {
     pub(crate) fn add(&self, other: ObjectSize) -> ObjectSize {
         // Order is very important here, size requirement is bumped from Sized to SelfDescribing to Unsized.
         // UFS is a bit tricky, it is "contagious", so that Vec<T> with T Unsized is UFS.
-        // Note that structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
+        // Structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
         // performed, otherwise it would have been a compatibility problem.
         match (self, other) {
             (ObjectSize::UnsizedFinalStructure, _) => ObjectSize::UnsizedFinalStructure,

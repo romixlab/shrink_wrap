@@ -319,7 +319,7 @@ mod test {
         UNib32(5).write_reversed(&mut wr).unwrap();
         assert_eq!(
             wr.finish().unwrap(),
-            // note that "one more nibble" bits are true from right to left, opposite of the forward version
+            // "one more nibble" bits are true from right to left, opposite of the forward version
             //               |            |
             &[0b0000_0000, 0b1001_0010, 0b1101_0101]
         );
@@ -327,7 +327,7 @@ mod test {
 
     #[test]
     fn read_unib16_reversed() {
-        // Note that 0 should be read from the back even if it wasn't written.
+        // 0 should be read from the back even if it wasn't written.
         // This edge case is handled by writing one 0 nibble before writing reversed Vlu16N in BufWriter::finish().
         let buf = [0b0000_1001, 0b0010_1101, 0b0101_0000];
         let mut rd = BufReader::new(&buf);

@@ -18,8 +18,10 @@ pub enum Prefix {
     Micro,
 }
 
-// the derive doesn't keep a `#[default]` on a variant
-#[allow(clippy::derivable_impls)]
+#[expect(
+    clippy::derivable_impls,
+    reason = "the derive doesn't keep a `#[default]` on a variant"
+)]
 impl Default for Prefix {
     fn default() -> Self {
         Prefix::Unit

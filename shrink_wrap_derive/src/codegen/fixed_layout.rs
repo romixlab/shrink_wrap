@@ -1134,7 +1134,10 @@ pub(crate) struct CExtra {
 /// `_BIT_OFFSET`) of `ty_ident`; `c_name` is the snake name of the struct or variant. Readers take a checked
 /// view (`view`) and stay in its bytes: an index past an array reads 0, a payload its flag doesn't select is an
 /// `int` reader that returns -1.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "each argument is one part of the generated code"
+)]
 pub(crate) fn c_field(
     ty_ident: &Ident,
     prefix: &str,

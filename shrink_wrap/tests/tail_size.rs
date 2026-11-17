@@ -352,15 +352,30 @@ fn const_array_length() {
 /// Generated code names `shrink_wrap` items by path: nothing from the prelude is needed, and the user's own
 /// `BufReader`, `Error` and friends don't get in the way.
 mod no_prelude {
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "only the name matters: it shadows the crate's type"
+    )]
     pub struct BufReader;
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "only the name matters: it shadows the crate's type"
+    )]
     pub struct BufWriter;
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "only the name matters: it shadows the crate's type"
+    )]
     pub struct Error;
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "only the name matters: it shadows the crate's type"
+    )]
     pub struct ElementSize;
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "only the name matters: it shadows the crate's type"
+    )]
     pub struct TailSize;
     // the macro knows `RefVec` by its bare name only (a `shrink_wrap::RefVec<..>` path is a user type to it) and
     // rewrites it to a full path, so the name needs no import here

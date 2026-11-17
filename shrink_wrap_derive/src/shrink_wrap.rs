@@ -839,7 +839,10 @@ struct CGSeed<'a> {
 }
 
 impl<'a> CGSeed<'a> {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "each argument is one part of the generated code"
+    )]
     fn new(
         ident: Ident,
         cfg: Option<TokenStream>,

@@ -156,7 +156,10 @@ impl SeriesSeed<'_> {
     /// The store type's definition, named `#store_ident`, with `fields` (`name: type,` each, `#[cfg]`s included),
     /// and its `impl SeriesStore` with the bodies given; `init` writes every field of the store at `__at` in place
     /// (`empty_store` goes through it).
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "each argument is one part of the generated code"
+    )]
     fn store_impl(
         &self,
         store_ident: &Ident,

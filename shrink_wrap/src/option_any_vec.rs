@@ -353,7 +353,10 @@ impl<'i> OptionAnyVecIter<'i> {
 
     /// Read the next slot: `None` when it is absent, also for every slot past the writer's last one.
     // Not an Iterator: the item type is chosen per call.
-    #[allow(clippy::should_implement_trait)]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "the item type is chosen per call and a read can fail: not Iterator::next"
+    )]
     pub fn next<T: DeserializeShrinkWrap<'i>>(&mut self) -> Result<Option<T>, Error> {
         if self.advance() {
             Ok(Some(self.rd.read()?))

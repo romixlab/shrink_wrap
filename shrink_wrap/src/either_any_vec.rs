@@ -259,7 +259,10 @@ impl<'i> DeserializeShrinkWrap<'i> for EitherAnyVec<'i> {
 impl<'i> EitherAnyVecIter<'i> {
     /// Read the next flag and deserialize either `L` or `R` type.
     // Not an Iterator: the item type is chosen per call.
-    #[allow(clippy::should_implement_trait)]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "the item type is chosen per call and a read can fail: not Iterator::next"
+    )]
     pub fn next<L: DeserializeShrinkWrap<'i>, R: DeserializeShrinkWrap<'i>>(
         &mut self,
     ) -> Result<Either<L, R>, Error> {

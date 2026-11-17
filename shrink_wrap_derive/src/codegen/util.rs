@@ -43,7 +43,10 @@ impl CratePath {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "each argument is one part of the generated code"
+)]
 pub(crate) fn serdes_scaffold(
     ty_name: &Ident,
     generics: &Generics,

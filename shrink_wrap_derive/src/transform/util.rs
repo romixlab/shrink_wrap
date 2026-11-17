@@ -9,21 +9,16 @@ use crate::transform::syn_util::{
 use crate::transform::transform_ty::transform_type;
 use proc_macro2::{Ident, Span};
 
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum FieldPathRoot {
     NamedField(Ident),
     EnumVariant(Ident),
-    Argument(Ident),
-    Output,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum FieldSelector {
     NamedField(Ident),
     Tuple(u32),
-    Array(usize),
 }
 
 #[derive(Debug)]
@@ -40,11 +35,6 @@ impl FieldPath {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn push(&mut self, selector: FieldSelector) {
-        self.selectors.push(selector);
-    }
-
     pub(crate) fn clone_and_push(&self, selector: FieldSelector) -> Self {
         FieldPath {
             root: self.root.clone(),
@@ -54,7 +44,7 @@ impl FieldPath {
 
     pub(crate) fn flag_ident(&self) -> Ident {
         match &self.root {
-            FieldPathRoot::NamedField(ident) | FieldPathRoot::Argument(ident) => {
+            FieldPathRoot::NamedField(ident) => {
                 let ident = ident.to_string();
                 Ident::new(format!("_{ident}_flag").as_str(), Span::call_site())
             }
@@ -68,7 +58,6 @@ impl FieldPath {
                 }
                 _ => Ident::new("_todo_flag", Span::call_site()),
             },
-            FieldPathRoot::Output => Ident::new("_output_flag", Span::call_site()),
         }
     }
 }

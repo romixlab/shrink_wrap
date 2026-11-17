@@ -1193,7 +1193,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "covers the deprecated nibble readers until they are removed"
+    )]
     fn nib_reads_and_out_of_bounds() {
         let buf = [0xAB];
         let mut rd = BufReader::new(&buf);

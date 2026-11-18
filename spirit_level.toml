@@ -2,6 +2,13 @@
 # workspace of its own), so of the embedded tier the assertion lints and its Clippy set apply here.
 extends = ["medium", "ai", "embedded"]
 
+# The pages are the SerDes section of the WireWeaver book: links to its other pages resolve there.
+[docs.book]
+dir = "docs"
+at = "docs/serdes"
+added = ["conformance.md"]
+repo = "../wire_weaver"
+
 [lints.exact-units-quantity]
 level = "allow"
 reason = "exact_units depends on shrink_wrap for its wire types: its unit types cannot be used here without a cycle"

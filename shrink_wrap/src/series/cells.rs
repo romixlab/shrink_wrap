@@ -174,11 +174,11 @@ word_leaf! {
     u32: u32 = |v| v, |w| w;
     u64: u64 = |v| v, |w| w;
     u128: u128 = |v| v, |w| w;
-    i8: u8 = |v| v as u8, |w| w as i8;
-    i16: u16 = |v| v as u16, |w| w as i16;
-    i32: u32 = |v| v as u32, |w| w as i32;
-    i64: u64 = |v| v as u64, |w| w as i64;
-    i128: u128 = |v| v as u128, |w| w as i128;
+    i8: u8 = |v| v as u8, |w| w.cast_signed();
+    i16: u16 = |v| v as u16, |w| w.cast_signed();
+    i32: u32 = |v| v as u32, |w| w.cast_signed();
+    i64: u64 = |v| v as u64, |w| w.cast_signed();
+    i128: u128 = |v| v as u128, |w| w.cast_signed();
     f32: u32 = |v| v.to_bits(), |w| f32::from_bits(w);
     f64: u64 = |v| v.to_bits(), |w| f64::from_bits(w);
     bool: bool = |v| v, |w| w;
@@ -186,9 +186,9 @@ word_leaf! {
     UNib32: u32 = |v| v.0, |w| UNib32(w);
     UVlq32: u32 = |v| v.0, |w| UVlq32(w);
     UVlq64: u64 = |v| v.0, |w| UVlq64(w);
-    INib32: u32 = |v| v.0 as u32, |w| INib32(w as i32);
-    IVlq32: u32 = |v| v.0 as u32, |w| IVlq32(w as i32);
-    IVlq64: u64 = |v| v.0 as u64, |w| IVlq64(w as i64);
+    INib32: u32 = |v| v.0 as u32, |w| INib32(w.cast_signed());
+    IVlq32: u32 = |v| v.0 as u32, |w| IVlq32(w.cast_signed());
+    IVlq64: u64 = |v| v.0 as u64, |w| IVlq64(w.cast_signed());
 }
 
 macro_rules! un_cells {
@@ -314,19 +314,19 @@ unsafe impl SeriesCells for IN {
             *slot = match w >> 6 {
                 0 => Self::IN8 {
                     bit_count: U3::new(bits).unwrap_or(U3::zero()),
-                    value: v as u8 as i8,
+                    value: (v as u8).cast_signed(),
                 },
                 1 => Self::IN16 {
                     bit_count: U4::new(bits).unwrap_or(U4::zero()),
-                    value: v as u16 as i16,
+                    value: (v as u16).cast_signed(),
                 },
                 2 => Self::IN32 {
                     bit_count: U5::new(bits).unwrap_or(U5::zero()),
-                    value: v as u32 as i32,
+                    value: (v as u32).cast_signed(),
                 },
                 _ => Self::IN64 {
                     bit_count: U6::new(bits).unwrap_or(U6::zero()),
-                    value: v as i64,
+                    value: v.cast_signed(),
                 },
             };
         }

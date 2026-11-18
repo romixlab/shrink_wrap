@@ -188,7 +188,7 @@ pub(crate) const fn zigzag32(v: i32) -> u32 {
 }
 
 pub(crate) const fn unzigzag32(z: u32) -> i32 {
-    ((z >> 1) as i32) ^ -((z & 1) as i32)
+    (z >> 1).cast_signed() ^ -(z & 1).cast_signed()
 }
 
 impl INib32 {

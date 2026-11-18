@@ -170,9 +170,9 @@ macro_rules! signed_un {
                     if is_negative {
                         const SIGN_EXTEND_M1: [<u $base_bits>] = [<u $base_bits>]::MAX << ($bits - 1);
                         const SIGN_EXTEND: [<u $base_bits>] = SIGN_EXTEND_M1 << 1;
-                        Self((val | SIGN_EXTEND) as [<i $base_bits>])
+                        Self((val | SIGN_EXTEND).cast_signed())
                     } else {
-                        Self(val as [<i $base_bits>])
+                        Self(val.cast_signed())
                     }
                 }
 
@@ -380,7 +380,7 @@ fn sign_extend(raw: u64, bit_count: u8) -> i64 {
         return 0;
     }
     let shift = 64 - u32::from(bit_count);
-    (raw << shift) as i64 >> shift
+    (raw << shift).cast_signed() >> shift
 }
 
 impl IN {

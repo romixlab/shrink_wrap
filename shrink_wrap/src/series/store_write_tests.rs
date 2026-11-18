@@ -59,7 +59,7 @@ fn row(i: usize, some: bool, k: u8, vary: Option<usize>, x: u64, step: i64) -> R
     let v = (x as i64).wrapping_add(step.wrapping_mul(i as i64)) as u64;
     Row {
         a: v as u32,
-        b: v as i64 ^ (i as i64) << 40,
+        b: v.cast_signed() ^ (i as i64) << 40,
         f: (v % 1000) as f64 * 0.25,
         o: (some != changed).then(|| Inner {
             v: value(if changed { k + 1 } else { k }, v),

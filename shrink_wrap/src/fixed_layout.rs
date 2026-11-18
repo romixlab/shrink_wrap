@@ -241,7 +241,7 @@ impl Le for i8 {
 
     #[inline(always)]
     fn ld(b: &[u8; 1]) -> Self {
-        b[0] as Self
+        b[0].cast_signed()
     }
 
     #[inline(always)]

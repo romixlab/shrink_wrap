@@ -237,9 +237,9 @@ impl<'a> Picks<'a> {
     /// Mostly small steps from `prev`, sometimes a jump.
     fn walk(&mut self, prev: i64) -> i64 {
         match self.byte() % 8 {
-            0 => self.u64() as i64,
+            0 => self.u64().cast_signed(),
             1 | 2 => prev,
-            _ => prev.wrapping_add((self.byte() as i8 / 16) as i64),
+            _ => prev.wrapping_add((self.byte().cast_signed() / 16) as i64),
         }
     }
 

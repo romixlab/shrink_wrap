@@ -294,7 +294,7 @@ proptest! {
                     UVlq32(t.2.rotate_left(7)),
                     UVlq64(t.3),
                     U5::new(t.0 % 32).unwrap(),
-                    I12::new((t.1 % 4096) as i16 - 2048).unwrap(),
+                    I12::new((t.1 % 4096).cast_signed() - 2048).unwrap(),
                 )
             })
             .collect();
@@ -368,7 +368,7 @@ proptest! {
         let windows: Vec<Window<i8, (), 3>> = items
             .iter()
             .map(|&(k, v, s)| Window {
-                samples: [s, k as i8, v as i8],
+                samples: [s, k.cast_signed(), v as i8],
                 tag: (k % 3 != 0).then_some(s),
                 _unit: PhantomData,
             })

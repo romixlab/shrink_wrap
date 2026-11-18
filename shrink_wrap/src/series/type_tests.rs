@@ -76,7 +76,7 @@ impl Rng {
     }
 
     fn uni(&mut self, a: i64) -> i64 {
-        (self.next() % (2 * a as u64 + 1)) as i64 - a
+        (self.next() % (2 * a as u64 + 1)).cast_signed() - a
     }
 
     fn gauss(&mut self, s: f64) -> i64 {

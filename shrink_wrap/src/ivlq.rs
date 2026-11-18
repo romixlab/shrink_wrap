@@ -14,7 +14,7 @@ pub(crate) const fn zigzag64(v: i64) -> u64 {
 }
 
 pub(crate) const fn unzigzag64(z: u64) -> i64 {
-    ((z >> 1) as i64) ^ -((z & 1) as i64)
+    (z >> 1).cast_signed() ^ -(z & 1).cast_signed()
 }
 
 macro_rules! ivlq {

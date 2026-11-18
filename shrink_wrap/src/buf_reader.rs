@@ -479,7 +479,7 @@ impl<'i> BufReader<'i> {
 
     /// Read i8 with alignment of 1 byte.
     pub fn read_i8(&mut self) -> Result<i8, Error> {
-        Ok(self.read_u8()? as i8)
+        Ok(self.read_u8()?.cast_signed())
     }
 
     /// Align to byte and read i16 in Little Endian.
@@ -491,7 +491,7 @@ impl<'i> BufReader<'i> {
     /// Align to byte and read i32 in Little Endian.
     #[inline(always)]
     pub fn read_i32(&mut self) -> Result<i32, Error> {
-        Ok(self.read_le32(4)? as i32)
+        Ok(self.read_le32(4)?.cast_signed())
     }
 
     /// Align to byte and read i64 in Little Endian.
@@ -560,7 +560,7 @@ impl<'i> BufReader<'i> {
     /// [`read_i32`](Self::read_i32), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_i32_latch(&mut self) -> i32 {
-        self.read_le32_latch(4) as i32
+        self.read_le32_latch(4).cast_signed()
     }
 
     /// [`read_f32`](Self::read_f32), an error is kept for [latched](Self::latched) and gives 0.

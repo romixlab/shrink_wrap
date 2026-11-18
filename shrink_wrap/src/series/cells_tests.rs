@@ -261,7 +261,7 @@ proptest! {
                     UVlq32(t.2.rotate_left(7)),
                     UVlq64(t.3),
                     U5::new(t.0 % 32).unwrap(),
-                    I12::new((t.1 % 4096) as i16 - 2048).unwrap(),
+                    I12::new((t.1 % 4096).cast_signed() - 2048).unwrap(),
                     U40::new(t.3 >> 24).unwrap(),
                 )
             })
@@ -295,7 +295,7 @@ proptest! {
         let rigs: Vec<Rig> = items
             .iter()
             .map(|&(k, v, w, s, ok)| Rig {
-                pair: Pair { ok, value: w as i32 },
+                pair: Pair { ok, value: w.cast_signed() },
                 maybe: (k % 3 == 0).then_some(Pair { ok: !ok, value: s as i32 }),
                 mode: (k % 4 != 0).then(|| mode(k, w)),
                 arr: [v, v.rotate_left(5), k as u16],
@@ -319,7 +319,7 @@ proptest! {
         let windows: Vec<Window<i8, (), 3>> = items
             .iter()
             .map(|&(k, v, _, s, _)| Window {
-                samples: [s, k as i8, v as i8],
+                samples: [s, k.cast_signed(), v as i8],
                 tag: (k % 3 != 0).then_some(s),
                 _unit: PhantomData,
             })

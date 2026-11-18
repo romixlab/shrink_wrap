@@ -692,7 +692,7 @@ const fn zigzag128(v: i128) -> u128 {
 }
 
 const fn unzigzag128(z: u128) -> i128 {
-    ((z >> 1) as i128) ^ -((z & 1) as i128)
+    (z >> 1).cast_signed() ^ -(z & 1).cast_signed()
 }
 
 /// Writes a numeric column of `u128` / `i128` values (two's complement bits for signed ones): header raw + plain,
@@ -707,7 +707,11 @@ where
 {
     sink.put_bits(4, 0b0011)?;
     for v in items {
-        let z = if signed { zigzag128(v as i128) } else { v };
+        let z = if signed {
+            zigzag128(v.cast_signed())
+        } else {
+            v
+        };
         sink.put_bits(64, (z >> 64) as u64)?;
         sink.put_bits(64, z as u64)?;
     }

@@ -165,7 +165,9 @@ numeric_leaf!(INib32, u32, 32, true, |v| v.0 as u32 as u64, |b| INib32(
 numeric_leaf!(IVlq32, u32, 32, true, |v| v.0 as u32 as u64, |b| IVlq32(
     sign_extend(b, 32) as i32
 ));
-numeric_leaf!(IVlq64, u64, 64, true, |v| v.0 as u64, |b| IVlq64(b as i64));
+numeric_leaf!(IVlq64, u64, 64, true, |v| v.0 as u64, |b| IVlq64(
+    b.cast_signed()
+));
 
 macro_rules! un_leaves {
     ($signed:literal, $word:ty, $prefix:ident: $($bits:literal),*) => {

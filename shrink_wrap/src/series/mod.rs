@@ -265,7 +265,7 @@ const fn zigzag(d: i64) -> u64 {
 
 #[inline]
 pub(crate) const fn unzigzag(z: u64) -> i64 {
-    ((z >> 1) as i64) ^ -((z & 1) as i64)
+    (z >> 1).cast_signed() ^ -(z & 1).cast_signed()
 }
 
 /// Bucket widths of the delta code before the full width of the type.
@@ -330,7 +330,7 @@ pub(crate) const fn mask(width: u8) -> u64 {
 #[inline]
 pub(crate) const fn sign_extend(bits: u64, width: u8) -> i64 {
     let shift = 64 - width as u32;
-    ((bits << shift) as i64) >> shift
+    (bits << shift).cast_signed() >> shift
 }
 
 #[cfg(test)]

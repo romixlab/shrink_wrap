@@ -20,7 +20,7 @@ defmt = "1.1"
 either = { version = "1", default-features = false }
 hex-literal = "1"
 object = { version = "0.40", default-features = false }
-paste = "1"
+pastey = "0.2"
 proc-macro-crate = "3"
 proc-macro2 = "1.0"
 proptest = "1.11"

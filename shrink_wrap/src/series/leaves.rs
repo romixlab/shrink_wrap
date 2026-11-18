@@ -164,7 +164,7 @@ numeric_leaf!(INib32, u32, 32, true, |v| v.0 as u32 as u64, |b| INib32(
 
 macro_rules! un_leaves {
     ($signed:literal, $word:ty, $prefix:ident: $($bits:literal),*) => {
-        paste::paste! {
+        pastey::paste! {
             $(numeric_leaf!(crate::un::[<$prefix $bits>], $word, $bits, $signed, |v| v.__to_wire(), |b| {
                 crate::un::[<$prefix $bits>]::__from_wire(b)
             });)*

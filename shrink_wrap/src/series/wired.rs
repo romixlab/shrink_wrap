@@ -165,7 +165,7 @@ wired!(PlainSigned: i8, i16, i32, i64, INib32);
 
 macro_rules! wired_un {
     ($plain:ident, $prefix:ident: $($bits:literal),*) => {
-        paste::paste! {
+        pastey::paste! {
             wired!($plain: $(crate::un::[<$prefix $bits>]),*);
         }
     };

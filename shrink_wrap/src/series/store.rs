@@ -424,7 +424,7 @@ copy_leaf!(
 
 macro_rules! un_leaves {
     ($prefix:ident: $($bits:literal),*) => {
-        paste::paste! {
+        pastey::paste! {
             copy_leaf!($(crate::un::[<$prefix $bits>] = crate::un::[<$prefix $bits>]::zero() => numeric_store!()),*);
         }
     };

@@ -33,7 +33,7 @@ defmt = ["dep:defmt"]
 [dependencies]
 defmt = { workspace = true, optional = true }
 either.workspace = true
-paste.workspace = true
+pastey.workspace = true
 serde = { workspace = true, optional = true }
 shrink_wrap_derive.workspace = true
 

@@ -138,7 +138,7 @@ wire_as!(PlainSigned, to_i64, from_i64:
 
 macro_rules! un_wire_as {
     ($plain:ident, $to:ident, $from:ident, $prefix:ident $base_prefix:ident: $($bits:literal / $base_bits:literal),*) => {
-        paste::paste! {
+        pastey::paste! {
             wire_as!($plain, $to, $from: $(
                 crate::un::[<$prefix $bits>] = [<$base_prefix $base_bits>],
                     |v| crate::un::[<$prefix $bits>]::new(v), |w| w.value()

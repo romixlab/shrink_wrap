@@ -3,7 +3,7 @@ use crate::BufWriterOwned;
 use crate::max_size::{MaxSize, write_max_size};
 use crate::refused::{ReadError, Slot};
 use crate::{BufReader, BufWriter, Error};
-use paste::paste;
+use pastey::paste;
 
 pub trait SerializeShrinkWrap {
     const ELEMENT_SIZE: ElementSize;

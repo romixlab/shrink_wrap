@@ -2,7 +2,7 @@ use crate::{
     BufReader, BufWriter, DeserializeShrinkWrap, DeserializeShrinkWrapOwned, ElementSize, Error,
     SerializeShrinkWrap,
 };
-use paste::paste;
+use pastey::paste;
 
 macro_rules! un {
     ($bits:literal, $base_bits:literal) => {

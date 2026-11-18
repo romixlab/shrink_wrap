@@ -489,7 +489,6 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 - `derive_shrink_wrap`: the field types `uleb32`..`ileb128` panicked the macro; the names are gone, `UVlq32` / `UVlq64` are the byte-wise numbers (DER-26).
 - `derive_shrink_wrap`: an enum without any variant is an error that names the cause, not rustc's E0084 (DER-26).
 - `derive_shrink_wrap`: `#[flag]` and `#[default = ..]` on a tuple variant's field are errors; they were dropped silently (DER-26).
-
 - `optimize-speed` builds on a 1.101 nightly from before `#[optimize]` was stable: every nightly gets the feature gate (SW-74).
 - The borrowed derive wrote one extra padding byte for an empty `RefVec<u8>` field that started mid-byte (`RefVec::ser_shrink_wrap_vec_u8` aligned to a byte, SW-81); every other writer and every reader take nothing for an empty list. Bytes change only for such a value: `struct { a: bool, b: RefVec<u8> }` with `b` empty was `80 00`, now `80`, as the owned type always wrote; old bytes still read the same. A field after such an empty list that starts mid-byte was read one byte early, so a device built before the fix corrupts it (`struct { a: bool, b: RefVec<u8>, c: bool }` `{true, [], true}` read back `c = false`) or fails with `OutOfBoundsReadUN`; rebuild such devices.
 - `shrink_wrap_derive`: `#[since = ".."]` on a field or variant is kept as written and no longer parsed as `x.y.z`: anything else (`#[since = "w1.2"]`, EVO-24) panicked the derive. What it names is `wire_weaver_core`'s to check.

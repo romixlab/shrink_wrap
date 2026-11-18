@@ -534,6 +534,9 @@ for humans and AI agents alike.
   width in the API model (`FutureVersion::Variant::bits`, `None` for `u32` so older models keep their bytes), the
   dynamic client and the evolution checker (an appended discriminant beyond it is breaking), `exact_units::Prefix`,
   and the conformance case `stdlib.si.quantity.unknown_scale` (derive, dynamic, Python; C gap API-26).
+- ✅ **DER-26 The derive accepts only what it writes**: the type names `uleb32`..`ileb128` (never written, a panic
+  in codegen) and the field attribute `#[id = N]` (read and not used) are gone; an enum without any variant, and
+  `#[flag]` or `#[default = ..]` on a tuple variant's field, are errors that name the cause.
 
 ## Testing and code size (`TEST`)
 

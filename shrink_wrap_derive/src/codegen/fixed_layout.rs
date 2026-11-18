@@ -213,13 +213,7 @@ pub(crate) fn classify(ty: &Type) -> Result<Kind, String> {
         Type::UNib32
         | Type::INib32
         | Type::UVlq32
-        | Type::UVlq64
-        | Type::ULeb32
-        | Type::ULeb64
-        | Type::ULeb128
-        | Type::ILeb32
-        | Type::ILeb64
-        | Type::ILeb128 => "a variable-length number takes more bytes for larger values, so the fields after it \
+        | Type::UVlq64 => "a variable-length number takes more bytes for larger values, so the fields after it \
                             have no fixed offset. Use u32 / u64, or U1..U32 for fewer bits"
             .into(),
         Type::String | Type::Vec(_) | Type::MaxLen(..) => "a string or list has a length known only at run time, \

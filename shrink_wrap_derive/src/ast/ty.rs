@@ -24,7 +24,6 @@ impl ToTokens for ArrayLen {
     }
 }
 
-// TODO: Convert to struct and add span
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Type {
     Bool,
@@ -39,21 +38,12 @@ pub(crate) enum Type {
     UNib32,
     UVlq32,
     UVlq64,
-    ULeb32,
-    ULeb64,
-    ULeb128,
 
-    // TODO: remove add UB, IB
     I8,
     I16,
     I32,
     I64,
     I128,
-    // TODO: U2, I2, ... as separate variants
-    ILeb32,
-    ILeb64,
-    ILeb128,
-
     /// Zigzag over `UNib32` (SW-24): the signed counterpart, small negative and positive values both one nibble.
     INib32,
 
@@ -268,13 +258,6 @@ impl Type {
             Type::U32 | Type::I32 | Type::F32 => some(quote! { bytes(4) }),
             Type::U64 | Type::I64 | Type::F64 => some(quote! { bytes(8) }),
             Type::U128 | Type::I128 => some(quote! { bytes(16) }),
-            // not written by the derive yet
-            Type::ULeb32
-            | Type::ULeb64
-            | Type::ULeb128
-            | Type::ILeb32
-            | Type::ILeb64
-            | Type::ILeb128 => quote! { None },
             // unbounded
             Type::String | Type::Vec(_) | Type::RefBox(_) => quote! { None },
             // the flag is a field of its own (IsSome / IsOk), only the value is written here
@@ -366,17 +349,11 @@ impl Type {
             Type::UNib32 => return Some(ObjectSize::SelfDescribing),
             Type::UVlq32 => return Some(ObjectSize::SelfDescribing),
             Type::UVlq64 => return Some(ObjectSize::SelfDescribing),
-            Type::ULeb32 => return Some(ObjectSize::SelfDescribing),
-            Type::ULeb64 => return Some(ObjectSize::SelfDescribing),
-            Type::ULeb128 => return Some(ObjectSize::SelfDescribing),
             Type::I8 => 8,
             Type::I16 => 16,
             Type::I32 => 32,
             Type::I64 => 64,
             Type::I128 => 128,
-            Type::ILeb32 => return Some(ObjectSize::SelfDescribing),
-            Type::ILeb64 => return Some(ObjectSize::SelfDescribing),
-            Type::ILeb128 => return Some(ObjectSize::SelfDescribing),
             Type::INib32 => return Some(ObjectSize::SelfDescribing),
             Type::F32 => 32,
             Type::F64 => 64,

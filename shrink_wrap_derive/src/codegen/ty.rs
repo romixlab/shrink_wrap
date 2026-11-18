@@ -50,14 +50,14 @@ impl Type {
             Type::INib32 => cp.item(quote! { INib32 }),
             Type::UVlq32 => cp.item(quote! { UVlq32 }),
             Type::UVlq64 => cp.item(quote! { UVlq64 }),
-            Type::U32 | Type::ULeb32 => quote! { u32 },
-            Type::U64 | Type::ULeb64 => quote! { u64 },
-            Type::U128 | Type::ULeb128 => quote! { u128 },
+            Type::U32 => quote! { u32 },
+            Type::U64 => quote! { u64 },
+            Type::U128 => quote! { u128 },
             Type::I8 => quote! { i8 },
             Type::I16 => quote! { i16 },
-            Type::I32 | Type::ILeb32 => quote! { i32 },
-            Type::I64 | Type::ILeb64 => quote! { i64 },
-            Type::I128 | Type::ILeb128 => quote! { i128 },
+            Type::I32 => quote! { i32 },
+            Type::I64 => quote! { i64 },
+            Type::I128 => quote! { i128 },
             Type::F32 => quote! { f32 },
             Type::F64 => quote! { f64 },
             // Type::Bytes => {
@@ -263,12 +263,6 @@ impl Type {
                 });
                 return;
             }
-            Type::ULeb32 => unimplemented!("uleb32"),
-            Type::ULeb64 => unimplemented!("uleb64"),
-            Type::ULeb128 => unimplemented!("uleb128"),
-            Type::ILeb32 => unimplemented!("ileb32"),
-            Type::ILeb64 => unimplemented!("ileb64"),
-            Type::ILeb128 => unimplemented!("ileb128"),
             Type::TailSize(width) => {
                 // the field's value is ignored: the slot is filled in by `backfill_tail_size` (see `Type::backfill_tail_size`)
                 // once the fields after it are written
@@ -403,17 +397,11 @@ impl Type {
                 tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
-            Type::ULeb32 => unimplemented!("uleb32"),
-            Type::ULeb64 => unimplemented!("uleb64"),
-            Type::ULeb128 => unimplemented!("uleb128"),
             Type::I8 => "read_i8",
             Type::I16 => "read_i16",
             Type::I32 => "read_i32",
             Type::I64 => "read_i64",
             Type::I128 => "read_i128",
-            Type::ILeb32 => unimplemented!("ileb32"),
-            Type::ILeb64 => unimplemented!("ileb64"),
-            Type::ILeb128 => unimplemented!("ileb128"),
             Type::F32 => "read_f32",
             Type::F64 => "read_f64",
             Type::Array(_len, _ty) => {

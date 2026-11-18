@@ -1,4 +1,5 @@
 use crate::Error::OutOfBoundsRev;
+use crate::ivlq::{IVlq32, IVlq64};
 use crate::nib32::{INib32, UNib32};
 #[cfg(feature = "refused")]
 use crate::refused::SlotRef;
@@ -427,6 +428,20 @@ impl<'i> BufReader<'i> {
     /// Align to byte and read a number encoded with UVlq64 encoding (big endian VLQ).
     pub fn read_uvlq64(&mut self) -> Result<u64, Error> {
         let value = UVlq64::read_forward(self)?.0;
+
+        Ok(value)
+    }
+
+    /// Align to byte and read a number encoded with IVlq32 encoding (zigzag over UVlq32).
+    pub fn read_ivlq32(&mut self) -> Result<i32, Error> {
+        let value = IVlq32::read_forward(self)?.0;
+
+        Ok(value)
+    }
+
+    /// Align to byte and read a number encoded with IVlq64 encoding (zigzag over UVlq64).
+    pub fn read_ivlq64(&mut self) -> Result<i64, Error> {
+        let value = IVlq64::read_forward(self)?.0;
 
         Ok(value)
     }

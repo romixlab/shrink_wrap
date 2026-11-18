@@ -212,6 +212,8 @@ pub(crate) fn classify(ty: &Type) -> Result<Kind, String> {
         }
         Type::UNib32
         | Type::INib32
+        | Type::IVlq32
+        | Type::IVlq64
         | Type::UVlq32
         | Type::UVlq64 => "a variable-length number takes more bytes for larger values, so the fields after it \
                             have no fixed offset. Use u32 / u64, or U1..U32 for fewer bits"

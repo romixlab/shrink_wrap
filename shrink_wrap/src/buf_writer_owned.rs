@@ -1,3 +1,4 @@
+use crate::ivlq::zigzag64;
 use crate::nib32::{UNib32, zigzag32};
 use crate::vlq32::{UVlq32, UVlq32Backfill};
 use crate::vlq64::UVlq64;
@@ -285,6 +286,18 @@ impl BufWriterOwned {
     pub fn write_uvlq64(&mut self, val: u64) -> Result<(), Error> {
         let (bytes, start) = UVlq64(val).encode_right_justified();
         self.write_raw_slice(&bytes[start..])
+    }
+
+    /// Write i32 in IVlq32 encoding (zigzag over UVlq32). It will take from 1 byte to 5 bytes in the buffer,
+    /// depending on the number. Alignment of 1 byte is used.
+    pub fn write_ivlq32(&mut self, val: i32) -> Result<(), Error> {
+        self.write_uvlq32(zigzag32(val))
+    }
+
+    /// Write i64 in IVlq64 encoding (zigzag over UVlq64). It will take from 1 byte to 10 bytes in the buffer,
+    /// depending on the number. Alignment of 1 byte is used.
+    pub fn write_ivlq64(&mut self, val: i64) -> Result<(), Error> {
+        self.write_uvlq64(zigzag64(val))
     }
 
     /// Write u32 in UNib32 reverse encoding at the current position.

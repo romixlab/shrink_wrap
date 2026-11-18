@@ -1,3 +1,4 @@
+use crate::ivlq::{IVlq32, IVlq64};
 use crate::nib32::{INib32, UNib32};
 use crate::vlq32::UVlq32;
 use crate::vlq64::UVlq64;
@@ -779,6 +780,18 @@ impl<'i> BufWriter<'i> {
     /// depending on the number. Alignment of 1 byte is used.
     pub fn write_uvlq64(&mut self, val: u64) -> Result<(), Error> {
         UVlq64(val).write_forward(self)
+    }
+
+    /// Write i32 in IVlq32 encoding (zigzag over UVlq32). It will take from 1 byte to 5 bytes in the buffer,
+    /// depending on the number. Alignment of 1 byte is used.
+    pub fn write_ivlq32(&mut self, val: i32) -> Result<(), Error> {
+        IVlq32(val).write_forward(self)
+    }
+
+    /// Write i64 in IVlq64 encoding (zigzag over UVlq64). It will take from 1 byte to 10 bytes in the buffer,
+    /// depending on the number. Alignment of 1 byte is used.
+    pub fn write_ivlq64(&mut self, val: i64) -> Result<(), Error> {
+        IVlq64(val).write_forward(self)
     }
 
     /// Write len to the back of the buffer, later when [BufWriter::encode_len_fifo()] or [BufWriter::finish()]

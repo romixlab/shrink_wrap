@@ -292,6 +292,25 @@ pair!(
 );
 pair!(i8_as_i32, i8, i32, i8::MIN, i8::MAX, None, None);
 pair!(
+    i64_as_ivlq32,
+    i64,
+    IVlq32,
+    i32::MIN as i64,
+    i32::MAX as i64,
+    Some(i32::MIN as i64 - 1),
+    Some(i32::MAX as i64 + 1)
+);
+pair!(
+    i128_as_ivlq64,
+    i128,
+    IVlq64,
+    i64::MIN as i128,
+    i64::MAX as i128,
+    Some(i64::MIN as i128 - 1),
+    Some(i64::MAX as i128 + 1)
+);
+pair!(i16_as_ivlq64, i16, IVlq64, i16::MIN, i16::MAX, None, None);
+pair!(
     i64_as_inib32,
     i64,
     INib32,

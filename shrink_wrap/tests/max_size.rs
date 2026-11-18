@@ -122,6 +122,8 @@ fn plain_types() {
     tight(&UNib32(u32::MAX), 0);
     tight(&INib32(i32::MIN), 0);
     tight(&UVlq64(u64::MAX), 0);
+    tight(&IVlq32(i32::MIN), 0);
+    tight(&IVlq64(i64::MIN), 0);
     tight(&[true; 9], 0);
     tight(&(true, 0u8, true), 0);
     tight(&Some(0u32), 0);

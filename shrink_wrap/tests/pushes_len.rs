@@ -187,6 +187,8 @@ fn library_types_const() {
     assert!(!pushes_len::<INib32>());
     assert!(!pushes_len::<UVlq32>());
     assert!(!pushes_len::<UVlq64>());
+    assert!(!pushes_len::<IVlq32>());
+    assert!(!pushes_len::<IVlq64>());
     assert!(!pushes_len::<Nibble>());
     assert!(!pushes_len::<Option<u8>>());
     assert!(!pushes_len::<Result<u8, u16>>());

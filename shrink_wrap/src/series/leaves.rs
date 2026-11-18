@@ -14,7 +14,7 @@ use super::group::{
 };
 use super::{BitSink, SeriesPolicy, XorBits, bound, sign_extend};
 use crate::un::{IN, U3, U4, U5, U6, UN};
-use crate::{BufReader, Error, INib32, Nibble, RefVec, UNib32, UVlq32, UVlq64};
+use crate::{BufReader, Error, INib32, IVlq32, IVlq64, Nibble, RefVec, UNib32, UVlq32, UVlq64};
 
 /// Skims a numeric column over `ctx`'s items: `None` for no items (no column is written).
 fn skim_numeric<'i, C: SeriesCtx>(
@@ -161,6 +161,11 @@ numeric_leaf!(UVlq64, u64, 64, false, |v| v.0, |b| UVlq64(b));
 numeric_leaf!(INib32, u32, 32, true, |v| v.0 as u32 as u64, |b| INib32(
     sign_extend(b, 32) as i32
 ));
+// the same for the byte-based signed numbers: a plain i32 / i64 column
+numeric_leaf!(IVlq32, u32, 32, true, |v| v.0 as u32 as u64, |b| IVlq32(
+    sign_extend(b, 32) as i32
+));
+numeric_leaf!(IVlq64, u64, 64, true, |v| v.0 as u64, |b| IVlq64(b as i64));
 
 macro_rules! un_leaves {
     ($signed:literal, $word:ty, $prefix:ident: $($bits:literal),*) => {

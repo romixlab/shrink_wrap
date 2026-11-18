@@ -227,7 +227,7 @@ fn wire_int_signed(ty: &Type, wire: bool) -> Option<bool> {
         Type::U128 if !wire => Some(false),
         Type::I128 if !wire => Some(true),
         Type::Nibble | Type::UNib32 | Type::UVlq32 | Type::UVlq64 if wire => Some(false),
-        Type::INib32 if wire => Some(true),
+        Type::INib32 | Type::IVlq32 | Type::IVlq64 if wire => Some(true),
         Type::External {
             path,
             has_lifetime: false,
@@ -299,7 +299,7 @@ fn wire_field_type(plain: Type, wire: Type, cfg: Option<syn::Meta>) -> Result<Ty
     let Some(wire_signed) = wire_signed else {
         return Err(
             "#[wire(W)]: W is an integer type of 64 bits or less (u8..u64, i8..i64, Nibble, U1..U64, I2..I64, \
-             UNib32, UVlq32, UVlq64 or INib32), or a user type without a lifetime that implements WireAs<T>"
+             UNib32, UVlq32, UVlq64, INib32, IVlq32 or IVlq64), or a user type without a lifetime that implements WireAs<T>"
                 .into(),
         );
     };

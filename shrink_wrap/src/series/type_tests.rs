@@ -525,6 +525,16 @@ fn primitive_round_trips() {
     check(&[crate::UNib32(7), crate::UNib32(u32::MAX)]);
     check(&[crate::UVlq64(u64::MAX), crate::UVlq64(1)]);
     check(&[
+        crate::IVlq32(i32::MIN),
+        crate::IVlq32(-1),
+        crate::IVlq32(i32::MAX),
+    ]);
+    check(&[
+        crate::IVlq64(i64::MIN),
+        crate::IVlq64(-1),
+        crate::IVlq64(i64::MAX),
+    ]);
+    check(&[
         crate::un::I12::new(-2048).unwrap(),
         crate::un::I12::new(2047).unwrap(),
     ]);

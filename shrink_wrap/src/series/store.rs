@@ -7,7 +7,7 @@ use super::group::Level;
 use super::leaves::NumericLeaf;
 use super::{BitSink, SeriesPolicy, XorBits};
 use crate::un::{IN, U3, UN};
-use crate::{BufWriter, Error, INib32, Nibble, RefVec, UNib32, UVlq32, UVlq64};
+use crate::{BufWriter, Error, INib32, IVlq32, IVlq64, Nibble, RefVec, UNib32, UVlq32, UVlq64};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ops::Range;
@@ -412,6 +412,8 @@ copy_leaf!(
     UVlq32 = UVlq32(0) => numeric_store!(),
     UVlq64 = UVlq64(0) => numeric_store!(),
     INib32 = INib32(0) => numeric_store!(),
+    IVlq32 = IVlq32(0) => numeric_store!(),
+    IVlq64 = IVlq64(0) => numeric_store!(),
     UN = UN::UN8 {
         bit_count: U3::zero(),
         value: 0

@@ -4,7 +4,7 @@
 //! [WireAs] is what the derive calls: a value is range-checked when it is written ([Error::SubtypeOutOfRange], never
 //! cut) and when it is read (a wider or variable-length wire type can hold more than the field). Wire types are
 //! implemented for every plain integer of the same signedness: unsigned ones (`u8`..`u64`, [Nibble], `U1`..`U64`,
-//! [UNib32], [UVlq32], [UVlq64]) for `u8`..`u128` and `usize`, signed ones (`i8`..`i64`, `I2`..`I64`, [INib32]) for
+//! [UNib32], [UVlq32], [UVlq64]) for `u8`..`u128` and `usize`, signed ones (`i8`..`i64`, `I2`..`I64`, [INib32], [IVlq32], [IVlq64]) for
 //! `i8`..`i128` and `isize`.
 //!
 //! A user type can be the wire type too (DER-23): `#[wire(Scale)] scale: ScaleId` keeps a one-byte handle in
@@ -14,7 +14,8 @@
 //! with [WireAs::PLAIN_MAX_SIZE], and buffers and series bounds are sized by that instead of `W::MAX_SIZE`.
 
 use crate::{
-    ElementSize, Error, INib32, MaxSize, Nibble, SerializeShrinkWrap, UNib32, UVlq32, UVlq64,
+    ElementSize, Error, INib32, IVlq32, IVlq64, MaxSize, Nibble, SerializeShrinkWrap, UNib32,
+    UVlq32, UVlq64,
 };
 
 /// A wire type that a plain Rust value `T` is written as, with `#[wire(Self)]` on a field of type `T` (DER-19).
@@ -134,6 +135,8 @@ wire_as!(PlainSigned, to_i64, from_i64:
     i32 = i32, |v| Some(v), |w| w;
     i64 = i64, |v| Some(v), |w| w;
     INib32 = i32, |v| Some(INib32(v)), |w| w.0;
+    IVlq32 = i32, |v| Some(IVlq32(v)), |w| w.0;
+    IVlq64 = i64, |v| Some(IVlq64(v)), |w| w.0;
 );
 
 macro_rules! un_wire_as {

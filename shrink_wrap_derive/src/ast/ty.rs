@@ -46,6 +46,9 @@ pub(crate) enum Type {
     I128,
     /// Zigzag over `UNib32` (SW-24): the signed counterpart, small negative and positive values both one nibble.
     INib32,
+    /// Zigzag over `UVlq32` and `UVlq64` (SW-82): the signed byte-based numbers.
+    IVlq32,
+    IVlq64,
 
     F32,
     F64,
@@ -300,6 +303,8 @@ impl Type {
             // written with `wr.write()`: what the type's impl says
             Type::UNib32
             | Type::INib32
+            | Type::IVlq32
+            | Type::IVlq64
             | Type::UVlq32
             | Type::UVlq64
             | Type::Array(_, _)
@@ -363,7 +368,9 @@ impl Type {
             Type::I32 => 32,
             Type::I64 => 64,
             Type::I128 => 128,
-            Type::INib32 => return Some(ObjectSize::SelfDescribing),
+            Type::INib32 | Type::IVlq32 | Type::IVlq64 => {
+                return Some(ObjectSize::SelfDescribing);
+            }
             Type::F32 => 32,
             Type::F64 => 64,
             Type::String => return Some(ObjectSize::Unsized),

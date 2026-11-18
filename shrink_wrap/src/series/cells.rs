@@ -3,7 +3,7 @@
 
 use super::SeriesStore;
 use crate::un::{IN, U3, U4, U5, U6, UN};
-use crate::{INib32, Nibble, UNib32, UVlq32, UVlq64};
+use crate::{INib32, IVlq32, IVlq64, Nibble, UNib32, UVlq32, UVlq64};
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, Ordering};
 
@@ -187,6 +187,8 @@ word_leaf! {
     UVlq32: u32 = |v| v.0, |w| UVlq32(w);
     UVlq64: u64 = |v| v.0, |w| UVlq64(w);
     INib32: u32 = |v| v.0 as u32, |w| INib32(w as i32);
+    IVlq32: u32 = |v| v.0 as u32, |w| IVlq32(w as i32);
+    IVlq64: u64 = |v| v.0 as u64, |w| IVlq64(w as i64);
 }
 
 macro_rules! un_cells {

@@ -100,6 +100,27 @@ fn uvlq64_field() {
 }
 
 #[test]
+fn ivlq_fields() {
+    #[derive_shrink_wrap(borrowed, final_structure, derive(Debug, PartialEq))]
+    struct S {
+        flag: bool,
+        delta: IVlq32,
+        offset: IVlq64,
+    }
+
+    let mut scratch = [0u8; 16];
+    let s = S {
+        flag: true,
+        delta: IVlq32(-65),
+        offset: IVlq64(i64::MIN),
+    };
+    let bytes = s.to_ww_bytes(&mut scratch).unwrap();
+    // zigzag(-65) = 129, zigzag(i64::MIN) = u64::MAX: the bytes of UVlq32(129) and UVlq64(u64::MAX)
+    assert_eq!(bytes, hex!("80 81 01 81 ff ff ff ff ff ff ff ff 7f"));
+    assert_eq!(S::from_ww_bytes(bytes).unwrap(), s);
+}
+
+#[test]
 fn uvlq32_backfill_first_field() {
     #[derive_shrink_wrap(borrowed, derive(Debug, PartialEq))]
     struct Message<'i> {

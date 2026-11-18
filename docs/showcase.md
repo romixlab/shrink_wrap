@@ -150,6 +150,19 @@ assert_eq!(UVlq64(u32::MAX as u64).to_ww_bytes(&mut buf).unwrap(), &[0x8f, 0xff,
 assert_eq!(UVlq64(u64::MAX).to_ww_bytes(&mut buf).unwrap(), &[0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f]); // 10 bytes
 ```
 
+`IVlq32` and `IVlq64` are the signed twins: an `i32` or `i64` zigzag-mapped onto a `UVlq32` or `UVlq64`, for signed
+values a byte-oriented reader must parse, or ones that outgrow `INib32`'s 32 bits (time deltas, file offsets):
+
+```rust
+assert_eq!(IVlq64(0).to_ww_bytes(&mut buf).unwrap(), &[0x00]);         // 1 byte
+assert_eq!(IVlq64(-1).to_ww_bytes(&mut buf).unwrap(), &[0x01]);        // 1 byte
+assert_eq!(IVlq64(63).to_ww_bytes(&mut buf).unwrap(), &[0x7e]);        // 1 byte
+assert_eq!(IVlq64(-64).to_ww_bytes(&mut buf).unwrap(), &[0x7f]);       // 1 byte, max for that size
+assert_eq!(IVlq64(64).to_ww_bytes(&mut buf).unwrap(), &[0x81, 0x00]);  // 2 bytes
+assert_eq!(IVlq32(i32::MIN).to_ww_bytes(&mut buf).unwrap(), &[0x8f, 0xff, 0xff, 0xff, 0x7f]); // 5 bytes
+assert_eq!(IVlq64(i64::MIN).to_ww_bytes(&mut buf).unwrap(), &[0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f]); // 10 bytes
+```
+
 There is no `UVlq64Backfill`; `UVlq32Backfill` is the same number, but always written as the full 5 bytes, padded with empty `0x80` groups in front.
 That reserves room for a value that is only known after the message is serialized, like a request sequence number
 assigned right before sending. Once it is known, `UVlq32Backfill::backfill()` writes it right-justified into those 5

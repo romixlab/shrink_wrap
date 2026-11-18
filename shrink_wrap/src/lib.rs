@@ -42,6 +42,8 @@ pub mod vlq32;
 pub use crate::vlq32::{UVlq32, UVlq32Backfill};
 pub mod vlq64;
 pub use crate::vlq64::UVlq64;
+pub mod ivlq;
+pub use crate::ivlq::{IVlq32, IVlq64};
 pub mod max_len;
 pub use max_len::{ItemMaxSize, LenBounded, MaxLen};
 pub mod max_size;
@@ -238,6 +240,7 @@ pub mod prelude {
     pub use crate::buf_writer_owned::BufWriterOwned;
     pub use crate::fixed_layout::FixedLayout;
     pub use crate::head_tail::HeadTail;
+    pub use crate::ivlq::{IVlq32, IVlq64};
     pub use crate::max_len::MaxLen;
     pub use crate::max_size::MaxSize;
     pub use crate::nib::Nibble;

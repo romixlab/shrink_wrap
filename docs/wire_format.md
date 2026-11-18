@@ -362,7 +362,7 @@ already known to the reader from the tag runs above it):
 
 | Type | Group |
 |---|---|
-| integers (`u8`..`u64`, `i8`..`i64`, `U1`..`U64`, `I2`..`I64`, `Nibble`, `UNib32`, `INib32`, `UVlq32`, `UVlq64`) | a numeric column at the type's value width |
+| integers (`u8`..`u64`, `i8`..`i64`, `U1`..`U64`, `I2`..`I64`, `Nibble`, `UNib32`, `INib32`, `UVlq32`, `UVlq64`, `IVlq32`, `IVlq64`) | a numeric column at the type's value width |
 | `u128`, `i128` | a numeric column, predictor raw and coder plain only (other codes malformed) |
 | `f32`, `f64` | a float column |
 | `bool` | a two-valued run |

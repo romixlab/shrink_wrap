@@ -1,0 +1,5 @@
+# Tests may print and unwrap freely
+allow-print-in-tests = true
+allow-unwrap-in-tests = true
+cognitive-complexity-threshold = 20
+max-fn-params-bools = 1

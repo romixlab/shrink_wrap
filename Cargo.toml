@@ -36,7 +36,63 @@ unused_lifetimes = "warn"
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [workspace.lints.clippy]
+cargo = { level = "warn", priority = -1 } # manifest hygiene: feature names, wildcard versions
+pedantic = { level = "warn", priority = -1 } # the stricter idioms; the opt-outs below are the ones that are noise for most code
+allow_attributes = "warn" # #[expect] fails once the lint stops firing, so an exception cannot outlive its cause
+as_ptr_cast_mut = "deny" # `as_ptr() as *mut` writes through a shared borrow: undefined behaviour
+cognitive_complexity = "warn" # a tangled function is split
 dbg_macro = "warn"
+debug_assert_with_mut_call = "warn" # a debug_assert! that calls a &mut method makes debug and release builds behave differently
+exit = "warn" # process::exit skips every destructor; main returns instead
+fallible_impl_from = "warn" # a From that can panic is a TryFrom
+get_unwrap = "warn" # `.get(i).unwrap()` is indexing with a worse message: index, or handle the None
+ignore_without_reason = "warn" # an ignored test says why, or nobody knows when it may run again
+infinite_loop = "warn" # a loop that never ends returns `!`, so the hang is a type, not a surprise
+large_include_file = "warn" # an include_bytes! of a large file fills the flash unseen
+large_stack_frames = "warn" # a large frame overflows a small stack with no guard page
+let_underscore_must_use = "warn" # `let _ =` on a must_use value drops an error unseen
+map_err_ignore = "warn" # `map_err(|_| ...)` throws the cause away; wrap it as the source
+mem_forget = "warn" # forget leaks the value and skips Drop; ManuallyDrop says it on purpose
+missing_panics_doc = "warn" # a public function that can panic says when in a # Panics section
+print_stderr = "warn" # printing is the binary's choice, written in one place
+print_stdout = "warn" # printing is the binary's choice, written in one place
+self_named_module_files = "warn" # one module layout, mod.rs, across the workspace
+str_to_string = "warn" # to_owned says what happens: a copy of a borrowed str
+todo = "warn" # a todo!() is a panic waiting in shipped code
+too_long_first_doc_paragraph = "warn" # the first doc paragraph is the summary rustdoc lists; one short sentence
+undocumented_unsafe_blocks = "deny" # every unsafe block says in a SAFETY: comment why it is sound
+unimplemented = "warn" # an unimplemented!() is a panic waiting in shipped code
+unnecessary_safety_doc = "deny" # a # Safety section on a safe function sends readers looking for a contract that is not there
+unwrap_used = "warn" # a panic says what failed (expect with a message), or the error is returned
+use_self = "warn" # Self follows a rename
+# Opt-outs of the groups above, each with its reason
+assigning_clones = "allow" # clone_into reads backwards
+cargo_common_metadata = "allow" # keywords and categories matter only for published crates
+cast_lossless = "allow" # a widening `as` cast loses nothing, and From is longer for no gain
+cast_possible_truncation = "allow" # too noisy: most casts are of values known to fit
+cast_precision_loss = "allow" # too noisy: integer to float for display and statistics is the common case
+cast_sign_loss = "allow" # too noisy: most casts are of values known to be non-negative
+default_trait_access = "allow" # Default::default() is clear where the type is written beside it
+float_cmp = "allow" # exact float comparisons are usually intended
+implicit_hasher = "allow" # a BuildHasher type parameter on public functions is not worth it
+inline_always = "allow" # #[inline(always)] is written where it was measured
+items_after_statements = "allow" # a helper item next to its only use reads better
+many_single_char_names = "allow" # r, g, b and x, y, z are fine
+map_unwrap_or = "allow" # `.map(f).unwrap_or(x)` often reads better than map_or
+missing_errors_doc = "allow" # the error type documents its cases
+multiple_crate_versions = "allow" # the duplicate-versions lint checks this, with a reasoned allow list
+must_use_candidate = "allow" # thousands of hits; must_use goes where ignoring the value is a bug
+needless_raw_string_hashes = "allow" # r#"..."# keeps a string editable when a quote is added
+redundant_closure_for_method_calls = "allow" # a closure is often clearer than a path to a method
+return_self_not_must_use = "allow" # thousands of hits on builders
+similar_names = "allow" # too many false positives: encoder and encoded are different things
+struct_excessive_bools = "allow" # a struct of flags is often just that
+struct_field_names = "allow" # a field named after its struct is often the clearest name
+too_many_lines = "allow" # the function-lines lint measures function length, with a limit per crate
+trivially_copy_pass_by_ref = "allow" # passing small Copy types by reference is harmless
+unnecessary_debug_formatting = "allow" # paths printed with {:?} quote themselves, which helps with spaces
+unreadable_literal = "allow" # addresses and magic numbers are written as their sources write them
+used_underscore_binding = "allow" # an underscore binding used in one cfg is common
 
 [profile.dev]
 split-debuginfo = "unpacked"

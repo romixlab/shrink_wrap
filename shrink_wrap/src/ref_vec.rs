@@ -8,12 +8,12 @@ pub use builder::RefVecBuilder;
 #[cfg(feature = "std")]
 pub use builder::RefVecBuilderOwned;
 
-/// Zero-copy, no_std and no-alloc growable array.
+/// Zero-copy, `no_std` and no-alloc growable array.
 ///
-/// Generic overy any type `T` that implements [SerializeShrinkWrap] + [DeserializeShrinkWrap].
+/// Generic overy any type `T` that implements [`SerializeShrinkWrap`] + [`DeserializeShrinkWrap`].
 /// Including other vectors, user defined structs with dynamic size, etc.
 ///
-/// Write one from a slice (`RefVec::Slice`), or element by element in place with [RefVecBuilder].
+/// Write one from a slice (`RefVec::Slice`), or element by element in place with [`RefVecBuilder`].
 #[derive(Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RefVec<'i, T> {
@@ -88,7 +88,7 @@ impl<'i> RefVec<'i, u8> {
     }
 
     /// Write the list as `#[derive_shrink_wrap]` does for a `Vec<u8>` field of the borrowed form: the same bytes
-    /// as [ser_shrink_wrap](SerializeShrinkWrap::ser_shrink_wrap), so an empty list writes no alignment either.
+    /// as [`ser_shrink_wrap`](SerializeShrinkWrap::ser_shrink_wrap), so an empty list writes no alignment either.
     pub fn ser_shrink_wrap_vec_u8(&self, wr: &mut BufWriter) -> Result<(), Error> {
         match self {
             RefVec::Slice { slice, .. } => write_plain_list(wr, slice),
@@ -137,7 +137,7 @@ where
                     return write_plain_list(wr, bytes);
                 }
                 wr.write_rev_len(slice.len())?;
-                for item in slice.iter() {
+                for item in *slice {
                     wr.write(item)?;
                 }
             }
@@ -163,7 +163,7 @@ where
 }
 
 /// A list of one-byte plain elements (`u8`, `i8`): its length and its bytes in one copy, the same bytes as a write
-/// per element (an empty list writes nothing, not even the alignment [write_raw_slice](BufWriter::write_raw_slice)
+/// per element (an empty list writes nothing, not even the alignment [`write_raw_slice`](BufWriter::write_raw_slice)
 /// would). Not generic, so every such list shares it.
 fn write_plain_list(wr: &mut BufWriter, bytes: &[u8]) -> Result<(), Error> {
     wr.write_rev_len(bytes.len())?;
@@ -174,7 +174,7 @@ fn write_plain_list(wr: &mut BufWriter, bytes: &[u8]) -> Result<(), Error> {
 }
 
 /// `slice` as its bytes when its elements are written as one plain byte each: `PLAIN_BYTES` is `Some(1)` (`u8`,
-/// `i8`: their write aligns to a byte and puts the byte, as [write_raw_slice](BufWriter::write_raw_slice) does
+/// `i8`: their write aligns to a byte and puts the byte, as [`write_raw_slice`](BufWriter::write_raw_slice) does
 /// for the whole slice) and a `T` takes one byte of memory, so every element is one initialized byte.
 fn plain_bytes<'i, T: DeserializeShrinkWrap<'i>>(slice: &[T]) -> Option<&[u8]> {
     if T::PLAIN_BYTES != Some(1) || core::mem::size_of::<T>() != 1 {
@@ -196,7 +196,7 @@ where
             RefVec::Slice { slice, .. } => {
                 let elements_count = slice.len();
                 wr.write_rev_len(elements_count)?;
-                for item in slice.iter() {
+                for item in *slice {
                     wr.write(item)?;
                 }
             }
@@ -256,7 +256,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for RefVec<'i, 
 }
 
 /// Whether `count` plain elements of `size` bytes are there, skipping them if so, see
-/// [DeserializeShrinkWrap::PLAIN_BYTES]. Not generic, so every list of plain numbers shares it.
+/// [`DeserializeShrinkWrap::PLAIN_BYTES`]. Not generic, so every list of plain numbers shares it.
 fn skip_plain_list(rd: &mut BufReader, count: usize, size: usize) -> bool {
     match count.checked_mul(size) {
         Some(len) => len == 0 || rd.read_raw_slice(len).is_ok(),
@@ -343,7 +343,7 @@ impl<'i, T: DeserializeShrinkWrap<'i> + PartialEq + Clone> PartialEq for RefVec<
 
 impl<'i, T: DeserializeShrinkWrap<'i> + Eq + Clone> Eq for RefVec<'i, T> {}
 
-/// Hashes the elements as [PartialEq] compares them, up to the first that doesn't decode, then their count.
+/// Hashes the elements as [`PartialEq`] compares them, up to the first that doesn't decode, then their count.
 impl<'i, T: DeserializeShrinkWrap<'i> + core::hash::Hash + Clone> core::hash::Hash
     for RefVec<'i, T>
 {
@@ -372,12 +372,12 @@ mod tests {
         let short = RefVec::Slice { slice: &a[..] };
         let long = RefVec::Slice { slice: &b[..] };
         assert!(short != long && long != short);
-        assert!(RefVec::<u16>::Slice { slice: &[] } != short);
-        assert!(
-            short
-                == RefVec::Slice {
-                    slice: &[1u16, 2][..]
-                }
+        assert_ne!(RefVec::<u16>::Slice { slice: &[] }, short);
+        assert_eq!(
+            short,
+            RefVec::Slice {
+                slice: &[1u16, 2][..]
+            }
         );
     }
 
@@ -391,7 +391,7 @@ mod tests {
         let slice = RefVec::Slice {
             slice: &[0xABu8, 0xCD][..],
         };
-        assert!(read == slice);
+        assert_eq!(read, slice);
         assert_eq!(h(&read), h(&slice));
         assert_ne!(
             h(&slice),
@@ -433,7 +433,7 @@ mod tests {
             const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
 
             fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-                Ok(Old { byte: rd.read()? })
+                Ok(Self { byte: rd.read()? })
             }
         }
 
@@ -578,7 +578,7 @@ mod tests {
         let mut wr = BufWriter::new(&mut buf);
         wr.write(&arr).unwrap();
         let buf = wr.finish_and_take().unwrap();
-        println!("{:02X?}", buf);
+        println!("{buf:02X?}");
         assert_eq!(buf, hex!("81 82 83 04"));
     }
 }

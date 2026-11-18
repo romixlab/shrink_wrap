@@ -21,9 +21,10 @@ impl CratePath {
     /// `shrink_wrap::Error`: `#cp::Error`, or the prelude's `ShrinkWrapError` alias when unqualified, so that it
     /// doesn't clash with the user's own `Error`.
     pub(crate) fn error(&self) -> TokenStream {
-        match &self.0 {
-            Some(cp) => quote! { #cp::Error },
-            None => quote! { ShrinkWrapError },
+        if let Some(cp) = &self.0 {
+            quote! { #cp::Error }
+        } else {
+            quote! { ShrinkWrapError }
         }
     }
 
@@ -195,8 +196,7 @@ pub(crate) fn assert_sized_before_tail_size(
     for (path, is_lifetime) in externals {
         let ty = path.tokens((is_lifetime && is_ref).then(|| quote! { 'static }));
         let err_msg = format!(
-            "{}: field of type {} before the TailSize slot must be Sized or SelfDescribing",
-            owner, ty
+            "{owner}: field of type {ty} before the TailSize slot must be Sized or SelfDescribing"
         );
         tokens.extend(quote! {
             #cfg
@@ -264,7 +264,7 @@ pub(crate) fn maybe_quote<F: FnMut() -> TokenStream>(
 
 /// DER-17: a type that derives `serde::Deserialize` gives its `#[default = ..]` fields `#[serde(default = ..)]`, so
 /// serde data written before such a field was added (a saved RON or JSON file) reads it as its default, as
-/// shrink_wrap data does. The attribute names a hidden function `Type::__ww_default_[<variant>_]<field>`.
+/// `shrink_wrap` data does. The attribute names a hidden function `Type::__ww_default_[<variant>_]<field>`.
 pub(crate) struct SerdeDefaults {
     /// `None` when the type always derives it, else the condition of each `cfg_attr(cond, ..)` that does.
     conds: Option<Vec<TokenStream>>,
@@ -311,7 +311,7 @@ impl SerdeDefaults {
         } else {
             format!("{ident}::{ty_generics}")
         };
-        Some(SerdeDefaults { conds, owner })
+        Some(Self { conds, owner })
     }
 
     /// `#[serde(default = "Type::<fn_name>")]`, under the conditions that derive `Deserialize`.

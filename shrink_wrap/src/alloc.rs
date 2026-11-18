@@ -77,7 +77,7 @@ impl<'i> DeserializeShrinkWrap<'i> for String {
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(String::from(rd.read_str()?))
+        Ok(Self::from(rd.read_str()?))
     }
 }
 
@@ -85,7 +85,7 @@ impl DeserializeShrinkWrapOwned for String {
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(String::from(rd.read_str()?))
+        Ok(Self::from(rd.read_str()?))
     }
 }
 
@@ -111,7 +111,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for Box<T> {
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let value = T::des_shrink_wrap(rd)?;
-        Ok(Box::new(value))
+        Ok(Self::new(value))
     }
 }
 
@@ -120,6 +120,6 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for Box<T> {
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         let value = T::des_shrink_wrap_owned(rd)?;
-        Ok(Box::new(value))
+        Ok(Self::new(value))
     }
 }

@@ -7,9 +7,11 @@ pub(crate) fn add_notes(docs: &mut Docs, size_assumption: Option<ObjectSize>, is
         Some(ObjectSize::Unsized) | None => {
             docs.push_str("NOTE(shrink_wrap): Unsized: This type can be evolved with backwards and forwards compatibility.");
         }
-        Some(ObjectSize::UnsizedFinalStructure)
-        | Some(ObjectSize::Sized { .. })
-        | Some(ObjectSize::SelfDescribing) => {
+        Some(
+            ObjectSize::UnsizedFinalStructure
+            | ObjectSize::Sized { .. }
+            | ObjectSize::SelfDescribing,
+        ) => {
             docs.push_str(
                 "NOTE(shrink_wrap): Structure of this type can no longer be changed without breaking compatibility,",
             );
@@ -19,6 +21,6 @@ pub(crate) fn add_notes(docs: &mut Docs, size_assumption: Option<ObjectSize>, is
         }
     }
     if is_enum {
-        docs.push_str("Enum variants can be added if there is space left and if code already in use can handle them.")
+        docs.push_str("Enum variants can be added if there is space left and if code already in use can handle them.");
     }
 }

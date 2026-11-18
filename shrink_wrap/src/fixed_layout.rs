@@ -1,30 +1,30 @@
 //! The fixed-layout fast path (SW-44, SW-45): types whose fields sit at offsets known at compile time.
 //!
-//! shrink_wrap writes a value field after field. When no field's size depends on its value, every field starts at
+//! `shrink_wrap` writes a value field after field. When no field's size depends on its value, every field starts at
 //! the same place in every value, and reading a field is a load at a constant offset. `#[derive_shrink_wrap]` sees
 //! such types and generates, next to the usual serdes code:
 //!
 //! - `ENCODED_LEN`: the longest encoding, the buffer to have ready; `MIN_LEN`: the shortest; `fixed_len()`: the
 //!   length of one value. They are all the same unless the last field has a variable length (see below);
 //! - an offset const per field: `<FIELD>_OFFSET` (bytes) for byte-aligned fields, `<FIELD>_BIT_OFFSET` and
-//!   `<FIELD>_BITS` for bit fields (bits counted from the most significant bit of the first byte, as shrink_wrap
+//!   `<FIELD>_BITS` for bit fields (bits counted from the most significant bit of the first byte, as `shrink_wrap`
 //!   packs them); for an enum `TAG_LEN` and per variant `<VARIANT>_TAG`, `<VARIANT>_LEN`, `<VARIANT>_<FIELD>_..`;
 //! - `from_fixed(&[u8])` / `to_fixed(&mut [u8])`: loads and stores at those offsets, no
-//!   [BufReader](crate::BufReader) or [BufWriter](crate::BufWriter), nothing generic. Same bytes as
+//!   [`BufReader`](crate::BufReader) or [`BufWriter`](crate::BufWriter), nothing generic. Same bytes as
 //!   `ser_shrink_wrap`. A short buffer or an unknown tag is an error, never a panic;
-//! - [FixedLayout], whose [write_c](FixedLayout::write_c) prints the matching C reader ([write_c_header]): a view
+//! - [`FixedLayout`], whose [`write_c`](FixedLayout::write_c) prints the matching C reader ([`write_c_header`]): a view
 //!   checked against the buffer's length, and readers that take the view (SW-79, <https://ww.vhrd.tech/c/>).
 //!
 //! # What has a fixed layout
 //!
-//! - **Numbers**: `u8`..`u64`, `i8`..`i64`, `f32`, `f64`, little-endian, each starting on a byte, as shrink_wrap
+//! - **Numbers**: `u8`..`u64`, `i8`..`i64`, `f32`, `f64`, little-endian, each starting on a byte, as `shrink_wrap`
 //!   writes them. Arrays of them.
 //! - **Bit fields**: `bool`, `U1`..`U32`, `I2`..`I32` and `Nibble`, packed into bytes most significant bit first
 //!   (a `Nibble` starts on a 4-bit boundary). A byte-aligned field after them starts a fresh byte, the unused bits
 //!   are zero. The bit offsets are as fixed as the byte ones.
 //! - **Other fixed-layout types** (with the `fixed_layout` directive: the macro cannot look inside a type defined
 //!   elsewhere, the compiler checks it). Each starts on a byte boundary. Where its first or last field is a bit
-//!   field, shrink_wrap would pack it together with a bit field of the parent next to it, which no fixed offset
+//!   field, `shrink_wrap` would pack it together with a bit field of the parent next to it, which no fixed offset
 //!   can describe: that is a compile error asking for a byte-aligned field between them.
 //! - **One field of variable length, last**: an `Option<T>` (present only when its flag bit is set), a
 //!   `Result<T, E>` (`T` or `E` by its flag bit) or an enum whose variants differ in length. Every field before it
@@ -154,11 +154,11 @@ use crate::Error;
 /// A type with a fixed layout, implemented by `#[derive_shrink_wrap]`: see the [module](self) docs.
 pub trait FixedLayout: Sized {
     /// The longest encoding in bytes: a buffer of this length holds every value. For the length of one value see
-    /// [fixed_len](Self::fixed_len).
+    /// [`fixed_len`](Self::fixed_len).
     const ENCODED_LEN: usize;
     /// The shortest encoding in bytes.
     const MIN_LEN: usize;
-    /// Every value has the length [ENCODED_LEN](Self::ENCODED_LEN). Only such types can be fields of another
+    /// Every value has the length [`ENCODED_LEN`](Self::ENCODED_LEN). Only such types can be fields of another
     /// fixed-layout type before its last field.
     const SAME_LEN: bool;
     /// The first field is a bit field: it would share a byte with bit fields of the parent before it.
@@ -173,17 +173,17 @@ pub trait FixedLayout: Sized {
     /// Writes the value at the start of `buf`, returns its length.
     fn write_fixed(&self, buf: &mut [u8]) -> Result<usize, Error>;
 
-    /// Length of this value on the wire, at most [ENCODED_LEN](Self::ENCODED_LEN).
+    /// Length of this value on the wire, at most [`ENCODED_LEN`](Self::ENCODED_LEN).
     fn fixed_len(&self) -> usize;
 
     /// The C defines, checked view and readers of this type, names starting with `prefix` (`PREFIX` for defines).
-    /// Needs the readers of [C_PRELUDE] in front of it, and the C text of the types it holds.
+    /// Needs the readers of [`C_PRELUDE`] in front of it, and the C text of the types it holds.
     fn write_c(prefix: &str, out: &mut dyn Write) -> core::fmt::Result;
 }
 
 /// A number in `N` bytes, little endian: how the generated code of the fixed layout and of `head_tail` (and its
 /// views and writers) reads and writes every multi-byte number (SW-53), at a constant offset found with [at] /
-/// [at_mut].
+/// [`at_mut`].
 ///
 /// On RISC-V without unaligned loads a `u32` at an odd offset is four byte loads and three shifts and ors, some
 /// 28 bytes of code, at every field. There `ld` and `st` are functions of their own, one per type, and a field
@@ -223,16 +223,16 @@ macro_rules! le {
 le!(u16, u32, u64, i16, i32, i64, f32, f64);
 
 impl Le for u8 {
-    type Bytes = [u8; 1];
+    type Bytes = [Self; 1];
 
     #[inline(always)]
-    fn ld(b: &[u8; 1]) -> Self {
+    fn ld(b: &[Self; 1]) -> Self {
         b[0]
     }
 
     #[inline(always)]
-    fn st(self, b: &mut [u8; 1]) {
-        b[0] = self
+    fn st(self, b: &mut [Self; 1]) {
+        b[0] = self;
     }
 }
 
@@ -241,12 +241,12 @@ impl Le for i8 {
 
     #[inline(always)]
     fn ld(b: &[u8; 1]) -> Self {
-        b[0] as i8
+        b[0] as Self
     }
 
     #[inline(always)]
     fn st(self, b: &mut [u8; 1]) {
-        b[0] = self as u8
+        b[0] = self as u8;
     }
 }
 
@@ -287,7 +287,7 @@ pub fn take_at<const N: usize>(b: &[u8], off: usize) -> Result<[u8; N], Error> {
     }
 }
 
-/// `n` (1 to 32) bits of `b` from bit `bit`, counted from the most significant bit of `b[0]`, as shrink_wrap packs
+/// `n` (1 to 32) bits of `b` from bit `bit`, counted from the most significant bit of `b[0]`, as `shrink_wrap` packs
 /// them. With constant arguments this folds to a few loads and shifts.
 #[inline(always)]
 pub fn get_bits(b: &[u8], bit: usize, n: u32) -> u32 {
@@ -318,7 +318,7 @@ pub fn put_bits(b: &mut [u8], bit: usize, n: u32, val: u32) {
     }
 }
 
-/// Shows a str in ASCII upper case, for the defines of [FixedLayout::write_c].
+/// Shows a str in ASCII upper case, for the defines of [`FixedLayout::write_c`].
 pub struct Upper<'a>(pub &'a str);
 
 impl Display for Upper<'_> {
@@ -331,6 +331,7 @@ impl Display for Upper<'_> {
 }
 
 /// The loads the generated C readers use: little-endian numbers and bit fields (most significant bit first).
+///
 /// Octets are `uint8_t`: a target without it (16-bit `char`, TI C2000) needs the octet accessors of the C runtime
 /// instead (API-26).
 pub const C_PRELUDE: &str = r#"#include <stddef.h>
@@ -385,7 +386,7 @@ static inline int32_t sw_fixed_sbits(const uint8_t *p, size_t bit, unsigned n) {
 #endif
 "#;
 
-/// A whole C header: include guard `guard`, [C_PRELUDE], then the readers of `types` (`T::write_c` of each
+/// A whole C header: include guard `guard`, [`C_PRELUDE`], then the readers of `types` (`T::write_c` of each
 /// fixed-layout type), names starting with `prefix`.
 pub fn write_c_header(
     out: &mut dyn Write,

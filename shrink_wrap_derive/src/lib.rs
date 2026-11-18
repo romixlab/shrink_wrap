@@ -40,7 +40,7 @@ mod ww_repr;
 /// * `fixed_layout` - require a fixed little-endian byte layout and its fast path (`ENCODED_LEN`, offset consts,
 ///   `from_fixed` / `to_fixed`, `FixedLayout`); a field that breaks it is a compile error. Types that have such a
 ///   layout get the fast path without it, see `shrink_wrap::fixed_layout`.
-/// * `head_tail` - the head+tail encoding instead of shrink_wrap's: every fixed-width field at a constant offset in a
+/// * `head_tail` - the head+tail encoding instead of `shrink_wrap`'s: every fixed-width field at a constant offset in a
 ///   head, lists (`head_tail::List`), strings and option payloads one after another in a tail (`from_head_tail` /
 ///   `to_head_tail`, `HeadTail`, a C reader); no `SerializeShrinkWrap`, see `shrink_wrap::head_tail`.
 /// * `sparse` - a struct whose fields are all `Option<T>` as an `OptionAnyVec`: one slot per field (or at
@@ -57,22 +57,23 @@ mod ww_repr;
 /// with the item's own name, so the derive can be behind a `cfg_attr` of an optional feature with the plain derives
 /// written once.
 ///
-/// See also [ShrinkWrap derive macro](ShrinkWrap).
+/// See also [`ShrinkWrap` derive macro](ShrinkWrap).
 #[proc_macro_attribute]
 pub fn derive_shrink_wrap(attr: TokenStream, item: TokenStream) -> TokenStream {
     shrink_wrap::shrink_wrap_attr(attr.into(), item.into()).into()
 }
 
-/// Derive SerializeShrinkWrap and DeserializeShrinkWrap implementations.
-/// Also see [derive_shrink_wrap attribute macro](derive_shrink_wrap) which can additionally generate
+/// Derive `SerializeShrinkWrap` and `DeserializeShrinkWrap` implementations.
+///
+/// Also see [`derive_shrink_wrap` attribute macro](derive_shrink_wrap) which can additionally generate
 /// Owned structs and enums from reference types and use `#[flag]` attributes.
 #[proc_macro_derive(ShrinkWrap)]
 pub fn derive_shrink_wrap_derive(item: TokenStream) -> TokenStream {
     shrink_wrap::shrink_wrap_derive(item.into()).into()
 }
 
-/// Allows to use u1, u2, ..., u32 or UNib32 (variable length, 1 or more nibbles) for enum discriminant,
-/// when serializing and deserializing with ShrinkWrap.
+/// Allows to use u1, u2, ..., u32 or `UNib32` (variable length, 1 or more nibbles) for enum discriminant,
+/// when serializing and deserializing with `ShrinkWrap`.
 #[proc_macro_attribute]
 pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
     ww_repr::ww_repr(attr.into(), item.into()).into()

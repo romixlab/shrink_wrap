@@ -356,7 +356,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for Holder<T> {
     const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(Holder(rd.read()?))
+        Ok(Self(rd.read()?))
     }
 }
 
@@ -374,7 +374,7 @@ struct GenericOption {
     after: u8,
 }
 
-/// `Option<T>` is SelfDescribing also for an Unsized `T`: the Unsized value gets its size slot from the Option's
+/// `Option<T>` is `SelfDescribing` also for an Unsized `T`: the Unsized value gets its size slot from the Option's
 /// own `wr.write()`, the Option needs none. Same bytes as an `Option` field of a derived type, apart from where
 /// the flag is.
 #[test]

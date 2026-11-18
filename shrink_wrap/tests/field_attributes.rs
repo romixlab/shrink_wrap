@@ -62,6 +62,6 @@ fn only_on_the_type_with_the_items_name() {
     let bytes = Named { name: "x" }.to_ww_bytes(&mut buf).unwrap().to_vec();
     assert_eq!(
         NamedOwned::from_ww_bytes_owned(&bytes).unwrap().name,
-        "x".to_string()
+        "x".to_owned()
     );
 }

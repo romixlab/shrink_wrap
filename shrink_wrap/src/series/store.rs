@@ -1,4 +1,4 @@
-//! [SeriesStore]: items kept as a struct of arrays until they are written as a [Series](super::Series) (SW-62).
+//! [`SeriesStore`]: items kept as a struct of arrays until they are written as a [Series](super::Series) (SW-62).
 
 use super::columns::float::write_float;
 use super::columns::numeric::{NumericKind, write_numeric_slice, write_numeric128};
@@ -23,7 +23,7 @@ use core::ops::Range;
 /// (a type with a `#[series(opaque)]` field has none, `series(no_store)` leaves it out to write one by hand).
 ///
 /// [set](Self::set) and [get](Self::get) panic on an index of `N` or more, like an array does. A fresh store
-/// ([empty_store](Self::empty_store)) holds zeros, `false`, empty strings, `None` and an enum's first variant at
+/// ([`empty_store`](Self::empty_store)) holds zeros, `false`, empty strings, `None` and an enum's first variant at
 /// every index, so `get` of an index never `set` gives a value, not garbage.
 ///
 /// ```
@@ -48,11 +48,11 @@ pub trait SeriesStore: Sized {
     /// A store with the empty value at every index.
     fn empty_store<const N: usize>() -> Self::Store<N>;
 
-    /// Writes the store [empty_store](Self::empty_store) gives into `slot` in place and returns it: field by field,
+    /// Writes the store [`empty_store`](Self::empty_store) gives into `slot` in place and returns it: field by field,
     /// never a whole store on the stack on the way. A batch's stores take several KB and a firmware keeps them in a
     /// `static` (API-39); building one by value there takes a stack frame of a few times its size.
     ///
-    /// Returns `slot` itself, initialized ([init_store_in] checks it). Writes [empty_store](Self::empty_store)'s
+    /// Returns `slot` itself, initialized ([`init_store_in`] checks it). Writes [`empty_store`](Self::empty_store)'s
     /// value by default; numbers, bools, `Option`s, tuples, arrays and derived structs and enums fill their arrays
     /// in place.
     fn init_store<const N: usize>(slot: &mut MaybeUninit<Self::Store<N>>) -> &mut Self::Store<N> {
@@ -65,7 +65,7 @@ pub trait SeriesStore: Sized {
     /// The item at index `i`.
     fn get<const N: usize>(store: &Self::Store<N>, i: usize) -> Self;
 
-    /// Whether [write_store](Self::write_store) can write rows `rows` (1 or more) of `store` column by column,
+    /// Whether [`write_store`](Self::write_store) can write rows `rows` (1 or more) of `store` column by column,
     /// straight from the arrays. `false` by default; numbers, floats, bools, `Option`s, tuples, arrays and derived
     /// structs and enums say `true` when every enum and `Option` in the rows keeps one variant (so no column
     /// restarts) and every leaf below can (strings, byte lists, `UN` / `IN` can't).
@@ -74,7 +74,7 @@ pub trait SeriesStore: Sized {
         false
     }
 
-    /// Writes rows `rows` of `store` as [SeriesColumns::write_group](super::SeriesColumns::write_group) writes the
+    /// Writes rows `rows` of `store` as [`SeriesColumns::write_group`](super::SeriesColumns::write_group) writes the
     /// group of those items (none restarting) at `level`: the same bits, without the per-item walk. Only when
     /// [columnar](Self::columnar) says so; a type that can't is `MalformedSeries`.
     fn write_store<S: BitSink, P: SeriesPolicy + ?Sized, const N: usize>(
@@ -89,7 +89,7 @@ pub trait SeriesStore: Sized {
     }
 }
 
-/// [SeriesStore::init_store] of `slot`, checked: panics when the impl gave back another store than `slot` (which
+/// [`SeriesStore::init_store`] of `slot`, checked: panics when the impl gave back another store than `slot` (which
 /// would leave `slot` uninitialized), so that code building a bigger store around it can rely on `slot` holding an
 /// empty store.
 #[inline]
@@ -119,7 +119,7 @@ pub unsafe fn init_store_at<T: SeriesStore, const N: usize>(at: *mut T::Store<N>
     init_store_in::<T, N>(slot);
 }
 
-/// A store of `T` built by its [SeriesStore::init_store], for an `empty_store` of an impl whose `init_store` builds
+/// A store of `T` built by its [`SeriesStore::init_store`], for an `empty_store` of an impl whose `init_store` builds
 /// in place (never for one whose `init_store` is the default: that calls `empty_store`).
 #[inline]
 pub fn empty_store_from_init<T: SeriesStore, const N: usize>() -> T::Store<N> {
@@ -145,8 +145,8 @@ pub fn fill_array<T: Copy, const N: usize>(
 }
 
 /// The bits of `Series::<T>::with_policy(items, policy)` for the items in rows `rows` of `store`, written column by
-/// column from the arrays ([SeriesStore::write_store]) after `wr`'s position: `Ok(false)` and nothing written when
-/// `T` can't write these rows that way ([SeriesStore::columnar]), for the caller to walk the items instead.
+/// column from the arrays ([`SeriesStore::write_store`]) after `wr`'s position: `Ok(false)` and nothing written when
+/// `T` can't write these rows that way ([`SeriesStore::columnar`]), for the caller to walk the items instead.
 pub fn write_store_series<T: SeriesStore, P: SeriesPolicy + ?Sized, const N: usize>(
     wr: &mut BufWriter<'_>,
     store: &T::Store<N>,
@@ -173,10 +173,10 @@ pub fn write_store_series<T: SeriesStore, P: SeriesPolicy + ?Sized, const N: usi
     Ok(true)
 }
 
-/// The bytes [write_store_series] writes for rows `rows` of `store` from a byte boundary, counted with a
-/// [BitCounter](super::BitCounter) column by column from the arrays, the same count as
+/// The bytes [`write_store_series`] writes for rows `rows` of `store` from a byte boundary, counted with a
+/// [`BitCounter`](super::BitCounter) column by column from the arrays, the same count as
 /// `Series::with_policy(items, policy).encoded_len()` without rebuilding the items: `Ok(None)` when `T` can't write
-/// these rows that way ([SeriesStore::columnar]), for the caller to count the items instead.
+/// these rows that way ([`SeriesStore::columnar`]), for the caller to count the items instead.
 pub fn count_store_series<T: SeriesStore, P: SeriesPolicy + ?Sized, const N: usize>(
     store: &T::Store<N>,
     rows: Range<usize>,
@@ -196,8 +196,8 @@ pub fn count_store_series<T: SeriesStore, P: SeriesPolicy + ?Sized, const N: usi
     Ok(Some(counter.bits().div_ceil(8)))
 }
 
-/// An unsigned integer a hand-written [SeriesStore] keeps values of another type in (`NumericValue` keeps every
-/// variant in one array of the widest), for [write_numeric_column] and its siblings.
+/// An unsigned integer a hand-written [`SeriesStore`] keeps values of another type in (`NumericValue` keeps every
+/// variant in one array of the widest), for [`write_numeric_column`] and its siblings.
 pub trait StoreWord: Copy + sealed::Sealed {
     fn bits64(self) -> u64;
     fn bits128(self) -> u128;
@@ -230,8 +230,8 @@ macro_rules! store_word {
 store_word!(u8, u16, u32, u64, u128);
 
 /// The numeric column of a `width`-bit (1 to 64) number kept in `values` (its bits in the low `width` bits, zero
-/// or sign-extended above), as the number's own [SeriesColumns](super::SeriesColumns) writes it for these rows
-/// without restarts: what a hand-written [SeriesStore::write_store] writes for a numeric field.
+/// or sign-extended above), as the number's own [`SeriesColumns`](super::SeriesColumns) writes it for these rows
+/// without restarts: what a hand-written [`SeriesStore::write_store`] writes for a numeric field.
 pub fn write_numeric_column<W: StoreWord, S: BitSink, P: SeriesPolicy + ?Sized>(
     sink: &mut S,
     width: u8,
@@ -248,7 +248,7 @@ pub fn write_numeric_column<W: StoreWord, S: BitSink, P: SeriesPolicy + ?Sized>(
     Ok(())
 }
 
-/// The column of a `u128` or `i128` kept in `values`: raw plain at 128 bits, as [write_numeric_column].
+/// The column of a `u128` or `i128` kept in `values`: raw plain at 128 bits, as [`write_numeric_column`].
 pub fn write_numeric128_column<W: StoreWord, S: BitSink>(
     sink: &mut S,
     signed: bool,
@@ -257,7 +257,7 @@ pub fn write_numeric128_column<W: StoreWord, S: BitSink>(
     write_numeric128(sink, signed, values.iter().map(|v| v.bits128()))
 }
 
-/// The float column of a `T` (`f32`, `f64`) kept as its bits in `values`, as [write_numeric_column].
+/// The float column of a `T` (`f32`, `f64`) kept as its bits in `values`, as [`write_numeric_column`].
 pub fn write_float_column<T: XorBits, W: StoreWord, S: BitSink, P: SeriesPolicy + ?Sized>(
     sink: &mut S,
     values: &[W],
@@ -481,8 +481,8 @@ impl<'i> SeriesStore for &'i [u8] {
     }
 }
 
-impl<'i> SeriesStore for RefVec<'i, u8> {
-    type Store<const N: usize> = [RefVec<'i, u8>; N];
+impl SeriesStore for RefVec<'_, u8> {
+    type Store<const N: usize> = [Self; N];
 
     fn empty_store<const N: usize>() -> Self::Store<N> {
         [RefVec::new_bytes(&[]); N]
@@ -540,7 +540,7 @@ impl<T: ?Sized> SeriesStore for PhantomData<T> {
     fn set<const N: usize>(_store: &mut (), _i: usize, _item: &Self) {}
 
     fn get<const N: usize>(_store: &(), _i: usize) -> Self {
-        PhantomData
+        Self
     }
 
     fn columnar<const N: usize>(_store: &(), _rows: Range<usize>) -> bool {

@@ -31,7 +31,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for Twice<T> {
     const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(Twice(rd.read()?, rd.read()?))
+        Ok(Self(rd.read()?, rd.read()?))
     }
 }
 
@@ -39,7 +39,7 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for Twice<T> {
     const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE.add(T::ELEMENT_SIZE);
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(Twice(rd.read_owned()?, rd.read_owned()?))
+        Ok(Self(rd.read_owned()?, rd.read_owned()?))
     }
 }
 
@@ -93,7 +93,7 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for SpanOwned<T> 
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(SpanOwned(rd.read_owned()?))
+        Ok(Self(rd.read_owned()?))
     }
 }
 

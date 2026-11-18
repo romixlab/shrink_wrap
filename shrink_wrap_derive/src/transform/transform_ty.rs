@@ -52,7 +52,7 @@ pub(crate) fn transform_type(
         }
         syn::Type::Tuple(type_tuple) => {
             let mut types = vec![];
-            for elem in type_tuple.elems.into_iter() {
+            for elem in type_tuple.elems {
                 let ty = transform_type(elem, None, path)?;
                 types.push(ty);
             }

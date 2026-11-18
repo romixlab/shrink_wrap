@@ -4,8 +4,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{LitInt, LitStr};
 
-/// Object size from shrink_wrap crate, copied here to decouple the two. Generated code refers to the shrink_wrap one.
-/// Extensive description is in shrink_wrap.
+/// Object size from `shrink_wrap` crate, copied here to decouple the two. Generated code refers to the `shrink_wrap` one.
+/// Extensive description is in `shrink_wrap`.
 #[derive(Clone, Debug)]
 pub(crate) enum ObjectSize {
     Unsized,
@@ -21,14 +21,14 @@ pub(crate) enum ObjectSize {
 
 impl ObjectSize {
     pub(crate) fn sized(size_bits: usize) -> Self {
-        ObjectSize::Sized {
+        Self::Sized {
             size_bits,
             symbolic: Vec::new(),
         }
     }
 
     pub(crate) fn sized_symbolic(term: TokenStream) -> Self {
-        ObjectSize::Sized {
+        Self::Sized {
             size_bits: 0,
             symbolic: vec![term],
         }
@@ -38,10 +38,10 @@ impl ObjectSize {
     pub(crate) fn tokens(&self, cp: &CratePath) -> TokenStream {
         let element_size = cp.item(quote! { ElementSize });
         match self {
-            ObjectSize::Unsized => quote! { #element_size::Unsized },
-            ObjectSize::UnsizedFinalStructure => quote! { #element_size::UnsizedFinalStructure },
-            ObjectSize::SelfDescribing => quote! { #element_size::SelfDescribing },
-            ObjectSize::Sized {
+            Self::Unsized => quote! { #element_size::Unsized },
+            Self::UnsizedFinalStructure => quote! { #element_size::UnsizedFinalStructure },
+            Self::SelfDescribing => quote! { #element_size::SelfDescribing },
+            Self::Sized {
                 size_bits,
                 symbolic,
             } => {
@@ -76,7 +76,7 @@ impl ObjectSize {
     /// Size as a part of an error message: `8 bits`, `8 bits + N * 16`, `not Sized`.
     pub(crate) fn describe(&self) -> String {
         match self {
-            ObjectSize::Sized {
+            Self::Sized {
                 size_bits,
                 symbolic,
             } => {
@@ -103,18 +103,18 @@ impl ObjectSize {
     ) -> TokenStream {
         let element_size = cp.item(quote! { ElementSize });
         let size_ts = match self {
-            ObjectSize::Unsized => quote! { #element_size::Unsized },
-            ObjectSize::UnsizedFinalStructure => quote! { #element_size::UnsizedFinalStructure },
-            ObjectSize::SelfDescribing => quote! { #element_size::SelfDescribing },
-            ObjectSize::Sized { .. } => quote! { #element_size::Sized { .. } },
+            Self::Unsized => quote! { #element_size::Unsized },
+            Self::UnsizedFinalStructure => quote! { #element_size::UnsizedFinalStructure },
+            Self::SelfDescribing => quote! { #element_size::SelfDescribing },
+            Self::Sized { .. } => quote! { #element_size::Sized { .. } },
         };
         let size = match self {
-            ObjectSize::Unsized => "Unsized",
-            ObjectSize::UnsizedFinalStructure => "UnsizedFinalStructure",
-            ObjectSize::SelfDescribing => "SelfDescribing",
-            ObjectSize::Sized { .. } => "Sized",
+            Self::Unsized => "Unsized",
+            Self::UnsizedFinalStructure => "UnsizedFinalStructure",
+            Self::SelfDescribing => "SelfDescribing",
+            Self::Sized { .. } => "Sized",
         };
-        let err_msg = format!("{} must be {size}{hint}", ident);
+        let err_msg = format!("{ident} must be {size}{hint}");
         let err_msg = LitStr::new(&err_msg, Span::call_site());
         let cfg = cfg.map(|cond| quote! { #[cfg(#cond)] });
         let (ser_trait, des_trait) = cp.serdes_traits(is_ref);
@@ -134,29 +134,29 @@ impl ObjectSize {
         }
     }
 
-    /// IMPORTANT: this method must be a copy of the one in shrink_wrap
-    pub(crate) fn add(&self, other: ObjectSize) -> ObjectSize {
+    /// IMPORTANT: this method must be a copy of the one in `shrink_wrap`
+    pub(crate) fn add(&self, other: Self) -> Self {
         // Order is very important here, size requirement is bumped from Sized to SelfDescribing to Unsized.
         // UFS is a bit tricky, it is "contagious", so that Vec<T> with T Unsized is UFS.
         // Structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
         // performed, otherwise it would have been a compatibility problem.
         match (self, other) {
-            (ObjectSize::UnsizedFinalStructure, _) => ObjectSize::UnsizedFinalStructure,
-            (_, ObjectSize::UnsizedFinalStructure) => ObjectSize::UnsizedFinalStructure,
-            (ObjectSize::Unsized, _) => ObjectSize::Unsized,
-            (_, ObjectSize::Unsized) => ObjectSize::Unsized,
-            (ObjectSize::SelfDescribing, _) => ObjectSize::SelfDescribing,
-            (_, ObjectSize::SelfDescribing) => ObjectSize::SelfDescribing,
+            (Self::UnsizedFinalStructure, _) => Self::UnsizedFinalStructure,
+            (_, Self::UnsizedFinalStructure) => Self::UnsizedFinalStructure,
+            (Self::Unsized, _) => Self::Unsized,
+            (_, Self::Unsized) => Self::Unsized,
+            (Self::SelfDescribing, _) => Self::SelfDescribing,
+            (_, Self::SelfDescribing) => Self::SelfDescribing,
             (
-                ObjectSize::Sized {
+                Self::Sized {
                     size_bits: size_a,
                     symbolic: symbolic_a,
                 },
-                ObjectSize::Sized {
+                Self::Sized {
                     size_bits: size_b,
                     symbolic: symbolic_b,
                 },
-            ) => ObjectSize::Sized {
+            ) => Self::Sized {
                 size_bits: *size_a + size_b,
                 symbolic: symbolic_a.iter().cloned().chain(symbolic_b).collect(),
             },

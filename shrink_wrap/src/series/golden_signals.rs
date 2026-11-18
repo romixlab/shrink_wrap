@@ -1,4 +1,4 @@
-//! The slow sine of the design's "noisy" case (design/series_proto), item by item for up to 256 items: generated
+//! The slow sine of the design's "noisy" case (`design/series_proto`), item by item for up to 256 items: generated
 //! once with `f64::sin` and kept as literals, so the golden sizes and bytes don't depend on the libm of the host.
 
 /// `(3300.0 + (k as f64 / 10.0).sin() * 50.0) as i64`, mV.

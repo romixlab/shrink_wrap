@@ -6,10 +6,11 @@ use crate::{
 };
 
 /// Variable length encoded u32 based on bytes (VLQ, big endian).
+///
 /// Each byte carries 1 bit (MSB) indicating whether there are more bytes + 7 bits from the original number,
 /// most significant group first. Takes from 1 to 5 bytes, alignment of 1 byte is used.
 ///
-/// Compared to [UNib32](crate::UNib32), takes more space for small numbers (0..=7 fit into one nibble),
+/// Compared to [`UNib32`](crate::UNib32), takes more space for small numbers (0..=7 fit into one nibble),
 /// but less for big ones, and is a well-known encoding (MIDI, ASN.1 OID).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -56,7 +57,7 @@ impl UVlq32 {
             }
             num = (num << 7) | (byte & 0x7f) as u32;
             if byte & ONE_MORE_BYTE == 0 {
-                return Ok(UVlq32(num));
+                return Ok(Self(num));
             }
         }
         // 5th byte should be the last for u32
@@ -87,7 +88,7 @@ impl<'i> DeserializeShrinkWrap<'i> for UVlq32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        UVlq32::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -95,7 +96,7 @@ impl DeserializeShrinkWrapOwned for UVlq32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        UVlq32::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -107,7 +108,7 @@ impl From<UVlq32> for u32 {
 
 impl From<u32> for UVlq32 {
     fn from(num: u32) -> Self {
-        UVlq32(num)
+        Self(num)
     }
 }
 
@@ -123,15 +124,15 @@ impl Display for UVlq32 {
     }
 }
 
-/// [UVlq32] that is always written as the maximum 5 bytes, so that its value can be filled in after the rest of the
+/// [`UVlq32`] that is always written as the maximum 5 bytes, so that its value can be filled in after the rest of the
 /// buffer is serialized, and the unused leading bytes are then dropped by taking a shorter slice.
 ///
 /// Meant for the first field of a message, whose value is only known when the message is about to be sent
 /// (e.g. request sequence number), while the message itself is serialized in advance:
 /// 1. Serialize the message with `UVlq32Backfill(0)` (or any other value) as its first field.
-/// 2. Call [UVlq32Backfill::backfill] on the serialized bytes, and send the slice it returns.
+/// 2. Call [`UVlq32Backfill::backfill`] on the serialized bytes, and send the slice it returns.
 ///
-/// On the wire it is a [UVlq32], either in canonical (shortest) form if the slice returned by
+/// On the wire it is a [`UVlq32`], either in canonical (shortest) form if the slice returned by
 /// [backfill](UVlq32Backfill::backfill) is used, or padded with empty `0x80` groups in front if the whole buffer is
 /// used. Both are valid and read back as the same number, by both `UVlq32` and `UVlq32Backfill`.
 ///
@@ -184,7 +185,7 @@ impl<'i> DeserializeShrinkWrap<'i> for UVlq32Backfill {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(UVlq32Backfill(UVlq32::read_forward(rd)?.0))
+        Ok(Self(UVlq32::read_forward(rd)?.0))
     }
 }
 
@@ -192,7 +193,7 @@ impl DeserializeShrinkWrapOwned for UVlq32Backfill {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(UVlq32Backfill(UVlq32::read_forward(rd)?.0))
+        Ok(Self(UVlq32::read_forward(rd)?.0))
     }
 }
 
@@ -204,7 +205,7 @@ impl From<UVlq32Backfill> for u32 {
 
 impl From<u32> for UVlq32Backfill {
     fn from(num: u32) -> Self {
-        UVlq32Backfill(num)
+        Self(num)
     }
 }
 

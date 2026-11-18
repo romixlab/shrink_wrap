@@ -29,14 +29,14 @@ pub(crate) struct FieldPath {
 
 impl FieldPath {
     pub(crate) fn new(root: FieldPathRoot) -> Self {
-        FieldPath {
+        Self {
             root,
             selectors: vec![],
         }
     }
 
     pub(crate) fn clone_and_push(&self, selector: FieldSelector) -> Self {
-        FieldPath {
+        Self {
             root: self.root.clone(),
             selectors: self.selectors.iter().cloned().chain([selector]).collect(),
         }
@@ -54,7 +54,7 @@ impl FieldPath {
                     Ident::new(format!("_{ident}_flag").as_str(), Span::call_site())
                 }
                 Some(FieldSelector::Tuple(idx)) => {
-                    Ident::new(format!("_{}", idx).as_str(), Span::call_site())
+                    Ident::new(format!("_{idx}").as_str(), Span::call_site())
                 }
                 _ => Ident::new("_todo_flag", Span::call_site()),
             },
@@ -72,7 +72,7 @@ pub(crate) fn create_flags(fields: &mut Vec<Field>, explicit_flags: &[Ident]) {
         }
     }
     for (shift, (pos, is_result, ident)) in fields_without_flags.into_iter().enumerate() {
-        let flag_ident = Ident::new(format!("_{}_flag", ident).as_str(), ident.span());
+        let flag_ident = Ident::new(format!("_{ident}_flag").as_str(), ident.span());
         let flag = Field {
             docs: Docs::empty(),
             ident: flag_ident,
@@ -113,7 +113,7 @@ pub(crate) fn create_tuple_flags(fields: &[Type]) -> Vec<Type> {
 /// Check that using stack for flags will work
 pub(crate) fn check_flag_order(fields: &[Field]) -> Result<(), String> {
     let mut flags_stack = vec![];
-    for field in fields.iter() {
+    for field in fields {
         match &field.ty {
             Type::Result(_, _) | Type::Option(_, _) => {
                 let Some(flag_ident) = flags_stack.pop() else {
@@ -386,7 +386,7 @@ pub(crate) fn transform_field(
         let result_ident = ident;
         let ident = if flag.is_some() {
             Ident::new(
-                format!("_{}_flag", result_ident).as_str(),
+                format!("_{result_ident}_flag").as_str(),
                 result_ident.span(),
             )
         } else {

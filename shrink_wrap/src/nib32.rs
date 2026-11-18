@@ -103,7 +103,7 @@ impl UNib32 {
             }
             num <<= 3;
         }
-        Ok(UNib32(num))
+        Ok(Self(num))
     }
 }
 
@@ -111,7 +111,7 @@ impl SerializeShrinkWrap for UNib32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
     const PUSHES_LEN: bool = false;
     const MAX_SIZE: Option<crate::max_size::MaxSize> = Some(crate::max_size::MaxSize::nibbles(
-        UNib32(u32::MAX).len_nibbles(),
+        Self(u32::MAX).len_nibbles(),
     ));
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
@@ -132,7 +132,7 @@ impl<'i> DeserializeShrinkWrap<'i> for UNib32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        UNib32::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -140,7 +140,7 @@ impl DeserializeShrinkWrapOwned for UNib32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        UNib32::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -152,7 +152,7 @@ impl From<UNib32> for u32 {
 
 impl From<u32> for UNib32 {
     fn from(num: u32) -> Self {
-        UNib32(num)
+        Self(num)
     }
 }
 
@@ -168,13 +168,13 @@ impl Display for UNib32 {
     }
 }
 
-/// Variable length encoded i32, zigzag over [UNib32]: `0`, `-1`, `1`, `-2`, `2`, .. map to `0`, `1`, `2`, `3`, `4`,
+/// Variable length encoded i32, zigzag over [`UNib32`]: `0`, `-1`, `1`, `-2`, `2`, .. map to `0`, `1`, `2`, `3`, `4`,
 /// .., so small negative and positive values both take one nibble (SW-24). General purpose: the signed
 /// counterpart of `UNib32`, not tied to any one field's meaning.
 ///
-/// On the wire it is exactly a [UNib32] of the zigzag-encoded value: [to_zigzag](INib32::to_zigzag) /
-/// [from_zigzag](INib32::from_zigzag) do the mapping, `UNib32`'s own (private) forward nibble writer and reader
-/// do the nibbles, so a malformed read fails with [Error::MalformedUNib32], the same as a malformed `UNib32`.
+/// On the wire it is exactly a [`UNib32`] of the zigzag-encoded value: [`to_zigzag`](INib32::to_zigzag) /
+/// [`from_zigzag`](INib32::from_zigzag) do the mapping, `UNib32`'s own (private) forward nibble writer and reader
+/// do the nibbles, so a malformed read fails with [`Error::MalformedUNib32`], the same as a malformed `UNib32`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -192,14 +192,14 @@ pub(crate) const fn unzigzag32(z: u32) -> i32 {
 }
 
 impl INib32 {
-    /// The zigzag-encoded value, as the [UNib32] written on the wire.
+    /// The zigzag-encoded value, as the [`UNib32`] written on the wire.
     pub const fn to_zigzag(self) -> UNib32 {
         UNib32(zigzag32(self.0))
     }
 
-    /// The value a [UNib32] of `z` zigzag-decodes to.
+    /// The value a [`UNib32`] of `z` zigzag-decodes to.
     pub const fn from_zigzag(z: UNib32) -> Self {
-        INib32(unzigzag32(z.0))
+        Self(unzigzag32(z.0))
     }
 
     pub const fn len_nibbles(&self) -> usize {
@@ -240,7 +240,7 @@ impl<'i> DeserializeShrinkWrap<'i> for INib32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        INib32::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -248,7 +248,7 @@ impl DeserializeShrinkWrapOwned for INib32 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        INib32::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -260,7 +260,7 @@ impl From<INib32> for i32 {
 
 impl From<i32> for INib32 {
     fn from(num: i32) -> Self {
-        INib32(num)
+        Self(num)
     }
 }
 

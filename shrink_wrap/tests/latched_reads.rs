@@ -68,7 +68,7 @@ macro_rules! for_each_un {
     };
     (@types $T:ident $body:block; $($ty:ty),*) => {
         $({
-            #[allow(dead_code)]
+            #[expect(dead_code)]
             type $T = $ty;
             $body
         })*
@@ -156,7 +156,7 @@ struct Sample {
     neg: I33,
 }
 
-fn sample_with_checks<'i>(rd: &mut BufReader<'i>) -> Result<Sample, Error> {
+fn sample_with_checks(rd: &mut BufReader<'_>) -> Result<Sample, Error> {
     Ok(Sample {
         ch: rd.read()?,
         on: rd.read_bool()?,
@@ -238,7 +238,7 @@ fn ev_with_checks<'i>(rd: &mut BufReader<'i>) -> Result<Ev<'i>, Error> {
     })
 }
 
-/// Compares the derived [Sample] with [sample_with_checks]: the same result, and on success the same reader.
+/// Compares the derived [Sample] with [`sample_with_checks`]: the same result, and on success the same reader.
 fn check_sample(rd: BufReader<'_>, what: &str) -> Result<Sample, Error> {
     let mut rd_old = rd;
     let old = sample_with_checks(&mut rd_old);
@@ -286,7 +286,7 @@ fn derived_struct() {
     }
 }
 
-/// [check_sample] for [Mixed] and [Ev].
+/// [`check_sample`] for [Mixed] and [Ev].
 fn check_mixed(rd: BufReader<'_>, what: &str) {
     let (mut rd_old, mut rd_new) = (rd, rd);
     let old = mixed_with_checks(&mut rd_old);

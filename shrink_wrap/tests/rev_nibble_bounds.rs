@@ -82,20 +82,20 @@ enum Item {
 }
 
 impl Item {
-    fn random(rng: &mut Rng) -> Item {
+    fn random(rng: &mut Rng) -> Self {
         match rng.below(8) {
-            0 => Item::Bool(rng.below(2) == 1),
+            0 => Self::Bool(rng.below(2) == 1),
             1 => {
                 let bits = 1 + rng.below(64) as u8;
-                Item::Un(bits, rng.next() >> (64 - bits))
+                Self::Un(bits, rng.next() >> (64 - bits))
             }
-            2 => Item::Nib(rng.below(16) as u8),
-            3 => Item::U8(rng.next() as u8),
-            4 => Item::U16(rng.next() as u16),
-            5 => Item::U32(rng.next() as u32),
-            6 => Item::UNib32(rng.next() as u32 >> rng.below(32)),
+            2 => Self::Nib(rng.below(16) as u8),
+            3 => Self::U8(rng.next() as u8),
+            4 => Self::U16(rng.next() as u16),
+            5 => Self::U32(rng.next() as u32),
+            6 => Self::UNib32(rng.next() as u32 >> rng.below(32)),
             // lengths of 1 to 4 nibbles
-            _ => Item::Bytes(
+            _ => Self::Bytes(
                 (0..[0, 1, 7, 8, 63, 64, 300][rng.below(7) as usize])
                     .map(|i| i as u8)
                     .collect(),
@@ -105,27 +105,27 @@ impl Item {
 
     fn write(&self, wr: &mut BufWriter) -> Result<(), Error> {
         match self {
-            Item::Bool(v) => wr.write_bool(*v),
-            Item::Un(bits, v) => wr.write_un64(*bits, *v),
-            Item::Nib(v) => wr.write_nib(Nibble::new_masked(*v)),
-            Item::U8(v) => wr.write_u8(*v),
-            Item::U16(v) => wr.write_u16(*v),
-            Item::U32(v) => wr.write_u32(*v),
-            Item::UNib32(v) => wr.write_unib32(*v),
-            Item::Bytes(v) => wr.write_bytes(v),
+            Self::Bool(v) => wr.write_bool(*v),
+            Self::Un(bits, v) => wr.write_un64(*bits, *v),
+            Self::Nib(v) => wr.write_nib(Nibble::new_masked(*v)),
+            Self::U8(v) => wr.write_u8(*v),
+            Self::U16(v) => wr.write_u16(*v),
+            Self::U32(v) => wr.write_u32(*v),
+            Self::UNib32(v) => wr.write_unib32(*v),
+            Self::Bytes(v) => wr.write_bytes(v),
         }
     }
 
-    fn read(&self, rd: &mut BufReader) -> Result<Item, Error> {
+    fn read(&self, rd: &mut BufReader) -> Result<Self, Error> {
         Ok(match self {
-            Item::Bool(_) => Item::Bool(rd.read_bool()?),
-            Item::Un(bits, _) => Item::Un(*bits, rd.read_un64(*bits)?),
-            Item::Nib(_) => Item::Nib(rd.read_nib()?.value()),
-            Item::U8(_) => Item::U8(rd.read_u8()?),
-            Item::U16(_) => Item::U16(rd.read_u16()?),
-            Item::U32(_) => Item::U32(rd.read_u32()?),
-            Item::UNib32(_) => Item::UNib32(rd.read_unib32()?),
-            Item::Bytes(_) => Item::Bytes(rd.read_bytes()?.to_vec()),
+            Self::Bool(_) => Self::Bool(rd.read_bool()?),
+            Self::Un(bits, _) => Self::Un(*bits, rd.read_un64(*bits)?),
+            Self::Nib(_) => Self::Nib(rd.read_nib()?.value()),
+            Self::U8(_) => Self::U8(rd.read_u8()?),
+            Self::U16(_) => Self::U16(rd.read_u16()?),
+            Self::U32(_) => Self::U32(rd.read_u32()?),
+            Self::UNib32(_) => Self::UNib32(rd.read_unib32()?),
+            Self::Bytes(_) => Self::Bytes(rd.read_bytes()?.to_vec()),
         })
     }
 }
@@ -139,7 +139,7 @@ fn every_written_message_reads_back() {
     let mut big = vec![0u8; 4096];
     let mut small = vec![0u8; 4096];
     for round in 0..5_000 {
-        let items: Vec<Item> = (0..1 + rng.below(12))
+        let items: Vec<Item> = (0..=rng.below(12))
             .map(|_| Item::random(&mut rng))
             .collect();
         let mut wr = BufWriter::new(&mut big);
@@ -164,7 +164,7 @@ fn every_written_message_reads_back() {
             let written = items
                 .iter()
                 .try_for_each(|item| item.write(&mut wr))
-                .and_then(|_| wr.finish().map(|b| b.to_vec()));
+                .and_then(|()| wr.finish().map(|b| b.to_vec()));
             if let Ok(written) = written {
                 assert_eq!(
                     written, bytes,
@@ -180,7 +180,7 @@ fn every_written_message_reads_back() {
 fn owned_writer_messages_read_back() {
     let mut rng = Rng(0x5357_3430_0000_0002);
     for _ in 0..2_000 {
-        let items: Vec<Item> = (0..1 + rng.below(12))
+        let items: Vec<Item> = (0..=rng.below(12))
             .map(|_| Item::random(&mut rng))
             .collect();
         let mut wr = BufWriterOwned::new();

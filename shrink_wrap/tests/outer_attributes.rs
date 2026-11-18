@@ -45,7 +45,7 @@ pub enum Plain {
 
 /// `allow` reaches the type: `Unused` is never read, and the file denies dead code.
 #[derive_shrink_wrap(borrowed, final_structure)]
-#[allow(
+#[expect(
     dead_code,
     reason = "what the test checks: the attribute reaches the generated type"
 )]

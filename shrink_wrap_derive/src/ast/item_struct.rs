@@ -38,16 +38,16 @@ pub(crate) enum StructKind {
 impl StructKind {
     pub(crate) fn from_syn(fields: &syn::Fields) -> Self {
         match fields {
-            syn::Fields::Named(_) => StructKind::Named,
-            syn::Fields::Unnamed(_) => StructKind::Tuple,
-            syn::Fields::Unit => StructKind::Unit,
+            syn::Fields::Named(_) => Self::Named,
+            syn::Fields::Unnamed(_) => Self::Tuple,
+            syn::Fields::Unit => Self::Unit,
         }
     }
 
     /// How generated code reaches field `ident`: `ident` in a named struct, its position (`_1` is `1`) in a tuple
     /// struct, for `self.#member` and `Self { #member: .. }`.
     pub(crate) fn member(self, ident: &Ident) -> TokenStream {
-        if self == StructKind::Tuple
+        if self == Self::Tuple
             && let Some(idx) = ident
                 .to_string()
                 .strip_prefix('_')
@@ -62,12 +62,11 @@ impl StructKind {
     /// `ident` (shorthand) in a named struct, `1: _1` in a tuple struct, for `Self { .. }` from locals named after
     /// the fields.
     pub(crate) fn field_init(self, ident: &Ident) -> TokenStream {
-        match self {
-            StructKind::Tuple => {
-                let member = self.member(ident);
-                quote! { #member: #ident }
-            }
-            _ => quote! { #ident },
+        if self == Self::Tuple {
+            let member = self.member(ident);
+            quote! { #member: #ident }
+        } else {
+            quote! { #ident }
         }
     }
 }

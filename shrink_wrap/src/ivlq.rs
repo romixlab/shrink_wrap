@@ -1,4 +1,4 @@
-//! Signed byte-based variable length numbers (SW-82): [IVlq32] and [IVlq64], zigzag over [UVlq32] and [UVlq64].
+//! Signed byte-based variable length numbers (SW-82): [`IVlq32`] and [`IVlq64`], zigzag over [`UVlq32`] and [`UVlq64`].
 
 use core::fmt::{Debug, Display, Formatter};
 

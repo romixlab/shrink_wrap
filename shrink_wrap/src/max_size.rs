@@ -2,11 +2,11 @@
 //!
 //! [`SerializeShrinkWrap::MAX_SIZE`] is `Some` for a type whose every part is
 //! bounded: numbers, `bool`, arrays, tuples, `Option`, `Result`, structs and enums made of them, and lists and strings
-//! with a maximum length ([MaxLen](crate::MaxLen)). It is `None` for anything that can grow without a limit: a plain
+//! with a maximum length ([`MaxLen`](crate::MaxLen)). It is `None` for anything that can grow without a limit: a plain
 //! `Vec`, `RefVec`, `String` or `&str`, `RefBox`, compressed sequences, `TailBytes`, and every type that does not set
 //! it.
 //!
-//! [MaxSize::buffer_len] is then the length of a buffer that `to_ww_bytes` of any value of the type always fits into:
+//! [`MaxSize::buffer_len`] is then the length of a buffer that `to_ww_bytes` of any value of the type always fits into:
 //! a bound of the serialized size, and also of the space the writer needs while serializing (lengths are kept as
 //! `u16` at the back of the buffer until they are encoded, as `u32` with the `len32` feature). It is an upper bound, not
 //! the exact worst case: every
@@ -39,8 +39,8 @@ use crate::{ElementSize, SerializeShrinkWrap};
 ///
 /// Built with its `const fn`s, the way `ELEMENT_SIZE` is: [bits](Self::bits), [bytes](Self::bytes) and
 /// [nibbles](Self::nibbles) for plain values, [seq](Self::seq) for fields one after another,
-/// [one_of](Self::one_of) for enum variants, [repeat](Self::repeat) for arrays, [list](Self::list) for a bounded
-/// list and [unsized_value](Self::unsized_value) for an `Unsized` value written as a field.
+/// [`one_of`](Self::one_of) for enum variants, [repeat](Self::repeat) for arrays, [list](Self::list) for a bounded
+/// list and [`unsized_value`](Self::unsized_value) for an `Unsized` value written as a field.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MaxSize {
@@ -59,7 +59,7 @@ pub struct MaxSize {
 
 impl MaxSize {
     /// Nothing at all, `()`.
-    pub const ZERO: MaxSize = MaxSize {
+    pub const ZERO: Self = Self {
         bits: 0,
         len_nibbles: 0,
         align: 1,
@@ -67,8 +67,8 @@ impl MaxSize {
     };
 
     /// `n` bits, bit-aligned: `bool`, `U1`..`U64`, `I2`..`I64`.
-    pub const fn bits(n: usize) -> MaxSize {
-        MaxSize {
+    pub const fn bits(n: usize) -> Self {
+        Self {
             bits: n,
             len_nibbles: 0,
             align: 1,
@@ -77,8 +77,8 @@ impl MaxSize {
     }
 
     /// `n` nibbles, nibble-aligned: `Nibble`, `UNib32`.
-    pub const fn nibbles(n: usize) -> MaxSize {
-        MaxSize {
+    pub const fn nibbles(n: usize) -> Self {
+        Self {
             bits: n * 4,
             len_nibbles: 0,
             align: 4,
@@ -87,8 +87,8 @@ impl MaxSize {
     }
 
     /// `n` bytes, byte-aligned: `u8`..`u128`, `i8`..`i128`, `f32`, `f64`, `UVlq32`.
-    pub const fn bytes(n: usize) -> MaxSize {
-        MaxSize {
+    pub const fn bytes(n: usize) -> Self {
+        Self {
             bits: n * 8,
             len_nibbles: 0,
             align: 8,
@@ -97,8 +97,8 @@ impl MaxSize {
     }
 
     /// A length pushed to the back of the buffer, `max` the largest value it can have.
-    pub const fn len_slot(max: usize) -> MaxSize {
-        MaxSize {
+    pub const fn len_slot(max: usize) -> Self {
+        Self {
             bits: 0,
             len_nibbles: len_slot_nibbles(max),
             align: 1,
@@ -112,8 +112,8 @@ impl MaxSize {
         self.finished_bits().div_ceil(8)
     }
 
-    /// [buffer_len](Self::buffer_len) of a `MAX_SIZE`, `None` stays `None`.
-    pub const fn buffer_len_of(max_size: Option<MaxSize>) -> Option<usize> {
+    /// [`buffer_len`](Self::buffer_len) of a `MAX_SIZE`, `None` stays `None`.
+    pub const fn buffer_len_of(max_size: Option<Self>) -> Option<usize> {
         match max_size {
             Some(max_size) => Some(max_size.buffer_len()),
             None => None,
@@ -176,18 +176,18 @@ const fn padding(end_align: u8, align: u8) -> usize {
 /// Composition, on `Option<MaxSize>` as `MAX_SIZE` is: `None` (unbounded) in, `None` out.
 impl MaxSize {
     /// `a` followed by `b`: struct fields, a flag and the value behind it. `None` if either is unbounded.
-    pub const fn seq(a: Option<MaxSize>, b: Option<MaxSize>) -> Option<MaxSize> {
+    pub const fn seq(a: Option<Self>, b: Option<Self>) -> Option<Self> {
         let (Some(a), Some(b)) = (a, b) else {
             return None;
         };
         let len_nibbles = a.len_nibbles + b.len_nibbles;
         if b.is_empty() {
-            return Some(MaxSize { len_nibbles, ..a });
+            return Some(Self { len_nibbles, ..a });
         }
         if a.is_empty() {
-            return Some(MaxSize { len_nibbles, ..b });
+            return Some(Self { len_nibbles, ..b });
         }
-        Some(MaxSize {
+        Some(Self {
             bits: a.bits + padding(a.end_align, b.align) + b.bits,
             len_nibbles,
             align: a.align,
@@ -196,19 +196,19 @@ impl MaxSize {
     }
 
     /// Either `a` or `b`, both starting at the same place: enum variants, `Ok` or `Err`. `None` if either is unbounded.
-    pub const fn one_of(a: Option<MaxSize>, b: Option<MaxSize>) -> Option<MaxSize> {
+    pub const fn one_of(a: Option<Self>, b: Option<Self>) -> Option<Self> {
         let (Some(a), Some(b)) = (a, b) else {
             return None;
         };
         let len_nibbles = max(a.len_nibbles, b.len_nibbles);
         if a.is_empty() && b.is_empty() {
-            return Some(MaxSize { len_nibbles, ..a });
+            return Some(Self { len_nibbles, ..a });
         }
         // padded to the larger alignment in front, so an empty one ends there
         let align = max_u8(a.align, b.align);
         let end_a = if a.is_empty() { align } else { a.end_align };
         let end_b = if b.is_empty() { align } else { b.end_align };
-        Some(MaxSize {
+        Some(Self {
             bits: max(a.bits, b.bits),
             len_nibbles,
             align,
@@ -217,20 +217,20 @@ impl MaxSize {
     }
 
     /// `count` values one after another: an array `[T; count]`, the elements of a list.
-    pub const fn repeat(a: Option<MaxSize>, count: usize) -> Option<MaxSize> {
+    pub const fn repeat(a: Option<Self>, count: usize) -> Option<Self> {
         let Some(a) = a else {
             return None;
         };
         if count == 0 {
-            return Some(MaxSize::ZERO);
+            return Some(Self::ZERO);
         }
         if a.is_empty() {
-            return Some(MaxSize {
+            return Some(Self {
                 len_nibbles: a.len_nibbles * count,
                 ..a
             });
         }
-        Some(MaxSize {
+        Some(Self {
             bits: a.bits * count + padding(a.end_align, a.align) * (count - 1),
             len_nibbles: a.len_nibbles * count,
             align: a.align,
@@ -239,21 +239,18 @@ impl MaxSize {
     }
 
     /// A list of at most `max_len` elements of size `item`: its length, then the elements.
-    pub const fn list(item: Option<MaxSize>, max_len: usize) -> Option<MaxSize> {
-        MaxSize::seq(
-            Some(MaxSize::len_slot(max_len)),
-            MaxSize::repeat(item, max_len),
-        )
+    pub const fn list(item: Option<Self>, max_len: usize) -> Option<Self> {
+        Self::seq(Some(Self::len_slot(max_len)), Self::repeat(item, max_len))
     }
 
-    /// An `Unsized` value of size `inner` written as a field ([BufWriter::write](crate::BufWriter::write)): byte-aligned,
+    /// An `Unsized` value of size `inner` written as a field ([`BufWriter::write`](crate::BufWriter::write)): byte-aligned,
     /// its own lengths encoded at its end, and its size in bytes pushed to the parent's lengths.
-    pub const fn unsized_value(inner: Option<MaxSize>) -> Option<MaxSize> {
+    pub const fn unsized_value(inner: Option<Self>) -> Option<Self> {
         let Some(inner) = inner else {
             return None;
         };
         let bytes = inner.buffer_len();
-        Some(MaxSize {
+        Some(Self {
             bits: bytes * 8,
             len_nibbles: len_slot_nibbles(bytes),
             align: 8,
@@ -261,18 +258,18 @@ impl MaxSize {
         })
     }
 
-    /// `MAX_SIZE` of `T` written as a field with [BufWriter::write](crate::BufWriter::write): an `Unsized` `T` gets its
-    /// size slot, see [unsized_value](Self::unsized_value). What a `MAX_SIZE` of a type is made of.
-    pub const fn of_write<T: SerializeShrinkWrap + ?Sized>() -> Option<MaxSize> {
+    /// `MAX_SIZE` of `T` written as a field with [`BufWriter::write`](crate::BufWriter::write): an `Unsized` `T` gets its
+    /// size slot, see [`unsized_value`](Self::unsized_value). What a `MAX_SIZE` of a type is made of.
+    pub const fn of_write<T: SerializeShrinkWrap + ?Sized>() -> Option<Self> {
         if matches!(T::ELEMENT_SIZE, ElementSize::Unsized) {
-            MaxSize::unsized_value(T::MAX_SIZE)
+            Self::unsized_value(T::MAX_SIZE)
         } else {
             T::MAX_SIZE
         }
     }
 }
 
-/// [MaxSize::of_write], as a free function next to [write_pushes_len](crate::write_pushes_len).
+/// [`MaxSize::of_write`], as a free function next to [`write_pushes_len`](crate::write_pushes_len).
 pub const fn write_max_size<T: SerializeShrinkWrap + ?Sized>() -> Option<MaxSize> {
     MaxSize::of_write::<T>()
 }

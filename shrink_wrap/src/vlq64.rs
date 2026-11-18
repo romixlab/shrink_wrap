@@ -6,10 +6,11 @@ use crate::{
 };
 
 /// Variable length encoded u64 based on bytes (VLQ, big endian).
+///
 /// Each byte carries 1 bit (MSB) indicating whether there are more bytes + 7 bits from the original number,
 /// most significant group first. Takes from 1 to 10 bytes, alignment of 1 byte is used.
 ///
-/// Same encoding as [UVlq32](crate::UVlq32), just wide enough for a full `u64` (10 groups of 7 bits cover 70 bits,
+/// Same encoding as [`UVlq32`](crate::UVlq32), just wide enough for a full `u64` (10 groups of 7 bits cover 70 bits,
 /// so every `u64` value fits with room for non-canonical leading `0x80` padding groups, same as `UVlq32`).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -56,7 +57,7 @@ impl UVlq64 {
             }
             num = (num << 7) | (byte & 0x7f) as u64;
             if byte & ONE_MORE_BYTE == 0 {
-                return Ok(UVlq64(num));
+                return Ok(Self(num));
             }
         }
         // 10th byte should be the last for u64
@@ -87,7 +88,7 @@ impl<'i> DeserializeShrinkWrap<'i> for UVlq64 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        UVlq64::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -95,7 +96,7 @@ impl DeserializeShrinkWrapOwned for UVlq64 {
     const ELEMENT_SIZE: ElementSize = ElementSize::SelfDescribing;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        UVlq64::read_forward(rd)
+        Self::read_forward(rd)
     }
 }
 
@@ -107,7 +108,7 @@ impl From<UVlq64> for u64 {
 
 impl From<u64> for UVlq64 {
     fn from(num: u64) -> Self {
-        UVlq64(num)
+        Self(num)
     }
 }
 

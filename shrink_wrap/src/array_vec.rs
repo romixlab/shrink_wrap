@@ -1,4 +1,4 @@
-//! [ArrayVec]: an owned, no-alloc list with a fixed, compile-time capacity (SW-57).
+//! [`ArrayVec`]: an owned, no-alloc list with a fixed, compile-time capacity (SW-57).
 
 use crate::max_size::{MaxSize, write_max_size};
 use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
@@ -13,7 +13,7 @@ use crate::{BufWriterOwned, DeserializeShrinkWrapOwned, SerializeShrinkWrapOwned
 /// `value_on_changed` field in a `no_alloc` server, a settings value): same bytes on the wire as `Vec<T>`, so a
 /// field can change between them without changing a single byte.
 ///
-/// Serializing one with more than `N` elements fails with [Error::MaxLenExceeded], and so does deserializing one,
+/// Serializing one with more than `N` elements fails with [`Error::MaxLenExceeded`], and so does deserializing one,
 /// and [push](Self::push) too: a value is never cut.
 ///
 /// ```
@@ -52,7 +52,7 @@ impl<T, const N: usize> ArrayVec<T, N> {
         self.len == 0
     }
 
-    /// Appends `value`, [Error::MaxLenExceeded] and no change if the list is already at capacity.
+    /// Appends `value`, [`Error::MaxLenExceeded`] and no change if the list is already at capacity.
     pub fn push(&mut self, value: T) -> Result<(), Error> {
         if self.len >= N {
             return Err(Error::MaxLenExceeded);
@@ -130,7 +130,7 @@ impl<T: Eq, const N: usize> Eq for ArrayVec<T, N> {}
 #[cfg(feature = "defmt")]
 impl<T: defmt::Format, const N: usize> defmt::Format for ArrayVec<T, N> {
     fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{=[?]}", self.as_slice())
+        defmt::write!(fmt, "{=[?]}", self.as_slice());
     }
 }
 

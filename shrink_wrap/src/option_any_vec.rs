@@ -1,4 +1,4 @@
-//! [OptionAnyVec]: a zero-copy, no_std and no-alloc array of heterogeneous `Option<Any>` slots (SW-55).
+//! [`OptionAnyVec`]: a zero-copy, `no_std` and no-alloc array of heterogeneous `Option<Any>` slots (SW-55).
 //!
 //! Layout, see `docs/shrink_wrap.md` for the details and byte-verified examples:
 //!
@@ -12,8 +12,8 @@
 //! | `0`         | all        | `n: UNib32`: slots `0..n` present                                              |
 //! | `1`         | dense      | `len: UNib32`, then `len` bits, one per slot `0..len`                          |
 //! | `2`         | two-level  | `groups: UNib32`, a bit per group of 8 slots, then 8 bits per non-empty group  |
-//! | `3`         | index list | `count: UNib32`, then `count` UNib32: the first slot, then `slot - prev - 1`   |
-//! | `4..=15`    | reserved   | a reader fails with [Error::EnumFutureVersionOrMalformedData]                  |
+//! | `3`         | index list | `count: UNib32`, then `count` `UNib32`: the first slot, then `slot - prev - 1`   |
+//! | `4..=15`    | reserved   | a reader fails with [`Error::EnumFutureVersionOrMalformedData`]                  |
 //!
 //! No present slot at all is no bytes. The header describes the writer's present set on its own, without the
 //! slot count of either side: a reader that knows fewer slots stops after its last one (slots are only ever
@@ -25,16 +25,16 @@ use crate::traits::ElementSize;
 use crate::{BufReader, BufWriter, DeserializeShrinkWrap, Error, SerializeShrinkWrap};
 use core::fmt::{Debug, Formatter};
 
-/// Zero-copy, no_std and no-alloc array of `Option<Any>` slots.
+/// Zero-copy, `no_std` and no-alloc array of `Option<Any>` slots.
 ///
-/// Each slot is absent or holds a value of any type that implements [SerializeShrinkWrap] /
-/// [DeserializeShrinkWrap] (numbers, structs, `Vec`, `String`, enums, a nested `OptionAnyVec`), slots don't have
+/// Each slot is absent or holds a value of any type that implements [`SerializeShrinkWrap`] /
+/// [`DeserializeShrinkWrap`] (numbers, structs, `Vec`, `String`, enums, a nested `OptionAnyVec`), slots don't have
 /// to be of the same type. Only the present values take space, packed in slot order after a presence header (see
-/// the [module docs](self)). Like [EitherAnyVec](crate::either_any_vec::EitherAnyVec) this is low-level machinery:
+/// the [module docs](self)). Like [`EitherAnyVec`](crate::either_any_vec::EitherAnyVec) this is low-level machinery:
 /// the type of each slot is known to both sides, not stored.
 ///
-/// Write with [OptionAnyVecWriter] (own buffer) or [OptionAnyVecBuilder] (in place, into a parent's
-/// [BufWriter]), read with [iter](Self::iter). The header is checked when the vec is read
+/// Write with [`OptionAnyVecWriter`] (own buffer) or [`OptionAnyVecBuilder`] (in place, into a parent's
+/// [`BufWriter`]), read with [iter](Self::iter). The header is checked when the vec is read
 /// ([new](Self::new) or as a field), a malformed one is an [Error].
 ///
 /// The type is `Unsized`: as a field of a struct, or a slot of another `OptionAnyVec`, its size is stored.
@@ -60,19 +60,19 @@ pub enum PresenceMode {
     IndexList = 3,
 }
 
-/// The present slot ids of an [OptionAnyVec], in order, from its header only.
+/// The present slot ids of an [`OptionAnyVec`], in order, from its header only.
 #[derive(Clone)]
 pub struct PresentSlots<'i> {
     header: Header<'i>,
-    /// Dense, All: next slot to look at; TwoLevel: next group to look at; IndexList: next slot id at least
+    /// Dense, All: next slot to look at; `TwoLevel`: next group to look at; `IndexList`: next slot id at least
     next: u32,
-    /// TwoLevel: the bits of the current group not returned yet
+    /// `TwoLevel`: the bits of the current group not returned yet
     group_byte: u8,
-    /// TwoLevel: the first slot of the current group
+    /// `TwoLevel`: the first slot of the current group
     group_base: u32,
 }
 
-/// Reads the slots of an [OptionAnyVec] one after another, see [OptionAnyVec::iter].
+/// Reads the slots of an [`OptionAnyVec`] one after another, see [`OptionAnyVec::iter`].
 pub struct OptionAnyVecIter<'i> {
     present: PresentSlots<'i>,
     upcoming: Option<u32>,
@@ -107,7 +107,7 @@ const MODE_TWO_LEVEL: u8 = PresenceMode::TwoLevel as u8;
 const MODE_INDEX_LIST: u8 = PresenceMode::IndexList as u8;
 
 impl<'i> OptionAnyVec<'i> {
-    /// Parse the header of a vec that takes all of `data` (as written by [OptionAnyVecWriter::finish_and_take]).
+    /// Parse the header of a vec that takes all of `data` (as written by [`OptionAnyVecWriter::finish_and_take`]).
     pub fn new(data: &'i [u8]) -> Result<Self, Error> {
         Self::read_from(BufReader::new(data), data)
     }
@@ -156,7 +156,7 @@ impl<'i> OptionAnyVec<'i> {
     }
 
     /// Read the slots in order, starting at slot 0.
-    /// Bits the presence header takes at the start of [as_bytes](Self::as_bytes): tools show it apart from the values.
+    /// Bits the presence header takes at the start of [`as_bytes`](Self::as_bytes): tools show it apart from the values.
     pub fn header_bits(&self) -> usize {
         self.values.bit_pos()
     }
@@ -190,7 +190,7 @@ impl Eq for OptionAnyVec<'_> {}
 #[cfg(feature = "defmt")]
 impl defmt::Format for OptionAnyVec<'_> {
     fn format(&self, f: defmt::Formatter) {
-        defmt::write!(f, "OptionAnyVec({=[u8]:x})", self.data)
+        defmt::write!(f, "OptionAnyVec({=[u8]:x})", self.data);
     }
 }
 
@@ -365,7 +365,7 @@ impl<'i> OptionAnyVecIter<'i> {
         }
     }
 
-    /// [next](Self::next) for [DeserializeShrinkWrapOwned] types.
+    /// [next](Self::next) for [`DeserializeShrinkWrapOwned`] types.
     #[cfg(feature = "std")]
     pub fn next_owned<T: DeserializeShrinkWrapOwned>(&mut self) -> Result<Option<T>, Error> {
         if self.advance() {
@@ -376,7 +376,7 @@ impl<'i> OptionAnyVecIter<'i> {
     }
 
     /// Read slot `slot`, at or after [slot](Self::slot): `None` when it is absent. The slots before it must be
-    /// absent, [Error::OptionAnyVecUnknownSlot] otherwise, as their values can't be skipped without their types:
+    /// absent, [`Error::OptionAnyVecUnknownSlot`] otherwise, as their values can't be skipped without their types:
     /// for a reader that knows a set of slots with gaps, as a `sparse` struct with `#[slot = N]` (DER-13).
     pub fn read_slot<T: DeserializeShrinkWrap<'i>>(
         &mut self,
@@ -386,7 +386,7 @@ impl<'i> OptionAnyVecIter<'i> {
         self.next()
     }
 
-    /// [read_slot](Self::read_slot) for [DeserializeShrinkWrapOwned] types.
+    /// [`read_slot`](Self::read_slot) for [`DeserializeShrinkWrapOwned`] types.
     #[cfg(feature = "std")]
     pub fn read_slot_owned<T: DeserializeShrinkWrapOwned>(
         &mut self,
@@ -402,7 +402,7 @@ impl<'i> OptionAnyVecIter<'i> {
         &self.rd
     }
 
-    /// [read_slot](Self::read_slot) with a closure given the reader (bounded the way [BufReader::read] bounds an
+    /// [`read_slot`](Self::read_slot) with a closure given the reader (bounded the way [`BufReader::read`] bounds an
     /// `Unsized` type) instead of a compile-time `T`: for a value deserialized according to a runtime type
     /// descriptor (TOOL-11, a dynamic client decoding a `sparse` struct from introspection alone). The closure's
     /// error type wraps [Error] (`impl From<Error>`), so callers can return their own richer error.
@@ -477,11 +477,11 @@ impl<'i> DeserializeShrinkWrap<'i> for OptionAnyVec<'i> {
     }
 }
 
-/// no_std and no-alloc writer of an [OptionAnyVec] in place, into a [BufWriter] that may hold other data too.
+/// `no_std` and no-alloc writer of an [`OptionAnyVec`] in place, into a [`BufWriter`] that may hold other data too.
 ///
-/// The present slots are given up front, in increasing order (an iterator of slot ids, e.g. [SetBits] over a
+/// The present slots are given up front, in increasing order (an iterator of slot ids, e.g. [`SetBits`] over a
 /// bitset): the header is written first, then each present slot's value in order, with [write](Self::write) or
-/// [start_slot](Self::start_slot) and a write of your own. [finish](Self::finish) checks that every present slot
+/// [`start_slot`](Self::start_slot) and a write of your own. [finish](Self::finish) checks that every present slot
 /// got its value.
 pub struct OptionAnyVecBuilder<I> {
     pending: I,
@@ -492,7 +492,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
     /// Write the header for the `present` slots with the smallest mode, at the current position of `wr`.
     ///
     /// For a vec that is the root of `wr` (all of the data written). For a field of a struct or a slot of another
-    /// `OptionAnyVec`, use [new_nested](Self::new_nested).
+    /// `OptionAnyVec`, use [`new_nested`](Self::new_nested).
     pub fn new<P: IntoIterator<IntoIter = I>>(
         wr: &mut BufWriter<'_>,
         present: P,
@@ -500,8 +500,8 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
         Self::start(wr, present.into_iter(), None, None)
     }
 
-    /// [new](Self::new) with the given header mode instead of the smallest one, [PresenceMode::All] only works
-    /// when the slots `0..n` are present ([Error::OptionAnyVecWrongSlot] otherwise).
+    /// [new](Self::new) with the given header mode instead of the smallest one, [`PresenceMode::All`] only works
+    /// when the slots `0..n` are present ([`Error::OptionAnyVecWrongSlot`] otherwise).
     pub fn new_with_mode<P: IntoIterator<IntoIter = I>>(
         wr: &mut BufWriter<'_>,
         present: P,
@@ -511,7 +511,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
     }
 
     /// [new](Self::new) for a vec that is a field of a struct or the value of a slot of another `OptionAnyVec`:
-    /// its size is stored as for every `Unsized` value (what [BufWriter::write] does), [finish](Self::finish)
+    /// its size is stored as for every `Unsized` value (what [`BufWriter::write`] does), [finish](Self::finish)
     /// fills it in.
     pub fn new_nested<P: IntoIterator<IntoIter = I>>(
         wr: &mut BufWriter<'_>,
@@ -538,7 +538,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
             };
             write_header(wr, present.clone(), &stats, mode)?;
         }
-        Ok(OptionAnyVecBuilder {
+        Ok(Self {
             pending: present,
             size,
         })
@@ -550,7 +550,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
     }
 
     /// Write the value of present `slot`, which must be the [next one](Self::next_slot)
-    /// ([Error::OptionAnyVecWrongSlot] otherwise).
+    /// ([`Error::OptionAnyVecWrongSlot`] otherwise).
     pub fn write<T: SerializeShrinkWrap>(
         &mut self,
         slot: u32,
@@ -562,8 +562,8 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
     }
 
     /// Mark present `slot` as written, for a value written into `wr` by other means. It must be written as
-    /// [BufWriter::write] would write it: an `Unsized` value with its size, e.g. a nested vec through
-    /// [new_nested](Self::new_nested).
+    /// [`BufWriter::write`] would write it: an `Unsized` value with its size, e.g. a nested vec through
+    /// [`new_nested`](Self::new_nested).
     pub fn start_slot(&mut self, slot: u32) -> Result<(), Error> {
         if self.pending.next() == Some(slot) {
             Ok(())
@@ -584,8 +584,8 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilder<I> {
     }
 }
 
-/// [OptionAnyVecBuilder] for a [BufWriterOwned](crate::BufWriterOwned), writing
-/// [SerializeShrinkWrapOwned](crate::SerializeShrinkWrapOwned) values: same bytes.
+/// [`OptionAnyVecBuilder`] for a [`BufWriterOwned`](crate::BufWriterOwned), writing
+/// [`SerializeShrinkWrapOwned`](crate::SerializeShrinkWrapOwned) values: same bytes.
 #[cfg(feature = "std")]
 pub struct OptionAnyVecBuilderOwned<I> {
     pending: I,
@@ -594,7 +594,7 @@ pub struct OptionAnyVecBuilderOwned<I> {
 
 #[cfg(feature = "std")]
 impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
-    /// See [OptionAnyVecBuilder::new].
+    /// See [`OptionAnyVecBuilder::new`].
     pub fn new<P: IntoIterator<IntoIter = I>>(
         wr: &mut crate::BufWriterOwned,
         present: P,
@@ -602,7 +602,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
         Self::start(wr, present.into_iter(), None)
     }
 
-    /// See [OptionAnyVecBuilder::new_nested].
+    /// See [`OptionAnyVecBuilder::new_nested`].
     pub fn new_nested<P: IntoIterator<IntoIter = I>>(
         wr: &mut crate::BufWriterOwned,
         present: P,
@@ -620,7 +620,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
         if stats.count > 0 {
             write_header(wr, present.clone(), &stats, stats.smallest_mode())?;
         }
-        Ok(OptionAnyVecBuilderOwned {
+        Ok(Self {
             pending: present,
             size,
         })
@@ -631,7 +631,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
         self.pending.clone().next()
     }
 
-    /// See [OptionAnyVecBuilder::write].
+    /// See [`OptionAnyVecBuilder::write`].
     pub fn write<T: crate::SerializeShrinkWrapOwned>(
         &mut self,
         slot: u32,
@@ -642,7 +642,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
         wr.write(value)
     }
 
-    /// See [OptionAnyVecBuilder::start_slot].
+    /// See [`OptionAnyVecBuilder::start_slot`].
     pub fn start_slot(&mut self, slot: u32) -> Result<(), Error> {
         if self.pending.next() == Some(slot) {
             Ok(())
@@ -651,7 +651,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
         }
     }
 
-    /// See [OptionAnyVecBuilder::finish].
+    /// See [`OptionAnyVecBuilder::finish`].
     pub fn finish(mut self, wr: &mut crate::BufWriterOwned) -> Result<(), Error> {
         if self.pending.next().is_some() {
             return Err(Error::OptionAnyVecWrongSlot);
@@ -663,7 +663,7 @@ impl<I: Iterator<Item = u32> + Clone> OptionAnyVecBuilderOwned<I> {
     }
 }
 
-/// no_std and no-alloc writer of an [OptionAnyVec] into a buffer of its own, see [OptionAnyVecBuilder].
+/// `no_std` and no-alloc writer of an [`OptionAnyVec`] into a buffer of its own, see [`OptionAnyVecBuilder`].
 pub struct OptionAnyVecWriter<'i, I> {
     wr: BufWriter<'i>,
     builder: OptionAnyVecBuilder<I>,
@@ -680,7 +680,7 @@ impl<'i, I: Iterator<Item = u32> + Clone> OptionAnyVecWriter<'i, I> {
         Ok(Self { wr, builder })
     }
 
-    /// [new](Self::new) with the given header mode, see [OptionAnyVecBuilder::new_with_mode].
+    /// [new](Self::new) with the given header mode, see [`OptionAnyVecBuilder::new_with_mode`].
     pub fn new_with_mode<P: IntoIterator<IntoIter = I>>(
         buf: &'i mut [u8],
         present: P,
@@ -709,7 +709,7 @@ impl<'i, I: Iterator<Item = u32> + Clone> OptionAnyVecWriter<'i, I> {
 }
 
 /// Increasing slot ids of the set bits of a bitset, bit 0 of `words[0]` is slot 0: a present set for
-/// [OptionAnyVecBuilder].
+/// [`OptionAnyVecBuilder`].
 #[derive(Clone)]
 pub struct SetBits<'a> {
     words: &'a [u32],
@@ -753,7 +753,7 @@ struct SlotStats {
 
 impl SlotStats {
     fn scan(present: impl Iterator<Item = u32>) -> Result<Self, Error> {
-        let mut stats = SlotStats::default();
+        let mut stats = Self::default();
         let mut last_group = None;
         for slot in present {
             // ids increase and stay below u32::MAX, so that `len` fits
@@ -790,7 +790,7 @@ impl SlotStats {
         }
     }
 
-    /// The mode with the fewest header bits, the first one of All, Dense, TwoLevel, IndexList on a tie
+    /// The mode with the fewest header bits, the first one of All, Dense, `TwoLevel`, `IndexList` on a tie
     fn smallest_mode(&self) -> PresenceMode {
         let mut best = PresenceMode::Dense;
         if self.is_all() {
@@ -809,7 +809,7 @@ fn unib32_nibbles(val: u32) -> u32 {
     crate::nib32::UNib32(val).len_nibbles() as u32
 }
 
-/// What the header needs of [BufWriter] and [BufWriterOwned](crate::BufWriterOwned)
+/// What the header needs of [`BufWriter`] and [`BufWriterOwned`](crate::BufWriterOwned)
 trait HeaderOut {
     fn nib(&mut self, val: u8) -> Result<(), Error>;
     fn unib32(&mut self, val: u32) -> Result<(), Error>;

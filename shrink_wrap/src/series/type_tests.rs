@@ -64,7 +64,7 @@ fn design_example_switch() {
     assert_eq!(back.0, items);
 }
 
-/// The reference encoder's random numbers (design/series_proto).
+/// The reference encoder's random numbers (`design/series_proto`).
 struct Rng(u64);
 
 impl Rng {
@@ -540,7 +540,7 @@ fn primitive_round_trips() {
     ]);
     check(&[(1u8, true), (2, false)]);
     check(&[[Some(1u8), None], [None, Some(3)]]);
-    check(&["a".to_string(), "".into(), "a".into()]);
+    check(&["a".to_owned(), String::new(), "a".into()]);
     check(&[vec![1u8, 2], vec![]]);
     check(&[Some(Some(3u8)), Some(None), None]);
     use crate::un::{IN, U3, U5, UN};

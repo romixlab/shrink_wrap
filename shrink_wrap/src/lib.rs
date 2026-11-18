@@ -13,10 +13,10 @@
 // So that the code `#[derive_shrink_wrap(..)]` generates can name this crate as `::shrink_wrap` from inside it too.
 extern crate self as shrink_wrap;
 
-/// Generation of the wire format, sent in the WireWeaver link setup hello (`ww_link::Hello`): it counts only global
+/// Generation of the wire format, sent in the `WireWeaver` link setup hello (`ww_link::Hello`): it counts only global
 /// breaks of the encoding, never additions (a new encoding is an opt-in type or directive and leaves it alone). A
 /// peer of another generation would misread every message, so link setup refuses it by name. It is the line of the
-/// crate's wire version, `[package.metadata.wire_weaver] wire` in its `Cargo.toml` ([wire_line]).
+/// crate's wire version, `[package.metadata.wire_weaver] wire` in its `Cargo.toml` ([`wire_line`]).
 pub const GENERATION: u8 = generation_from_manifest!();
 pub mod wire_line;
 
@@ -122,28 +122,28 @@ pub enum Error {
     /// A `Series` column that cannot have been written by the encoder: more elements than bits, a code that
     /// refers to state the decoder does not have, a reserved code, a run change past the end of its column.
     MalformedSeries,
-    /// [BufWriter::finish_no_lens] on a writer that has lengths to encode: the type's
-    /// [PUSHES_LEN](SerializeShrinkWrap::PUSHES_LEN) is `false`, but its `ser_shrink_wrap` pushed one.
+    /// [`BufWriter::finish_no_lens`] on a writer that has lengths to encode: the type's
+    /// [`PUSHES_LEN`](SerializeShrinkWrap::PUSHES_LEN) is `false`, but its `ser_shrink_wrap` pushed one.
     LenFifoNotEmpty,
     /// The enum variant is known, but compiled out of this build: it is behind a `#[cfg(..)]` (usually a cargo
     /// feature) that is off here. The other side has it enabled.
     EnumVariantDisabled,
-    /// A [MaxLen] list or string is longer than its maximum: when serializing or deserializing it, or in
-    /// [MaxLen::new]. A longer value is never cut.
+    /// A [`MaxLen`] list or string is longer than its maximum: when serializing or deserializing it, or in
+    /// [`MaxLen::new`]. A longer value is never cut.
     MaxLenExceeded,
-    /// The presence header of an [OptionAnyVec] cannot have been written by the
+    /// The presence header of an [`OptionAnyVec`] cannot have been written by the
     /// writer: a count or length past the end of the data, a slot id past `u32::MAX`, an empty group in the
     /// two-level mode.
     MalformedOptionAnyVec,
-    /// A value written for a slot of an [OptionAnyVec] that is not the next present
+    /// A value written for a slot of an [`OptionAnyVec`] that is not the next present
     /// one, a present slot left without a value, or present slot ids that don't increase.
     OptionAnyVecWrongSlot,
-    /// A present slot of an [OptionAnyVec] that the reader has no type for, before
+    /// A present slot of an [`OptionAnyVec`] that the reader has no type for, before
     /// a slot it reads: a gap between the fields of a `sparse` struct (DER-13). Its size is unknown, so the slots
     /// after it can't be found. Slots are only ever appended, so the writer is not a compatible version.
     OptionAnyVecUnknownSlot,
-    /// Values are nested deeper than the reader allows ([BufReader::with_max_depth], by default
-    /// [BufReader::DEFAULT_MAX_DEPTH]): a recursive type read from data that is malformed, or made to overflow the
+    /// Values are nested deeper than the reader allows ([`BufReader::with_max_depth`], by default
+    /// [`BufReader::DEFAULT_MAX_DEPTH`]): a recursive type read from data that is malformed, or made to overflow the
     /// stack.
     NestingTooDeep,
 }
@@ -155,7 +155,16 @@ pub enum Error {
 #[cfg(feature = "std")]
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        use Error::*;
+        use Error::{
+            EnumFutureVersionOrMalformedData, EnumVariantDisabled, InternalSliceToArrayCast,
+            InvalidBitCount, LenFifoNotEmpty, LenTooLong, MalformedLeb, MalformedOptionAnyVec,
+            MalformedSeries, MalformedUNib32, MalformedUVlq32, MalformedUVlq64, MalformedUtf8,
+            MaxLenExceeded, NestingTooDeep, OptionAnyVecUnknownSlot, OptionAnyVecWrongSlot,
+            OutOfBoundsReadBool, OutOfBoundsReadRawSlice, OutOfBoundsReadU4, OutOfBoundsReadU8,
+            OutOfBoundsReadUN, OutOfBoundsRev, OutOfBoundsRevCompact, OutOfBoundsSplit,
+            OutOfBoundsWriteBool, OutOfBoundsWriteRawSlice, OutOfBoundsWriteU4, OutOfBoundsWriteU8,
+            OutOfBoundsWriteUN, SubtypeOutOfRange,
+        };
         let name = match self {
             OutOfBoundsWriteBool => "OutOfBoundsWriteBool",
             OutOfBoundsReadBool => "OutOfBoundsReadBool",
@@ -202,7 +211,7 @@ impl Debug for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -215,7 +224,10 @@ impl Error {
     /// A field with `#[default = ..]` reads as its default when it starts at the end of the data (written by an
     /// older version) and its read fails with one of these, any other error is reported (SW-15).
     pub const fn is_read_eob(&self) -> bool {
-        use Error::*;
+        use Error::{
+            OutOfBoundsReadBool, OutOfBoundsReadRawSlice, OutOfBoundsReadU4, OutOfBoundsReadU8,
+            OutOfBoundsReadUN, OutOfBoundsRev, OutOfBoundsSplit,
+        };
         matches!(
             self,
             OutOfBoundsReadBool

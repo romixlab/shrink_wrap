@@ -46,20 +46,20 @@ where
     // items since the previous change (or the start), minus 1
     let mut gap = 0usize;
     for value in items {
-        if value != prev {
+        if value == prev {
+            gap += 1;
+        } else {
             sink.put_bit(true)?;
             put_nib(sink, u32::try_from(gap).map_err(|_| Error::LenTooLong)?)?;
             put_change(sink, value)?;
             prev = value;
             gap = 0;
-        } else {
-            gap += 1;
         }
     }
     sink.put_bit(false)
 }
 
-/// Writes a run of tags or bools (0 / 1 for [RunKind::Bool] and [RunKind::OptionTag], else `SubtypeOutOfRange`).
+/// Writes a run of tags or bools (0 / 1 for [`RunKind::Bool`] and [`RunKind::OptionTag`], else `SubtypeOutOfRange`).
 /// Writes nothing for no items: a `Series` doesn't write empty columns at all.
 pub(crate) fn write_run(
     sink: &mut impl BitSink,
@@ -109,7 +109,7 @@ pub(crate) fn write_opaque_run<'a, S: BitSink>(
 }
 
 /// Writes a run of opaque values compared with `==`, each changed one (and the first) with `put`
-/// ([BitSink::put_serialized] or an opaque value of bytes). Writes nothing for no items.
+/// ([`BitSink::put_serialized`] or an opaque value of bytes). Writes nothing for no items.
 pub(crate) fn write_opaque_values<'a, V: PartialEq + ?Sized + 'a, S: BitSink>(
     sink: &mut S,
     items: impl Iterator<Item = &'a V>,
@@ -118,7 +118,7 @@ pub(crate) fn write_opaque_values<'a, V: PartialEq + ?Sized + 'a, S: BitSink>(
     write_changes(sink, items, &put, &put)
 }
 
-/// How a [RunReader] reads the values of its run.
+/// How a [`RunReader`] reads the values of its run.
 pub trait RunValues<'i>: Copy {
     type Value: Copy;
     fn first(self, rd: &mut BufReader<'i>) -> Result<Self::Value, Error>;
@@ -131,18 +131,18 @@ impl<'i> RunValues<'i> for RunKind {
 
     fn first(self, rd: &mut BufReader<'i>) -> Result<u32, Error> {
         match self {
-            RunKind::Tag => get_nib(rd),
-            RunKind::OptionTag => match get_nib(rd)? {
+            Self::Tag => get_nib(rd),
+            Self::OptionTag => match get_nib(rd)? {
                 v @ (0 | 1) => Ok(v),
                 _ => Err(Error::MalformedSeries),
             },
-            RunKind::Bool => Ok(rd.read_bool()? as u32),
+            Self::Bool => Ok(rd.read_bool()? as u32),
         }
     }
 
     fn change(self, rd: &mut BufReader<'i>, cur: u32) -> Result<u32, Error> {
         match self {
-            RunKind::Tag => get_nib(rd),
+            Self::Tag => get_nib(rd),
             _ => Ok(cur ^ 1),
         }
     }

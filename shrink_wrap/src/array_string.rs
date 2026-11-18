@@ -1,4 +1,4 @@
-//! [ArrayString]: an owned, no-alloc string with a fixed, compile-time capacity (SW-57).
+//! [`ArrayString`]: an owned, no-alloc string with a fixed, compile-time capacity (SW-57).
 
 use crate::max_size::MaxSize;
 use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
@@ -12,8 +12,8 @@ use crate::{BufWriterOwned, DeserializeShrinkWrapOwned, SerializeShrinkWrapOwned
 /// `value_on_changed` field of a string property in a `no_alloc` server, a settings value): same bytes on the wire
 /// as `&str` / `String`, so a field can change between them without changing a single byte.
 ///
-/// Serializing one longer than `N` bytes fails with [Error::MaxLenExceeded], and so does deserializing one, and
-/// [push_str](Self::push_str) and [try_from](Self::try_from) too: a value is never cut.
+/// Serializing one longer than `N` bytes fails with [`Error::MaxLenExceeded`], and so does deserializing one, and
+/// [`push_str`](Self::push_str) and [`try_from`](Self::try_from) too: a value is never cut.
 ///
 /// ```
 /// use shrink_wrap::ArrayString;
@@ -58,7 +58,7 @@ impl<const N: usize> ArrayString<N> {
         self.len == 0
     }
 
-    /// Appends `s`, [Error::MaxLenExceeded] and no change if it would not fit.
+    /// Appends `s`, [`Error::MaxLenExceeded`] and no change if it would not fit.
     pub fn push_str(&mut self, s: &str) -> Result<(), Error> {
         let new_len = self.len + s.len();
         if new_len > N {
@@ -117,7 +117,7 @@ impl<const N: usize> Eq for ArrayString<N> {}
 #[cfg(feature = "defmt")]
 impl<const N: usize> defmt::Format for ArrayString<N> {
     fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{}", self.as_str())
+        defmt::write!(fmt, "{}", self.as_str());
     }
 }
 

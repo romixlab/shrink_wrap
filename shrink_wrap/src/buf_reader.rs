@@ -14,10 +14,10 @@ use core::mem::MaybeUninit;
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct BufReader<'i> {
     buf: &'i [u8],
-    /// Buffer length from the front, shrinks when read_vlu16n_rev() is used.
+    /// Buffer length from the front, shrinks when `read_vlu16n_rev()` is used.
     len_bytes: usize,
-    /// * Starts as false: read next u4_rev from bits 3:0
-    /// * When true: read next u4_rev from bits 7:4 and decrement len_bytes
+    /// * Starts as false: read next `u4_rev` from bits 3:0
+    /// * When true: read next `u4_rev` from bits 7:4 and decrement `len_bytes`
     is_at_bit7_rev: bool,
     /// Next byte to read from
     byte_idx: usize,
@@ -25,15 +25,15 @@ pub struct BufReader<'i> {
     bit_idx: u8,
     /// First error of the `read_*_latch` methods since the last [latched](Self::latched)
     latch: Option<Error>,
-    /// How many more levels of nested values may be read, see [with_max_depth](Self::with_max_depth)
+    /// How many more levels of nested values may be read, see [`with_max_depth`](Self::with_max_depth)
     depth_left: u16,
-    /// Where a `validate` hook's refusal goes, see [with_refusal_slot](Self::with_refusal_slot); readers split off
+    /// Where a `validate` hook's refusal goes, see [`with_refusal_slot`](Self::with_refusal_slot); readers split off
     /// this one share it
     #[cfg(feature = "refused")]
     refusal_slot: Option<SlotRef<'i>>,
 }
 
-/// The two cursors of a [BufReader] in its base buffer, see [BufReader::cursors_in].
+/// The two cursors of a [`BufReader`] in its base buffer, see [`BufReader::cursors_in`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Cursors {
     /// Next bit read from the front, counted from bit 7 of byte 0.
@@ -44,7 +44,7 @@ pub struct Cursors {
 }
 
 impl<'i> BufReader<'i> {
-    /// Create a new BufReader from the provided slice.
+    /// Create a new `BufReader` from the provided slice.
     // Out of line unless the `fast-io` feature is on (SW-74): inlined it is about 20 bytes of stores at each of
     // the dozens of places a firmware makes one (a copy per type of `dispatch::des`, `to_ww_bytes`, ..), a call
     // is about 8.
@@ -71,7 +71,7 @@ impl<'i> BufReader<'i> {
     pub const DEFAULT_MAX_DEPTH: u16 = 128;
 
     /// Limit how deep values may be nested, from this reader on: [read](Self::read) of a value that is not
-    /// `Sized`, and [split](Self::split), go one level deeper, and fail with [Error::NestingTooDeep] when there is
+    /// `Sized`, and [split](Self::split), go one level deeper, and fail with [`Error::NestingTooDeep`] when there is
     /// none left. This is what keeps the decoding of a recursive type, from untrusted data, from overflowing the
     /// stack. `0` allows no nested value at all.
     ///
@@ -82,7 +82,7 @@ impl<'i> BufReader<'i> {
         self
     }
 
-    /// How many more levels of nested values this reader may go into, see [with_max_depth](Self::with_max_depth).
+    /// How many more levels of nested values this reader may go into, see [`with_max_depth`](Self::with_max_depth).
     pub fn depth_left(&self) -> u16 {
         self.depth_left
     }
@@ -93,7 +93,7 @@ impl<'i> BufReader<'i> {
         BufReader::new(buf).with_max_depth(self.depth_left)
     }
 
-    /// Read `T` in place, one level deeper, see [with_max_depth](Self::with_max_depth): the depth is given back
+    /// Read `T` in place, one level deeper, see [`with_max_depth`](Self::with_max_depth): the depth is given back
     /// afterwards, also when the read fails.
     #[inline]
     fn read_nested<T>(
@@ -160,7 +160,7 @@ impl<'i> BufReader<'i> {
     }
 
     /// Align to nibble and read one [Nibble].
-    /// There is a method read_un8(4, val), that will also read 4 bits from the buffer,
+    /// There is a method `read_un8(4`, val), that will also read 4 bits from the buffer,
     /// but will use an alignment of 1 bit instead.
     pub fn read_nib(&mut self) -> Result<Nibble, Error> {
         self.kept()?;
@@ -180,7 +180,7 @@ impl<'i> BufReader<'i> {
     }
 
     /// Align to nibble and read one nibble into 4 lower bits of u8.
-    /// See also [read_nib](Self::read_nib).
+    /// See also [`read_nib`](Self::read_nib).
     pub fn read_nib_value(&mut self) -> Result<u8, Error> {
         Ok(self.read_nib()?.value())
     }
@@ -204,8 +204,8 @@ impl<'i> BufReader<'i> {
         Ok(self.read_un32(bit_count)? as u16)
     }
 
-    /// Align to nibble and read a UNib32 from the front: nibbles until one without the "one more nibble" flag, the
-    /// first one the lowest 3 bits, at most 11. One loop over the bytes, not a [read_nib](Self::read_nib) per
+    /// Align to nibble and read a `UNib32` from the front: nibbles until one without the "one more nibble" flag, the
+    /// first one the lowest 3 bits, at most 11. One loop over the bytes, not a [`read_nib`](Self::read_nib) per
     /// nibble (whose `Result<Nibble, _>` goes through memory on 32-bit CPUs); a nibble that isn't there, or an 11th
     /// with the flag, fails with the nibbles before it read, as those reads would.
     #[inline(never)]
@@ -303,7 +303,7 @@ impl<'i> BufReader<'i> {
         Ok(self.take_in_word(bit_count))
     }
 
-    /// [take_bits](Self::take_bits) of 1 to 32 bits that are there and end in the word starting at the current
+    /// [`take_bits`](Self::take_bits) of 1 to 32 bits that are there and end in the word starting at the current
     /// byte.
     #[cfg_attr(feature = "fast-io", inline(always))]
     #[cfg_attr(not(feature = "fast-io"), inline)]
@@ -333,7 +333,7 @@ impl<'i> BufReader<'i> {
         word
     }
 
-    /// Read bool like [read_bool](Self::read_bool), but an error is kept in the reader instead of returned
+    /// Read bool like [`read_bool`](Self::read_bool), but an error is kept in the reader instead of returned
     /// (the value is then `false`): see [latched](Self::latched).
     #[inline(never)]
     pub fn read_bool_latch(&mut self) -> bool {
@@ -374,7 +374,7 @@ impl<'i> BufReader<'i> {
     ///
     /// The `_latch` reads are what `#[derive_shrink_wrap]` generates for plain fields: a run of them is followed
     /// by one `rd.latched()?` instead of an error check after each read, which is about half the code on small
-    /// CPUs (docs/code_size.md). A read that fails gives 0, so do the `_latch` reads after it, and every
+    /// CPUs (`docs/code_size.md`). A read that fails gives 0, so do the `_latch` reads after it, and every
     /// read with a `Result` returns the kept error until it is taken here: don't use the values before
     /// `latched()` returned `Ok`, in particular not as a loop bound.
     #[inline]
@@ -403,14 +403,14 @@ impl<'i> BufReader<'i> {
         Ok(self.read_le32(2)? as u16)
     }
 
-    /// Align to nibble and read a number encoded with UNib32 forward encoding, from the front of the buffer.
+    /// Align to nibble and read a number encoded with `UNib32` forward encoding, from the front of the buffer.
     pub fn read_unib32(&mut self) -> Result<u32, Error> {
         let value = UNib32::read_forward(self)?.0;
 
         Ok(value)
     }
 
-    /// Align to nibble and read a number encoded with INib32 forward encoding (zigzag over UNib32), from the
+    /// Align to nibble and read a number encoded with `INib32` forward encoding (zigzag over `UNib32`), from the
     /// front of the buffer.
     pub fn read_inib32(&mut self) -> Result<i32, Error> {
         let value = INib32::read_forward(self)?.0;
@@ -418,35 +418,35 @@ impl<'i> BufReader<'i> {
         Ok(value)
     }
 
-    /// Align to byte and read a number encoded with UVlq32 encoding (big endian VLQ).
+    /// Align to byte and read a number encoded with `UVlq32` encoding (big endian VLQ).
     pub fn read_uvlq32(&mut self) -> Result<u32, Error> {
         let value = UVlq32::read_forward(self)?.0;
 
         Ok(value)
     }
 
-    /// Align to byte and read a number encoded with UVlq64 encoding (big endian VLQ).
+    /// Align to byte and read a number encoded with `UVlq64` encoding (big endian VLQ).
     pub fn read_uvlq64(&mut self) -> Result<u64, Error> {
         let value = UVlq64::read_forward(self)?.0;
 
         Ok(value)
     }
 
-    /// Align to byte and read a number encoded with IVlq32 encoding (zigzag over UVlq32).
+    /// Align to byte and read a number encoded with `IVlq32` encoding (zigzag over `UVlq32`).
     pub fn read_ivlq32(&mut self) -> Result<i32, Error> {
         let value = IVlq32::read_forward(self)?.0;
 
         Ok(value)
     }
 
-    /// Align to byte and read a number encoded with IVlq64 encoding (zigzag over UVlq64).
+    /// Align to byte and read a number encoded with `IVlq64` encoding (zigzag over `UVlq64`).
     pub fn read_ivlq64(&mut self) -> Result<i64, Error> {
         let value = IVlq64::read_forward(self)?.0;
 
         Ok(value)
     }
 
-    /// Read a number encoded with UNib32 backward encoding, from the back of the buffer.
+    /// Read a number encoded with `UNib32` backward encoding, from the back of the buffer.
     pub fn read_rev_len(&mut self) -> Result<usize, Error> {
         let value = UNib32::read_reversed(self)?.0;
 
@@ -527,43 +527,43 @@ impl<'i> BufReader<'i> {
         Ok(f64::from_le_bytes(f64_bytes))
     }
 
-    /// [read_u8](Self::read_u8), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_u8`](Self::read_u8), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_u8_latch(&mut self) -> u8 {
         self.read_le32_latch(1) as u8
     }
 
-    /// [read_u16](Self::read_u16), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_u16`](Self::read_u16), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_u16_latch(&mut self) -> u16 {
         self.read_le32_latch(2) as u16
     }
 
-    /// [read_u32](Self::read_u32), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_u32`](Self::read_u32), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_u32_latch(&mut self) -> u32 {
         self.read_le32_latch(4)
     }
 
-    /// [read_i8](Self::read_i8), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_i8`](Self::read_i8), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_i8_latch(&mut self) -> i8 {
         self.read_le32_latch(1) as i8
     }
 
-    /// [read_i16](Self::read_i16), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_i16`](Self::read_i16), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_i16_latch(&mut self) -> i16 {
         self.read_le32_latch(2) as i16
     }
 
-    /// [read_i32](Self::read_i32), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_i32`](Self::read_i32), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_i32_latch(&mut self) -> i32 {
         self.read_le32_latch(4) as i32
     }
 
-    /// [read_f32](Self::read_f32), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_f32`](Self::read_f32), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_f32_latch(&mut self) -> f32 {
         f32::from_bits(self.read_le32_latch(4))
@@ -573,7 +573,7 @@ impl<'i> BufReader<'i> {
     // value, the error and the reader state are exactly those of the read with a `Result`
     // (shrink_wrap/tests/latched_reads.rs holds them against each other). One copy per kind of read.
 
-    /// [read_un32](Self::read_un32), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_un32`](Self::read_un32), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(never)]
     pub fn read_un32_latch(&mut self, bit_count: u8) -> u32 {
         match self.read_un32(bit_count) {
@@ -585,7 +585,7 @@ impl<'i> BufReader<'i> {
         }
     }
 
-    /// [read_un8](Self::read_un8), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_un8`](Self::read_un8), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_un8_latch(&mut self, bit_count: u8) -> u8 {
         if bit_count > 8 {
@@ -595,7 +595,7 @@ impl<'i> BufReader<'i> {
         self.read_un32_latch(bit_count) as u8
     }
 
-    /// [read_un16](Self::read_un16), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_un16`](Self::read_un16), an error is kept for [latched](Self::latched) and gives 0.
     #[inline(always)]
     pub fn read_un16_latch(&mut self, bit_count: u8) -> u16 {
         if bit_count > 16 {
@@ -605,7 +605,7 @@ impl<'i> BufReader<'i> {
         self.read_un32_latch(bit_count) as u16
     }
 
-    /// [read_un64](Self::read_un64), an error is kept for [latched](Self::latched) and gives 0.
+    /// [`read_un64`](Self::read_un64), an error is kept for [latched](Self::latched) and gives 0.
     #[inline]
     pub fn read_un64_latch(&mut self, bit_count: u8) -> u64 {
         match self.read_un64(bit_count) {
@@ -683,7 +683,7 @@ impl<'i> BufReader<'i> {
         self.take_bytes(len).ok_or(Error::OutOfBoundsReadRawSlice)
     }
 
-    /// [read_raw_slice](Self::read_raw_slice) without looking at a kept error
+    /// [`read_raw_slice`](Self::read_raw_slice) without looking at a kept error
     #[inline(never)]
     fn take_bytes(&mut self, len: usize) -> Option<&'i [u8]> {
         self.align_byte();
@@ -708,17 +708,17 @@ impl<'i> BufReader<'i> {
         core::str::from_utf8(str_bytes).map_err(|_| Error::MalformedUtf8)
     }
 
-    /// Read any value that implements DeserializeShrinkWrap.
+    /// Read any value that implements `DeserializeShrinkWrap`.
     ///
-    /// For Unsized types, size is read from the back of the buffer as reverse UNib32.
+    /// For Unsized types, size is read from the back of the buffer as reverse `UNib32`.
     /// Then [split](BufReader::split) reader is used to actually deserialize the value.
     ///
     /// A value that is not `Sized` or `SelfDescribing` is read one level deeper, see
-    /// [with_max_depth](Self::with_max_depth).
+    /// [`with_max_depth`](Self::with_max_depth).
     ///
     /// Values deserialized with this method must be serialized with [write](crate::BufWriter::write).
-    /// Values serialized with [ser_shrink_wrap](crate::SerializeShrinkWrap::ser_shrink_wrap) must be
-    /// deserialized with [des_shrink_wrap](DeserializeShrinkWrap::des_shrink_wrap).
+    /// Values serialized with [`ser_shrink_wrap`](crate::SerializeShrinkWrap::ser_shrink_wrap) must be
+    /// deserialized with [`des_shrink_wrap`](DeserializeShrinkWrap::des_shrink_wrap).
     pub fn read<T: DeserializeShrinkWrap<'i>>(&mut self) -> Result<T, Error> {
         match T::ELEMENT_SIZE {
             ElementSize::Unsized => {
@@ -732,7 +732,7 @@ impl<'i> BufReader<'i> {
         }
     }
 
-    /// Read any value that implements DeserializeShrinkWrapOwned.
+    /// Read any value that implements `DeserializeShrinkWrapOwned`.
     /// See [read](Self::read) for more information.
     pub fn read_owned<T: DeserializeShrinkWrapOwned>(&mut self) -> Result<T, Error> {
         match T::ELEMENT_SIZE {
@@ -749,7 +749,7 @@ impl<'i> BufReader<'i> {
         }
     }
 
-    /// The reader of a value written behind its size ([BufWriter::write](crate::BufWriter::write) of an `Unsized`
+    /// The reader of a value written behind its size ([`BufWriter::write`](crate::BufWriter::write) of an `Unsized`
     /// one): the size from the back, then [split](Self::split), into `out`, which is initialized when it returns
     /// `Ok`. One non-generic copy for every [read](Self::read) of such a value, and the reader is written in place:
     /// `self.split(size)?` in `read` copied it out of its `Result` again at each type's copy of `read` (SW-74).
@@ -761,12 +761,12 @@ impl<'i> BufReader<'i> {
         Ok(())
     }
 
-    /// Align to byte and split off a BufReader which can read up to the len bytes.
+    /// Align to byte and split off a `BufReader` which can read up to the len bytes.
     /// This is the main mechanism used for forwards and backwards compatibility, as it allows for older code
     /// to ignore newer data by simply skipping additional bytes it doesn't know about.
     ///
-    /// The split off reader is one level deeper than this one: it fails with [Error::NestingTooDeep] when this
-    /// one has no level left, see [with_max_depth](Self::with_max_depth).
+    /// The split off reader is one level deeper than this one: it fails with [`Error::NestingTooDeep`] when this
+    /// one has no level left, see [`with_max_depth`](Self::with_max_depth).
     pub fn split(&mut self, len: usize) -> Result<Self, Error> {
         self.kept()?;
         let Some(depth_left) = self.depth_left.checked_sub(1) else {
@@ -889,8 +889,8 @@ impl<'i> BufReader<'i> {
         self.len_bytes * 8 - if self.is_at_bit7_rev { 4 } else { 0 }
     }
 
-    /// Nibbles of the current byte left (its part before the lengths). [read_nib](Self::read_nib)'s check: on a
-    /// Cortex-M7 its branches cost fewer cycles than [in_front](Self::in_front) (11 against 12 per nibble at
+    /// Nibbles of the current byte left (its part before the lengths). [`read_nib`](Self::read_nib)'s check: on a
+    /// Cortex-M7 its branches cost fewer cycles than [`in_front`](Self::in_front) (11 against 12 per nibble at
     /// opt-level 3, 45 against 55 at `z`), though they are a few more instructions.
     fn nibbles_in_byte_left(&self) -> u8 {
         if self.byte_idx >= self.len_bytes {
@@ -956,7 +956,7 @@ impl<'i> BufReader<'i> {
         self.byte_idx * 8 + 7 - self.bit_idx as usize
     }
 
-    /// Skips forward to front bit position `pos` (a [bit_pos](Self::bit_pos)): `MalformedSeries` when it is behind
+    /// Skips forward to front bit position `pos` (a [`bit_pos`](Self::bit_pos)): `MalformedSeries` when it is behind
     /// the reader or past what is left.
     pub(crate) fn skip_to_bit(&mut self, pos: usize) -> Result<(), crate::Error> {
         self.kept()?;
@@ -1358,7 +1358,7 @@ mod tests {
                     front_bit,
                     back_nibble
                 })
-            )
+            );
         };
         at(&rd, 0, 8);
         rd.read_bool().unwrap();
@@ -1469,50 +1469,56 @@ mod tests {
     }
 
     impl Op {
-        fn all() -> Vec<Op> {
-            let mut ops = vec![Op::Bool, Op::BoolLatch, Op::Nib, Op::U8, Op::U8Latch];
-            ops.extend([Op::U16, Op::U32, Op::U64, Op::Rev]);
+        fn all() -> Vec<Self> {
+            let mut ops = vec![
+                Self::Bool,
+                Self::BoolLatch,
+                Self::Nib,
+                Self::U8,
+                Self::U8Latch,
+            ];
+            ops.extend([Self::U16, Self::U32, Self::U64, Self::Rev]);
             ops.extend((0..4).map(Op::Raw));
             ops.extend((1..=8).map(Op::Un8));
             ops.extend((1..=16).map(Op::Un16));
-            ops.extend((1..=32).flat_map(|n| [Op::Un32(n), Op::Un32Latch(n)]));
-            ops.extend((1..=64).flat_map(|n| [Op::Un64(n), Op::Un64Latch(n)]));
+            ops.extend((1..=32).flat_map(|n| [Self::Un32(n), Self::Un32Latch(n)]));
+            ops.extend((1..=64).flat_map(|n| [Self::Un64(n), Self::Un64Latch(n)]));
             ops
         }
 
         fn run(self, rd: &mut BufReader) -> Result<u64, Error> {
-            let latched = |rd: &mut BufReader, val: u64| rd.latched().map(|_| val);
+            let latched = |rd: &mut BufReader, val: u64| rd.latched().map(|()| val);
             match self {
-                Op::Bool => rd.read_bool().map(u64::from),
-                Op::BoolLatch => {
+                Self::Bool => rd.read_bool().map(u64::from),
+                Self::BoolLatch => {
                     let val = rd.read_bool_latch();
                     latched(rd, val as u64)
                 }
-                Op::Un8(n) => rd.read_un8(n).map(u64::from),
-                Op::Un16(n) => rd.read_un16(n).map(u64::from),
-                Op::Un32(n) => rd.read_un32(n).map(u64::from),
-                Op::Un32Latch(n) => {
+                Self::Un8(n) => rd.read_un8(n).map(u64::from),
+                Self::Un16(n) => rd.read_un16(n).map(u64::from),
+                Self::Un32(n) => rd.read_un32(n).map(u64::from),
+                Self::Un32Latch(n) => {
                     let val = rd.read_un32_latch(n);
                     latched(rd, val as u64)
                 }
-                Op::Un64(n) => rd.read_un64(n),
-                Op::Un64Latch(n) => {
+                Self::Un64(n) => rd.read_un64(n),
+                Self::Un64Latch(n) => {
                     let val = rd.read_un64_latch(n);
                     latched(rd, val)
                 }
-                Op::Nib => rd.read_nib().map(|nib| nib.value() as u64),
-                Op::U8 => rd.read_u8().map(u64::from),
-                Op::U8Latch => {
+                Self::Nib => rd.read_nib().map(|nib| nib.value() as u64),
+                Self::U8 => rd.read_u8().map(u64::from),
+                Self::U8Latch => {
                     let val = rd.read_u8_latch();
                     latched(rd, val as u64)
                 }
-                Op::U16 => rd.read_u16().map(u64::from),
-                Op::U32 => rd.read_u32().map(u64::from),
-                Op::U64 => rd.read_u64(),
-                Op::Raw(len) => rd
+                Self::U16 => rd.read_u16().map(u64::from),
+                Self::U32 => rd.read_u32().map(u64::from),
+                Self::U64 => rd.read_u64(),
+                Self::Raw(len) => rd
                     .read_raw_slice(len)
                     .map(|bytes| bytes.iter().rev().fold(0, |v, b| v << 8 | *b as u64)),
-                Op::Rev => rd.read_u4_rev().map(u64::from),
+                Self::Rev => rd.read_u4_rev().map(u64::from),
             }
         }
 
@@ -1544,20 +1550,20 @@ mod tests {
                 }
             };
             match self {
-                Op::Bool | Op::BoolLatch => take(fwd, 1, Error::OutOfBoundsReadBool),
-                Op::Un8(n)
-                | Op::Un16(n)
-                | Op::Un32(n)
-                | Op::Un32Latch(n)
-                | Op::Un64(n)
-                | Op::Un64Latch(n) => take(fwd, n as usize, Error::OutOfBoundsReadUN),
-                Op::Nib => take(fwd.div_ceil(4) * 4, 4, Error::OutOfBoundsReadU4),
-                Op::U8 | Op::U8Latch => bytes(1, Error::OutOfBoundsReadU8),
-                Op::U16 => bytes(2, Error::OutOfBoundsReadRawSlice),
-                Op::U32 => bytes(4, Error::OutOfBoundsReadRawSlice),
-                Op::U64 => bytes(8, Error::OutOfBoundsReadRawSlice),
-                Op::Raw(len) => bytes(len, Error::OutOfBoundsReadRawSlice),
-                Op::Rev => {
+                Self::Bool | Self::BoolLatch => take(fwd, 1, Error::OutOfBoundsReadBool),
+                Self::Un8(n)
+                | Self::Un16(n)
+                | Self::Un32(n)
+                | Self::Un32Latch(n)
+                | Self::Un64(n)
+                | Self::Un64Latch(n) => take(fwd, n as usize, Error::OutOfBoundsReadUN),
+                Self::Nib => take(fwd.div_ceil(4) * 4, 4, Error::OutOfBoundsReadU4),
+                Self::U8 | Self::U8Latch => bytes(1, Error::OutOfBoundsReadU8),
+                Self::U16 => bytes(2, Error::OutOfBoundsReadRawSlice),
+                Self::U32 => bytes(4, Error::OutOfBoundsReadRawSlice),
+                Self::U64 => bytes(8, Error::OutOfBoundsReadRawSlice),
+                Self::Raw(len) => bytes(len, Error::OutOfBoundsReadRawSlice),
+                Self::Rev => {
                     if bound >= 4 && fwd <= bound - 4 {
                         (Ok(bits(bound - 4, 4)), fwd)
                     } else {
@@ -1568,7 +1574,7 @@ mod tests {
         }
     }
 
-    /// The forward side's bit and where the lengths begin, see [Op::expect].
+    /// The forward side's bit and where the lengths begin, see [`Op::expect`].
     fn sides(rd: &BufReader) -> (usize, usize) {
         let fwd = rd.byte_idx * 8 + (7 - rd.bit_idx) as usize;
         let bound = rd.len_bytes * 8 - if rd.is_at_bit7_rev { 4 } else { 0 };

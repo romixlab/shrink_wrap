@@ -1,4 +1,4 @@
-//! [SeriesStore] round trips (SW-62): every impl here and the derive's, against a model of what was set where.
+//! [`SeriesStore`] round trips (SW-62): every impl here and the derive's, against a model of what was set where.
 
 use super::SeriesStore;
 use super::type_check::*;
@@ -28,7 +28,7 @@ fn check_with<T: SeriesStore + Clone + Debug>(
     unsafe {
         slot.as_mut_ptr()
             .cast::<u8>()
-            .write_bytes(0xA5, core::mem::size_of::<T::Store<N>>())
+            .write_bytes(0xA5, core::mem::size_of::<T::Store<N>>());
     };
     let in_place = super::init_store_in::<T, N>(&mut slot);
     for i in 0..N {
@@ -54,7 +54,7 @@ fn check_with<T: SeriesStore + Clone + Debug>(
 }
 
 fn check<T: SeriesStore + Clone + Debug + PartialEq>(items: &[T], slots: &[usize]) {
-    check_with(items, slots, |a, b| a == b)
+    check_with(items, slots, |a, b| a == b);
 }
 
 /// Equal as bytes on the wire: floats by their bits (NaN payloads, `-0.0`).
@@ -217,7 +217,7 @@ impl SeriesStore for Liar {
     }
 
     fn get<const N: usize>(_store: &[u8; N], _i: usize) -> Self {
-        Liar
+        Self
     }
 }
 

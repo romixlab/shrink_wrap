@@ -42,7 +42,7 @@ pub(crate) struct CGItemEnum<'i> {
     pub(crate) niche: bool,
 }
 
-impl<'i> CGItemEnum<'i> {
+impl CGItemEnum<'_> {
     /// `impl<'i, T: Own, const N: usize>` of an impl without trait bounds of its own, `for #enum_name<'i, T, N>`
     /// and `where ..`.
     pub(crate) fn plain_impl_generics(
@@ -261,7 +261,7 @@ impl<'i> CGItemEnum<'i> {
     }
 
     /// `ELEMENT_SIZE` const expression: only one variant is on the wire, so the variants are folded with `one_of`
-    /// (same size or SelfDescribing) instead of being summed, then the discriminant is added.
+    /// (same size or `SelfDescribing`) instead of being summed, then the discriminant is added.
     fn element_size(&self, is_ref: bool) -> TokenStream {
         let size = match &self.size_assumption {
             // enum is Unsized by default, no need to look at the variants
@@ -398,7 +398,7 @@ impl<'i> CGItemEnum<'i> {
         }})
     }
 
-    /// Part of the size assert of a `sized` enum: variants of different sizes make it SelfDescribing, say which.
+    /// Part of the size assert of a `sized` enum: variants of different sizes make it `SelfDescribing`, say which.
     fn assert_variants_same_size(&self, is_ref: bool) -> TokenStream {
         let element_size = self.crate_path.item(quote! { ElementSize });
         let variants = self.variant_sizes(is_ref);
@@ -410,12 +410,11 @@ impl<'i> CGItemEnum<'i> {
                 let mut known = ObjectSize::sized(0);
                 let mut user_types = String::new();
                 for ty in v.fields.types() {
-                    match ty.element_size() {
-                        Some(size) => known = known.add(size),
-                        None => {
-                            let ty = ty.def(is_ref, self.crate_path).to_string();
-                            user_types += &format!(" + {}", ty.replace(' ', ""));
-                        }
+                    if let Some(size) = ty.element_size() {
+                        known = known.add(size)
+                    } else {
+                        let ty = ty.def(is_ref, self.crate_path).to_string();
+                        user_types += &format!(" + {}", ty.replace(' ', ""));
                     }
                 }
                 format!("{}: {}{user_types}", v.ident, known.describe())
@@ -916,7 +915,7 @@ impl ToTokens for CGEnumDes<'_> {
 struct CGEnumVariantsDes<'i> {
     item_enum: &'i CGItemEnum<'i>,
     is_ref: bool,
-    /// Tags decoded by [CGEnumDes] itself, see `unit_run`.
+    /// Tags decoded by [`CGEnumDes`] itself, see `unit_run`.
     decoded_apart: Option<RangeInclusive<u32>>,
 }
 
@@ -952,12 +951,11 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                     matches!(self.item_enum.repr, Repr::U8 | Repr::U16 | Repr::U32),
                     || quote! { rd.latched()?; },
                 );
-                let value = match self.item_enum.future_version {
-                    Some(fv) => {
-                        let ident = &fv.ident;
-                        quote! { #enum_name::#ident(#discriminant) }
-                    }
-                    None => quote! { return Err(#error::EnumVariantDisabled) },
+                let value = if let Some(fv) = self.item_enum.future_version {
+                    let ident = &fv.ident;
+                    quote! { #enum_name::#ident(#discriminant) }
+                } else {
+                    quote! { return Err(#error::EnumVariantDisabled) }
                 };
                 tokens.append_all(quote! {
                     #not_cfg
@@ -979,7 +977,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                         }
                         field.buf_read(!self.is_ref, self.item_enum.crate_path, &mut des_fields);
                     }
-                    tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name{ #(#field_names),* } }))
+                    tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name{ #(#field_names),* } }));
                 }
                 Fields::Unnamed(fields_unnamed) => {
                     let mut field_names = vec![];
@@ -1003,7 +1001,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
                             &mut des_fields,
                         );
                     }
-                    tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name( #(#field_names),* ) }))
+                    tokens.append_all(quote!(#discriminant => { #des_fields #enum_name::#variant_name( #(#field_names),* ) }));
                 }
                 Fields::Unit => {
                     tokens.append_all(quote!(#discriminant => #enum_name::#variant_name,));
@@ -1013,7 +1011,7 @@ impl ToTokens for CGEnumVariantsDes<'_> {
     }
 }
 
-/// Nibbles of `UNib32(value)`, as in shrink_wrap.
+/// Nibbles of `UNib32(value)`, as in `shrink_wrap`.
 fn shrink_wrap_len_nibbles(value: u32) -> usize {
     let mut value = value >> 3;
     let mut nibbles = 1;

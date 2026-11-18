@@ -54,7 +54,7 @@ fn at_the_bound_round_trips_with_the_unbounded_bytes() {
     let owned = PieceOwned::from_ww_bytes_owned(bytes).unwrap();
     assert_eq!(*owned.data, vec![1, 2, 3, 4]);
     assert_eq!(owned.name.as_str(), "xyz");
-    assert_eq!(*owned.tags, vec!["a".to_string(), "bc".to_string()]);
+    assert_eq!(*owned.tags, vec!["a".to_owned(), "bc".to_owned()]);
     assert_eq!(owned.to_ww_bytes_owned().unwrap(), bytes);
 }
 

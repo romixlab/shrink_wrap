@@ -24,7 +24,7 @@ pub enum Prefix {
 )]
 impl Default for Prefix {
     fn default() -> Self {
-        Prefix::Unit
+        Self::Unit
     }
 }
 
@@ -40,7 +40,7 @@ pub enum NumericValue {
 
 impl Default for NumericValue {
     fn default() -> Self {
-        NumericValue::U8(0)
+        Self::U8(0)
     }
 }
 
@@ -59,7 +59,7 @@ pub struct Quantity {
 
 impl Quantity {
     pub fn new(prefix: Prefix, value: NumericValue) -> Self {
-        Quantity { prefix, value }
+        Self { prefix, value }
     }
 }
 
@@ -155,7 +155,7 @@ pub struct Kitchen<'i> {
 
 impl Default for KitchenOwned {
     fn default() -> Self {
-        KitchenOwned {
+        Self {
             flag: false,
             q: None,
             name: String::new(),
@@ -197,7 +197,7 @@ impl KitchenOwned {
     }
 }
 
-/// `bytes`, a `Series` of `n` items of `T`, are within [Series::max_bytes] when `T` has a bound.
+/// `bytes`, a `Series` of `n` items of `T`, are within [`Series::max_bytes`] when `T` has a bound.
 pub fn assert_within_bound<'i, T: SeriesColumns<'i> + 'i>(n: usize, bytes: &[u8]) {
     if let Some(max) = Series::<T>::max_bytes(n) {
         assert!(
@@ -433,7 +433,7 @@ pub fn timed_items(picks: &mut Picks<'_>, max: usize) -> Vec<TimedIv> {
     items
 }
 
-/// Items of a bounded type round trip with `policy`, within [Series::max_bytes].
+/// Items of a bounded type round trip with `policy`, within [`Series::max_bytes`].
 pub fn bounded_round_trip(items: &[TimedIv], policy: CodecPolicy) {
     let series = Series::with_policy(items, policy);
     let bytes = SerializeShrinkWrapOwned::to_ww_bytes_owned(&series).expect("write");

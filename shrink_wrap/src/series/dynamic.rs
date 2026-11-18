@@ -1,9 +1,9 @@
 //! Column readers and writers for code that knows `T` only at run time (`ww_self`'s dynamic decoder and encoder,
-//! CLT-29): the same codecs [SeriesColumns](super::SeriesColumns) impls read and write with, one whole column per
+//! CLT-29): the same codecs [`SeriesColumns`](super::SeriesColumns) impls read and write with, one whole column per
 //! call. The caller walks the type tree in column order (the rules of [Series](super::Series)) and knows each
 //! column's items and restarts (from the columns before it). A reader leaves `rd` where the next column starts,
 //! validates what it reads (malformed data is an [Error], never a panic) and does work bounded by the items it is
-//! given. A writer writes the same bits the generated impls write for the same items and [SeriesPolicy](super::SeriesPolicy) codecs,
+//! given. A writer writes the same bits the generated impls write for the same items and [`SeriesPolicy`](super::SeriesPolicy) codecs,
 //! and nothing for no items (a `Series` has no empty columns).
 
 use super::columns::float::{FloatReader, write_float as write_float_column};
@@ -23,7 +23,7 @@ use crate::{BufReader, BufWriter, Error};
 pub use super::columns::run::RunKind;
 pub use super::series_type::SERIES_MAX_ITEMS;
 
-/// Reads `n`, the item count at the start of a `Series` (`UNib32`): above [SERIES_MAX_ITEMS] is `MalformedSeries`.
+/// Reads `n`, the item count at the start of a `Series` (`UNib32`): above [`SERIES_MAX_ITEMS`] is `MalformedSeries`.
 /// After the group of `n` items, the caller aligns `rd` to a byte (the padding).
 pub fn read_count(rd: &mut BufReader<'_>) -> Result<usize, Error> {
     let n = rd.read_unib32()? as usize;
@@ -95,7 +95,7 @@ pub fn read_float<T: XorBits>(
     Ok(())
 }
 
-/// A run of enum tags ([RunKind::Tag]), `Option` tags (0 or 1) or bools (0 or 1) over `m` items: `f` gets each
+/// A run of enum tags ([`RunKind::Tag`]), `Option` tags (0 or 1) or bools (0 or 1) over `m` items: `f` gets each
 /// item's value.
 pub fn read_run(
     rd: &mut BufReader<'_>,
@@ -134,7 +134,7 @@ pub fn read_opaque_run<'i>(
 }
 
 /// Where a struct's group ends, from what an evolvable struct with items writes before its fields (see
-/// [StructExtent]); not evolvable, at [Level::Fields] or with no items: [StructExtent::All], nothing is read.
+/// [`StructExtent`]); not evolvable, at [`Level::Fields`] or with no items: [`StructExtent::All`], nothing is read.
 pub fn read_struct_head(
     rd: &mut BufReader<'_>,
     level: Level,
@@ -154,13 +154,13 @@ pub fn read_struct_head(
     Ok(StructExtent::End(rd.bit_pos() + value as usize))
 }
 
-/// Writes `n`, the item count at the start of a `Series` (`UNib32`): above [SERIES_MAX_ITEMS] is `LenTooLong`.
+/// Writes `n`, the item count at the start of a `Series` (`UNib32`): above [`SERIES_MAX_ITEMS`] is `LenTooLong`.
 /// After the group of `n` items, the caller aligns `wr` to a byte.
 pub fn write_count(wr: &mut BufWriter<'_>, n: usize) -> Result<(), Error> {
     wr.write_unib32(checked_count(n)?)
 }
 
-/// [write_count] into a `BufWriterOwned`.
+/// [`write_count`] into a `BufWriterOwned`.
 #[cfg(feature = "std")]
 pub fn write_count_owned(wr: &mut crate::BufWriterOwned, n: usize) -> Result<(), Error> {
     wr.write_unib32(checked_count(n)?)
@@ -175,7 +175,7 @@ fn checked_count(n: usize) -> Result<u32, Error> {
 
 /// A numeric column of `width` (1 to 64, else `SubtypeOutOfRange`) bit values: `items` are each item's value bits
 /// (bits above the width are ignored, so a signed value may be sign-extended) and whether it restarts the column,
-/// walked once per codec tried. `codec` as [SeriesPolicy::numeric](super::SeriesPolicy::numeric) says: `None` the smallest, a fixed one as
+/// walked once per codec tried. `codec` as [`SeriesPolicy::numeric`](super::SeriesPolicy::numeric) says: `None` the smallest, a fixed one as
 /// written (a constant coder that can't encode the column: packed with the same predictor). Returns the codec
 /// written, `None` for no items.
 pub fn write_numeric<S: BitSink>(
@@ -207,7 +207,7 @@ pub fn write_numeric128<S: BitSink>(
     write_numeric128_column(sink, signed, items)
 }
 
-/// A float column of `f32` or `f64` values with the restart flag of each, `codec` as [SeriesPolicy::float](super::SeriesPolicy::float) says.
+/// A float column of `f32` or `f64` values with the restart flag of each, `codec` as [`SeriesPolicy::float`](super::SeriesPolicy::float) says.
 /// Returns the codec written, `None` for no items.
 pub fn write_float<T: XorBits, S: BitSink>(
     sink: &mut S,
@@ -220,7 +220,7 @@ pub fn write_float<T: XorBits, S: BitSink>(
     write_float_column(sink, items, codec).map(Some)
 }
 
-/// A run of enum tags ([RunKind::Tag]), `Option` tags or bools (0 or 1, else `SubtypeOutOfRange`).
+/// A run of enum tags ([`RunKind::Tag`]), `Option` tags or bools (0 or 1, else `SubtypeOutOfRange`).
 pub fn write_run<S: BitSink>(
     sink: &mut S,
     kind: RunKind,
@@ -259,7 +259,7 @@ where
 }
 
 /// What a struct's group has before its fields, when it has items: an evolvable struct's field count `fields` at
-/// [Level::Outermost], its group length at [Level::Nested]; nothing otherwise. `bits_at(at)` gives the bits the
+/// [`Level::Outermost`], its group length at [`Level::Nested`]; nothing otherwise. `bits_at(at)` gives the bits the
 /// struct's fields take when written from bit position `at` (of the same buffer: only `at % 8` matters, for
 /// byte-aligned values), called once or a few times.
 pub fn write_struct_head<S: BitSink>(

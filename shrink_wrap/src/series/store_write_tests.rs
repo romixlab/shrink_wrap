@@ -1,6 +1,6 @@
-//! [SeriesStore::write_store]: rows of a store written column by column are the bytes of the same items written
+//! [`SeriesStore::write_store`]: rows of a store written column by column are the bytes of the same items written
 //! as a `Series` by the item walk, under every policy; rows where a tag changes are left to the walk. Counted from
-//! the store ([count_store_series]), they are the bytes the walk counts.
+//! the store ([`count_store_series`]), they are the bytes the walk counts.
 
 use super::columns::check::{FloatCodec, numeric_codecs};
 use super::{

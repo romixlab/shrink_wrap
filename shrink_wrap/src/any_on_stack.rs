@@ -2,7 +2,8 @@ use crate::{BufReader, BufWriter, DeserializeShrinkWrap, Error, SerializeShrinkW
 use core::marker::PhantomData;
 
 /// A Vec-like container on the stack, storing `Option<T>` in a serialized form.
-/// `T` must implement SerializeShrinkWrap + DeserializeShrinkWrap.
+///
+/// `T` must implement `SerializeShrinkWrap` + `DeserializeShrinkWrap`.
 /// Allows to conveniently work with a dynamically sized object without allocation and specifying upper size bounds for each dynamic element.
 ///
 /// Without this type, one could use a struct like shown below, but M and N must be set in advance:
@@ -13,7 +14,7 @@ use core::marker::PhantomData;
 /// }
 /// ```
 ///
-/// With StackVec though, any complex object can be stored on the stack, with only one buffer size to choose:
+/// With `StackVec` though, any complex object can be stored on the stack, with only one buffer size to choose:
 /// ```rust
 /// use shrink_wrap::any_on_stack::AnyOnStack;
 ///
@@ -45,7 +46,7 @@ impl<'i, T: SerializeShrinkWrap + DeserializeShrinkWrap<'i>, const N: usize> Any
     }
 
     pub fn none() -> Self {
-        AnyOnStack {
+        Self {
             data: [0u8; N],
             used: 0,
             _type: Default::default(),

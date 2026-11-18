@@ -656,7 +656,7 @@ fn rust_len(ty: &str, buf: &[u8]) -> Option<usize> {
 
 /// The C views (SW-79) on valid, truncated, empty, changed and random buffers of every type: a view is made
 /// exactly when `from_fixed` reads a value, with its length, and every reader of it stays in its bytes (the C
-/// program reads each case from a buffer of exactly its length, under AddressSanitizer where it links).
+/// program reads each case from a buffer of exactly its length, under `AddressSanitizer` where it links).
 #[test]
 fn c_views_check_bounds() {
     let mut rng = c_run::Rng(0x9e37_79b9_7f4a_7c15);

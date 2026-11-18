@@ -32,74 +32,74 @@ pub(crate) enum Prim {
 }
 
 impl Prim {
-    pub(crate) fn of(ty: &Type) -> Option<Prim> {
+    pub(crate) fn of(ty: &Type) -> Option<Self> {
         Some(match ty {
-            Type::U8 => Prim::U8,
-            Type::U16 => Prim::U16,
-            Type::U32 => Prim::U32,
-            Type::U64 => Prim::U64,
-            Type::I8 => Prim::I8,
-            Type::I16 => Prim::I16,
-            Type::I32 => Prim::I32,
-            Type::I64 => Prim::I64,
-            Type::F32 => Prim::F32,
-            Type::F64 => Prim::F64,
+            Type::U8 => Self::U8,
+            Type::U16 => Self::U16,
+            Type::U32 => Self::U32,
+            Type::U64 => Self::U64,
+            Type::I8 => Self::I8,
+            Type::I16 => Self::I16,
+            Type::I32 => Self::I32,
+            Type::I64 => Self::I64,
+            Type::F32 => Self::F32,
+            Type::F64 => Self::F64,
             _ => return None,
         })
     }
 
     pub(crate) fn bytes(self) -> usize {
         match self {
-            Prim::U8 | Prim::I8 => 1,
-            Prim::U16 | Prim::I16 => 2,
-            Prim::U32 | Prim::I32 | Prim::F32 => 4,
-            Prim::U64 | Prim::I64 | Prim::F64 => 8,
+            Self::U8 | Self::I8 => 1,
+            Self::U16 | Self::I16 => 2,
+            Self::U32 | Self::I32 | Self::F32 => 4,
+            Self::U64 | Self::I64 | Self::F64 => 8,
         }
     }
 
     pub(crate) fn rust(self) -> TokenStream {
         match self {
-            Prim::U8 => quote! { u8 },
-            Prim::U16 => quote! { u16 },
-            Prim::U32 => quote! { u32 },
-            Prim::U64 => quote! { u64 },
-            Prim::I8 => quote! { i8 },
-            Prim::I16 => quote! { i16 },
-            Prim::I32 => quote! { i32 },
-            Prim::I64 => quote! { i64 },
-            Prim::F32 => quote! { f32 },
-            Prim::F64 => quote! { f64 },
+            Self::U8 => quote! { u8 },
+            Self::U16 => quote! { u16 },
+            Self::U32 => quote! { u32 },
+            Self::U64 => quote! { u64 },
+            Self::I8 => quote! { i8 },
+            Self::I16 => quote! { i16 },
+            Self::I32 => quote! { i32 },
+            Self::I64 => quote! { i64 },
+            Self::F32 => quote! { f32 },
+            Self::F64 => quote! { f64 },
         }
     }
 
     pub(crate) fn c_ty(self) -> &'static str {
         match self {
-            Prim::U8 => "uint8_t",
-            Prim::U16 => "uint16_t",
-            Prim::U32 => "uint32_t",
-            Prim::U64 => "uint64_t",
-            Prim::I8 => "int8_t",
-            Prim::I16 => "int16_t",
-            Prim::I32 => "int32_t",
-            Prim::I64 => "int64_t",
-            Prim::F32 => "float",
-            Prim::F64 => "double",
+            Self::U8 => "uint8_t",
+            Self::U16 => "uint16_t",
+            Self::U32 => "uint32_t",
+            Self::U64 => "uint64_t",
+            Self::I8 => "int8_t",
+            Self::I16 => "int16_t",
+            Self::I32 => "int32_t",
+            Self::I64 => "int64_t",
+            Self::F32 => "float",
+            Self::F64 => "double",
         }
     }
 
     /// C expression reading the value at `ptr` (C text).
     pub(crate) fn c_load(self, ptr: &str) -> String {
         match self {
-            Prim::U8 => format!("sw_fixed_u8({ptr})"),
-            Prim::U16 => format!("sw_fixed_u16({ptr})"),
-            Prim::U32 => format!("sw_fixed_u32({ptr})"),
-            Prim::U64 => format!("sw_fixed_u64({ptr})"),
-            Prim::I8 => format!("(int8_t)sw_fixed_u8({ptr})"),
-            Prim::I16 => format!("(int16_t)sw_fixed_u16({ptr})"),
-            Prim::I32 => format!("(int32_t)sw_fixed_u32({ptr})"),
-            Prim::I64 => format!("(int64_t)sw_fixed_u64({ptr})"),
-            Prim::F32 => format!("sw_fixed_f32({ptr})"),
-            Prim::F64 => format!("sw_fixed_f64({ptr})"),
+            Self::U8 => format!("sw_fixed_u8({ptr})"),
+            Self::U16 => format!("sw_fixed_u16({ptr})"),
+            Self::U32 => format!("sw_fixed_u32({ptr})"),
+            Self::U64 => format!("sw_fixed_u64({ptr})"),
+            Self::I8 => format!("(int8_t)sw_fixed_u8({ptr})"),
+            Self::I16 => format!("(int16_t)sw_fixed_u16({ptr})"),
+            Self::I32 => format!("(int32_t)sw_fixed_u32({ptr})"),
+            Self::I64 => format!("(int64_t)sw_fixed_u64({ptr})"),
+            Self::F32 => format!("sw_fixed_f32({ptr})"),
+            Self::F64 => format!("sw_fixed_f64({ptr})"),
         }
     }
 }
@@ -124,13 +124,13 @@ pub(crate) enum Kind {
     Bits(u32, Bits),
     /// The presence flag of the `Option` (or `Result`) field of this name: one bit.
     Flag(Ident),
-    Option(Box<Kind>),
-    Result(Box<Kind>, Box<Kind>),
+    Option(Box<Self>),
+    Result(Box<Self>, Box<Self>),
 }
 
 impl Kind {
     fn is_bits(&self) -> bool {
-        matches!(self, Kind::Bits(..) | Kind::Flag(_))
+        matches!(self, Self::Bits(..) | Self::Flag(_))
     }
 }
 
@@ -298,7 +298,7 @@ pub(crate) fn variant_items(v: &Variant) -> Result<Vec<Item<'_>>, String> {
 
 pub(crate) fn unraw(ident: &Ident) -> String {
     let s = ident.to_string();
-    s.strip_prefix("r#").map(str::to_string).unwrap_or(s)
+    s.strip_prefix("r#").map(str::to_owned).unwrap_or(s)
 }
 
 /// `PlanHeader` -> `plan_header`.
@@ -558,10 +558,10 @@ fn layout<'a>(
                 tail_max = max;
                 tail_min = min;
                 tail_same = quote! { false };
-                trails_with_bits = if !bits.is_multiple_of(8) {
-                    quote! { true }
-                } else {
+                trails_with_bits = if bits.is_multiple_of(8) {
                     quote! { false }
+                } else {
+                    quote! { true }
                 };
                 placed.push(Placed {
                     item,
@@ -978,7 +978,7 @@ pub(crate) fn c_size_guard(define: &str, len: TokenStream) -> TokenStream {
     quote! { if (#len) > 0xffff { #line } }
 }
 
-/// The C name of a nested fixed-layout or head_tail type, a Rust expression.
+/// The C name of a nested fixed-layout or `head_tail` type, a Rust expression.
 pub(crate) fn c_name_of(ty: &TokenStream, cp: &CratePath) -> TokenStream {
     let ht = cp.item(quote! { head_tail::HeadTail });
     quote! { <#ty as #ht<'static>>::C_NAME }
@@ -1214,7 +1214,7 @@ pub(crate) fn c_field(
                                 format!("{vlen} - ${{off}}u")
                             } else {
                                 args.push(("len", quote! { <#ty as #fixed>::ENCODED_LEN }));
-                                "${len}u".to_string()
+                                "${len}u".to_owned()
                             };
                             format!(
                                 "static inline ${{pre}}${{n}}_view_t {func}({param}) {{\n    ${{pre}}${{n}}_view_t r;\n    \
@@ -1295,9 +1295,11 @@ pub(crate) fn struct_size_assumption(
             });
             Ok(true)
         }
-        Some(ObjectSize::Sized { .. })
-        | Some(ObjectSize::UnsizedFinalStructure)
-        | Some(ObjectSize::SelfDescribing) => Ok(true),
+        Some(
+            ObjectSize::Sized { .. }
+            | ObjectSize::UnsizedFinalStructure
+            | ObjectSize::SelfDescribing,
+        ) => Ok(true),
         _ => Ok(false),
     }
 }
@@ -1338,15 +1340,12 @@ pub(crate) fn fixed_struct(
         ..
     } = &layout;
     let reads = reads(&layout, cp);
-    let construct = match kind {
-        StructKind::Tuple => {
-            let fields = construct_fields(&layout, false);
-            quote! { #ident ( #(#fields),* ) }
-        }
-        _ => {
-            let fields = construct_fields(&layout, true);
-            quote! { #ident { #(#fields),* } }
-        }
+    let construct = if kind == StructKind::Tuple {
+        let fields = construct_fields(&layout, false);
+        quote! { #ident ( #(#fields),* ) }
+    } else {
+        let fields = construct_fields(&layout, true);
+        quote! { #ident { #(#fields),* } }
     };
     let access = |name: &str| {
         let field = kind.member(&format_ident!("{}", name));
@@ -1524,7 +1523,7 @@ pub(crate) fn enum_eligible(
     };
     if !matches!(
         size_assumption,
-        Some(ObjectSize::Sized { .. }) | Some(ObjectSize::SelfDescribing)
+        Some(ObjectSize::Sized { .. } | ObjectSize::SelfDescribing)
     ) {
         return fail(
             "an enum must be sized (every variant the same length) or self_describing (the tag tells the \

@@ -1,12 +1,12 @@
 use crate::{BufReader, BufWriter, DeserializeShrinkWrap, ElementSize, Error, SerializeShrinkWrap};
 use core::fmt::{Debug, Formatter};
 
-/// Box-like structure for no alloc use, serializes and deserializes the value as WireWeaver's Unsized.
-/// Can be used to create self-referential structs and enums on no_std and no alloc systems.
+/// Box-like structure for no alloc use, serializes and deserializes the value as `WireWeaver`'s Unsized.
+/// Can be used to create self-referential structs and enums on `no_std` and no alloc systems.
 ///
-/// RefBox is cheap, both in terms of serialized size (only one additional size) and compute (no additional work is performed).
-/// Additionally, when RefBox is deserialized from the BufReader, a jump over the whole item is made.
-/// Value is deserialized only when [read()](RefBox::read) is called.
+/// `RefBox` is cheap, both in terms of serialized size (only one additional size) and compute (no additional work is performed).
+/// Additionally, when `RefBox` is deserialized from the `BufReader`, a jump over the whole item is made.
+/// Value is deserialized only when [`read()`](RefBox::read) is called.
 #[derive(Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RefBox<'i, T> {
@@ -18,12 +18,12 @@ impl<'i, T> RefBox<'i, T>
 where
     T: SerializeShrinkWrap + DeserializeShrinkWrap<'i> + Clone,
 {
-    /// Create RefBox::Ref variant from the provided value
+    /// Create `RefBox::Ref` variant from the provided value
     pub fn new(value: &'i T) -> Self {
         RefBox::Ref { value }
     }
 
-    /// Return the RefBox::Ref value clone or deserialize the value from RefBox::Buf and return it
+    /// Return the `RefBox::Ref` value clone or deserialize the value from `RefBox::Buf` and return it
     pub fn read(&self) -> Result<T, Error> {
         match self {
             RefBox::Ref { value } => Ok((*value).clone()),

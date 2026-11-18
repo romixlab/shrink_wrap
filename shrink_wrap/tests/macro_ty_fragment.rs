@@ -1,4 +1,4 @@
-//! `#[derive_shrink_wrap]` accepts a field type that comes from a macro_rules `$T:ty` fragment (DER-11).
+//! `#[derive_shrink_wrap]` accepts a field type that comes from a `macro_rules` `$T:ty` fragment (DER-11).
 //!
 //! When a `$T:ty` fragment is substituted into a macro's output, rustc wraps it in an invisible
 //! `syn::Type::Group` for hygiene (and a literal `(u16)` parses as `syn::Type::Paren`); the transform used to

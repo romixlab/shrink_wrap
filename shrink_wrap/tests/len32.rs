@@ -1,4 +1,4 @@
-//! `BufWriter` with the `len32` feature (SW-83): lengths wait as `u32`, so a value may pass 65_535 bytes, and each
+//! `BufWriter` with the `len32` feature (SW-83): lengths wait as `u32`, so a value may pass `65_535` bytes, and each
 //! waiting length takes 4 bytes of the buffer. Run by `just test` with `--features len32`.
 #![cfg(feature = "len32")]
 

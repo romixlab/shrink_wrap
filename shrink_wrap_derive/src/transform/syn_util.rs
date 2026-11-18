@@ -71,8 +71,8 @@ pub(crate) fn take_wire_attr(
             match &attr.meta {
                 Meta::List(list) => syn::parse2::<syn::Type>(list.tokens.clone())
                     .map(|ty| (ty, None))
-                    .map_err(|_| "expected #[wire(W)] with an integer type W".to_string()),
-                _ => Err("expected #[wire(W)] with an integer type W".to_string()),
+                    .map_err(|_| "expected #[wire(W)] with an integer type W".to_owned()),
+                _ => Err("expected #[wire(W)] with an integer type W".to_owned()),
             }
         } else if attr.path().is_ident("cfg_attr") {
             match cfg_attr_wire(attr) {
@@ -84,7 +84,7 @@ pub(crate) fn take_wire_attr(
         };
         match wire {
             Ok(wire) if found.is_none() => found = Some(wire),
-            Ok(_) => err = Some("more than one #[wire(..)]".to_string()),
+            Ok(_) => err = Some("more than one #[wire(..)]".to_owned()),
             Err(e) => err = Some(e),
         }
         false
@@ -118,7 +118,7 @@ fn cfg_attr_wire(attr: &syn::Attribute) -> Option<Result<(syn::Type, Option<Meta
     Some(
         syn::parse2::<syn::Type>(wire.tokens.clone())
             .map(|ty| (ty, Some(pred)))
-            .map_err(|_| "expected #[cfg_attr(pred, wire(W))] with an integer type W".to_string()),
+            .map_err(|_| "expected #[cfg_attr(pred, wire(W))] with an integer type W".to_owned()),
     )
 }
 
@@ -160,7 +160,7 @@ pub(crate) fn take_display_attr(attrs: &mut Vec<syn::Attribute>) -> Result<Optio
         return Err("expected #[display(\"..\")]".into());
     };
     let lit: LitStr =
-        syn::parse2(list.tokens.clone()).map_err(|_| "expected #[display(\"..\")]".to_string())?;
+        syn::parse2(list.tokens.clone()).map_err(|_| "expected #[display(\"..\")]".to_owned())?;
     Ok(Some(lit.value()))
 }
 

@@ -62,7 +62,7 @@ fn rec_owned() -> RecOwned {
         small: U3::new(5).unwrap(),
         name: "name".into(),
         data: vec![1, 2, 3],
-        words: vec!["ab".into(), "".into(), "cde".into()],
+        words: vec!["ab".into(), String::new(), "cde".into()],
         maybe: Some("x".into()),
         inner: InnerOwned {
             a: 0xabcd,
@@ -180,7 +180,10 @@ fn too_small_buffer_is_an_error() {
     for len in 0..40 {
         let mut buf = vec![0u8; len];
         let mut wr = BufWriter::new(&mut buf);
-        match wr.write_owned(&owned).and_then(|_| wr.finish().map(|_| ())) {
+        match wr
+            .write_owned(&owned)
+            .and_then(|()| wr.finish().map(|_| ()))
+        {
             Ok(()) => assert!(len > 30, "{len} bytes are not enough"),
             Err(e) => assert!(
                 matches!(e, Error::OutOfBoundsWriteRawSlice | Error::OutOfBoundsRev),
@@ -193,8 +196,8 @@ fn too_small_buffer_is_an_error() {
 /// An array of elements that aren't `Copy` reads back owned: `[String; 3]`, `[Option<String>; 2]`.
 #[test]
 fn array_of_owned_elements() {
-    let words = ["a".to_string(), String::new(), "ccc".to_string()];
-    let maybe = [Some("x".to_string()), None];
+    let words = ["a".to_owned(), String::new(), "ccc".to_owned()];
+    let maybe = [Some("x".to_owned()), None];
     let mut buf = [0u8; 64];
     let mut wr = BufWriter::new(&mut buf);
     wr.write_owned(&words).unwrap();

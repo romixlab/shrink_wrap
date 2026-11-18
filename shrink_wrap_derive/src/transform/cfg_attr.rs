@@ -6,7 +6,7 @@
 //! it doesn't: the bytes never depend on a `cfg` the derive couldn't see. This is the form a crate with
 //! `shrink_wrap` optional needs (`exact_units`): `#[cfg_attr(feature = "shrink_wrap", derive_shrink_wrap(..))]` on
 //! the type and `#[cfg_attr(feature = "shrink_wrap", default = 0)]` on a field, the same feature, so it always holds
-//! where the derive runs. `wire(W)` goes the same way, read by [super::syn_util::take_wire_attr] (DER-19).
+//! where the derive runs. `wire(W)` goes the same way, read by [`super::syn_util::take_wire_attr`] (DER-19).
 
 use proc_macro2::TokenStream;
 use quote::{ToTokens, TokenStreamExt, quote};
@@ -42,7 +42,7 @@ pub(crate) fn expand_read_cfg_attrs(item: &mut Item) -> Result<Vec<Meta>, String
     Ok(preds)
 }
 
-/// A compile error per predicate of [expand_read_cfg_attrs], where it doesn't hold.
+/// A compile error per predicate of [`expand_read_cfg_attrs`], where it doesn't hold.
 pub(crate) fn cfg_guards(type_name: &str, preds: &[Meta]) -> TokenStream {
     let mut ts = TokenStream::new();
     for pred in preds {

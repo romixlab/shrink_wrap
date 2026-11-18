@@ -61,7 +61,7 @@ fn display_override_wins_over_doc_and_binds_tuple_fields_by_position() {
 #[test]
 fn owned_side_also_implements_display_and_error() {
     let owned = IoErrorOwned::InUse {
-        by: "USART2".to_string(),
+        by: "USART2".to_owned(),
     };
     assert_eq!(owned.to_string(), "In use by USART2");
     assert_error(&owned);

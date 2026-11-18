@@ -1,5 +1,5 @@
 //! [Series] (SW-60): a list of `T` written column by column, one column per leaf field, each with its own
-//! predictor and coder, discrete leaves as runs of changes; see [SeriesColumns] for the types it takes. Numeric
+//! predictor and coder, discrete leaves as runs of changes; see [`SeriesColumns`] for the types it takes. Numeric
 //! columns use the SW-31 prefix code (plus packed/constant/plain), float columns the SW-32 XOR code (Gorilla),
 //! both bit-level codes internal to this module and its `columns` submodule.
 
@@ -60,8 +60,8 @@ pub use store::{
 pub use wired::{Wired, WiredOpaque};
 pub use xor_float::XorBits;
 
-/// Bit-level writes shared by [BufWriter], `BufWriterOwned` and [BitCounter], so a codec is written once. The
-/// writers of [SeriesColumns] groups are generic over it: the same code writes and counts.
+/// Bit-level writes shared by [`BufWriter`], `BufWriterOwned` and [`BitCounter`], so a codec is written once. The
+/// writers of [`SeriesColumns`] groups are generic over it: the same code writes and counts.
 pub trait BitSink {
     /// Bits written so far, from the start of the buffer (only its position in a byte matters to a codec).
     fn bit_pos(&self) -> usize;
@@ -69,7 +69,7 @@ pub trait BitSink {
     /// `count` low bits of `value`, 0 to 64.
     fn put_bits(&mut self, count: u8, value: u64) -> Result<(), Error>;
     /// A block of the packed coder: its width field (`width` in `width_bits` bits, at most 32), then the low
-    /// `width` (0 to 32) bits of each of `residuals`, the same bits as a [put_bits](Self::put_bits) each. The writers
+    /// `width` (0 to 32) bits of each of `residuals`, the same bits as a [`put_bits`](Self::put_bits) each. The writers
     /// of this crate check the room once for the block (a block that doesn't fit writes nothing) and don't make a
     /// call per value.
     fn put_block(&mut self, width_bits: u8, width: u8, residuals: &[u32]) -> Result<(), Error> {
@@ -84,13 +84,13 @@ pub trait BitSink {
     /// Whole bytes, after aligning to a byte.
     fn put_bytes(&mut self, bytes: &[u8]) -> Result<(), Error>;
 
-    /// An opaque run value of `value`'s own bytes: `len: nib` of what [to_ww_bytes](SerializeShrinkWrap::to_ww_bytes)
+    /// An opaque run value of `value`'s own bytes: `len: nib` of what [`to_ww_bytes`](SerializeShrinkWrap::to_ww_bytes)
     /// gives, zero bits to the next byte, then those bytes. Serialized into the writer's free space first, so
-    /// nothing is allocated (`BufWriterOwned` and a [BitCounter] without [scratch](Self::scratch) use a `Vec`).
+    /// nothing is allocated (`BufWriterOwned` and a [`BitCounter`] without [scratch](Self::scratch) use a `Vec`).
     fn put_serialized<V: SerializeShrinkWrap + ?Sized>(&mut self, value: &V) -> Result<(), Error>;
 
-    /// Free memory after what is written, for a [BitCounter] to serialize opaque values into while it measures a
-    /// group ([BitCounter::with_scratch]); its contents are not kept.
+    /// Free memory after what is written, for a [`BitCounter`] to serialize opaque values into while it measures a
+    /// group ([`BitCounter::with_scratch`]); its contents are not kept.
     fn scratch(&mut self) -> &mut [u8];
 }
 
@@ -157,7 +157,7 @@ impl BitSink for BufWriter<'_> {
     }
 
     fn align_byte(&mut self) {
-        self.align_byte()
+        self.align_byte();
     }
 
     fn put_bytes(&mut self, bytes: &[u8]) -> Result<(), Error> {
@@ -200,7 +200,7 @@ impl BitSink for crate::buf_writer::BitWriter<'_, '_> {
     }
 
     fn align_byte(&mut self) {
-        self.align_byte()
+        self.align_byte();
     }
 
     fn put_bytes(&mut self, bytes: &[u8]) -> Result<(), Error> {
@@ -232,7 +232,7 @@ impl BitSink for crate::BufWriterOwned {
     }
 
     fn align_byte(&mut self) {
-        self.align_byte()
+        self.align_byte();
     }
 
     fn put_bytes(&mut self, bytes: &[u8]) -> Result<(), Error> {
@@ -289,7 +289,7 @@ pub(crate) fn put_delta(sink: &mut impl BitSink, z: u64, width: u8) -> Result<()
     sink.put_bits(width, z)
 }
 
-/// Bits [put_delta] writes for a value that needs `needs` bits (0 for 0) at `width`.
+/// Bits [`put_delta`] writes for a value that needs `needs` bits (0 for 0) at `width`.
 pub(crate) fn delta_bits(needs: u8, width: u8) -> usize {
     if needs == 0 {
         return 1;

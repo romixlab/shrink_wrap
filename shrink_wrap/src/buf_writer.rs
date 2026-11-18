@@ -24,9 +24,10 @@ fn rev_len_of(slot: &[u8]) -> u32 {
     RevLen::from_le_bytes(le)
 }
 
-/// no_std buffer writer that supports 1 bit, 4 bit, variable length integer and other operations.
+/// `no_std` buffer writer that supports 1 bit, 4 bit, variable length integer and other operations.
+///
 /// No alignment requirements are imposed on the byte buffer provided.
-/// Allocator is not required for no_std use. See BufWriterOwned for std use.
+/// Allocator is not required for `no_std` use. See `BufWriterOwned` for std use.
 ///
 /// # Example
 /// ```
@@ -43,23 +44,23 @@ pub struct BufWriter<'i> {
     byte_idx: usize,
     /// Next bit to write to, starts from 7
     bit_idx: u8,
-    /// Buffer length from the front, shrinks when [Self::write_rev_len()] is used.
+    /// Buffer length from the front, shrinks when [`Self::write_rev_len()`] is used.
     len_bytes: usize,
     /// First error of the `write_*_latch` methods since the last [latched](Self::latched)
     latch: Option<Error>,
 }
 
 /// Owned values (`Vec`, `String`, `..Owned` types) into a fixed buffer, with the same bytes as their borrowed
-/// counterparts written with [write](BufWriter::write) and [SerializeShrinkWrap::ser_shrink_wrap]: a std server
+/// counterparts written with [write](BufWriter::write) and [`SerializeShrinkWrap::ser_shrink_wrap`]: a std server
 /// that builds its replies in a fixed buffer writes its handlers' owned return values this way (API-21).
 #[cfg(feature = "std")]
 impl BufWriter<'_> {
-    /// [write](Self::write) for a value that has only [SerializeShrinkWrapOwned](crate::SerializeShrinkWrapOwned):
+    /// [write](Self::write) for a value that has only [`SerializeShrinkWrapOwned`](crate::SerializeShrinkWrapOwned):
     /// the same bytes the borrowed counterpart gives, at the same bit position, its lengths pushed to this
     /// writer's back for [finish](Self::finish) or an enclosing `Unsized` value to encode.
     ///
-    /// The value goes through a [BufWriterOwned](crate::BufWriterOwned) first and is copied after, so it costs an
-    /// allocation and a copy; values that have [SerializeShrinkWrap] are better written with `write`.
+    /// The value goes through a [`BufWriterOwned`](crate::BufWriterOwned) first and is copied after, so it costs an
+    /// allocation and a copy; values that have [`SerializeShrinkWrap`] are better written with `write`.
     ///
     /// ```
     /// use shrink_wrap::BufWriter;
@@ -82,9 +83,9 @@ impl BufWriter<'_> {
         self.through_owned(|wr| wr.write(val))
     }
 
-    /// [ser_shrink_wrap](SerializeShrinkWrap::ser_shrink_wrap) for a value that has only
-    /// [SerializeShrinkWrapOwned](crate::SerializeShrinkWrapOwned): the value as a root one (an `Unsized` value
-    /// without its size), as [write_owned](Self::write_owned) otherwise.
+    /// [`ser_shrink_wrap`](SerializeShrinkWrap::ser_shrink_wrap) for a value that has only
+    /// [`SerializeShrinkWrapOwned`](crate::SerializeShrinkWrapOwned): the value as a root one (an `Unsized` value
+    /// without its size), as [`write_owned`](Self::write_owned) otherwise.
     pub fn ser_owned<T: crate::SerializeShrinkWrapOwned>(&mut self, val: &T) -> Result<(), Error> {
         self.through_owned(|wr| val.ser_shrink_wrap_owned(wr))
     }
@@ -118,9 +119,9 @@ impl BufWriter<'_> {
     }
 }
 
-/// An owned value seen as [SerializeShrinkWrap], for code that takes one (a list builder, a size measure, a
-/// generic writer): written through [BufWriter::ser_owned], the same bytes its borrowed counterpart gives. No
-/// [MAX_SIZE](SerializeShrinkWrap::MAX_SIZE), as for any value that can grow.
+/// An owned value seen as [`SerializeShrinkWrap`], for code that takes one (a list builder, a size measure, a
+/// generic writer): written through [`BufWriter::ser_owned`], the same bytes its borrowed counterpart gives. No
+/// [`MAX_SIZE`](SerializeShrinkWrap::MAX_SIZE), as for any value that can grow.
 ///
 /// ```
 /// use shrink_wrap::{BufWriter, OwnedSer, SerializeShrinkWrap};
@@ -149,7 +150,7 @@ pub struct BufWriterState {
     len_bytes: usize,
 }
 
-/// A [BufWriter] borrowed for a run of bit writes (the columns of a `Series`): the written bits are kept in a
+/// A [`BufWriter`] borrowed for a run of bit writes (the columns of a `Series`): the written bits are kept in a
 /// 32-bit register and go into the buffer a word at a time, instead of a read-modify-write of the open byte and a
 /// room check of the writer per write. Writes that are not bits go through the `BufWriter`; dropping it puts the
 /// bits back, so the `BufWriter` is as if it wrote them itself (same bytes, same errors).
@@ -238,7 +239,7 @@ impl<'w, 'i> BitWriter<'w, 'i> {
         self.wr.byte_idx = at;
     }
 
-    /// Zero bits to the next byte, as [BufWriter::align_byte].
+    /// Zero bits to the next byte, as [`BufWriter::align_byte`].
     pub(crate) fn align_byte(&mut self) {
         let pad = self.n.wrapping_neg() & 7;
         if pad > 0 {
@@ -285,7 +286,7 @@ impl<'w, 'i> BitWriter<'w, 'i> {
         Ok(())
     }
 
-    /// A packed block, see [BitSink::put_block](crate::series::BitSink::put_block): one room check for all of it
+    /// A packed block, see [`BitSink::put_block`](crate::series::BitSink::put_block): one room check for all of it
     /// (a block that doesn't fit writes nothing), then a push each, with the register in locals.
     #[inline]
     #[cfg_attr(shrink_wrap_optimize, optimize(speed))]
@@ -324,7 +325,7 @@ impl<'w, 'i> BitWriter<'w, 'i> {
     }
 }
 
-/// [BitWriter::push] on the register `acc` with `n` bits in it, the next word of `buf` at `at`: `count` (0 to 32)
+/// [`BitWriter::push`] on the register `acc` with `n` bits in it, the next word of `buf` at `at`: `count` (0 to 32)
 /// bits that fit, no set bits of `bits` above them.
 #[cfg_attr(feature = "fast-io", inline(always))]
 #[cfg_attr(not(feature = "fast-io"), inline)]
@@ -362,7 +363,7 @@ pub(crate) fn load_be32(buf: &[u8], at: usize) -> Option<u32> {
 }
 
 /// `word` into the four bytes of `buf` from `at`, big endian, which must be there (else a panic, before anything
-/// is written), see [load_be32].
+/// is written), see [`load_be32`].
 #[cfg_attr(feature = "fast-io", inline(always))]
 #[cfg_attr(not(feature = "fast-io"), inline)]
 fn store_be32(buf: &mut [u8], at: usize, word: u32) {
@@ -399,7 +400,7 @@ impl Drop for BitWriter<'_, '_> {
 }
 
 impl BufWriterState {
-    /// Position (byte index, bit index) at the time of [BufWriter::save_state].
+    /// Position (byte index, bit index) at the time of [`BufWriter::save_state`].
     pub fn pos(&self) -> (usize, u8) {
         (self.byte_idx, self.bit_idx)
     }
@@ -411,7 +412,7 @@ pub struct UnsizedBuilder {
     unsized_start_idx: usize,
 }
 
-/// A reserved [TailSize](crate::TailSize) slot, see [BufWriter::reserve_tail_size].
+/// A reserved [`TailSize`](crate::TailSize) slot, see [`BufWriter::reserve_tail_size`].
 #[must_use = "the slot must be filled in with backfill_tail_size"]
 pub struct TailSizeSlot {
     /// First byte of the slot
@@ -423,7 +424,7 @@ pub struct TailSizeSlot {
 }
 
 impl<'i> BufWriter<'i> {
-    /// Create a new BufWriter from the provided mutable slice.
+    /// Create a new `BufWriter` from the provided mutable slice.
     /// `buf` does not need to be initialized to zero.
     // Out of line unless the `fast-io` feature is on (SW-74): inlined it is about 20 bytes of stores at each of
     // the dozens of places a firmware makes one (a copy per type of `dispatch::des`, `to_ww_bytes`, ..), a call
@@ -441,7 +442,7 @@ impl<'i> BufWriter<'i> {
         }
     }
 
-    /// Reset BufWriter to the beginning, "forgetting" all written data.
+    /// Reset `BufWriter` to the beginning, "forgetting" all written data.
     /// Useful when re-using the same writer multiple times.
     pub fn reset(&mut self) {
         self.len_bytes = self.buf.len();
@@ -468,7 +469,7 @@ impl<'i> BufWriter<'i> {
     }
 
     /// Align to nibble and write one [Nibble], 4 lower bits are used, and higher bits are ignored.
-    /// There is a method write_un8(4, val), that will also write 4 bits to the buffer,
+    /// There is a method `write_un8(4`, val), that will also write 4 bits to the buffer,
     /// but will use an alignment of 1 bit instead.
     pub fn write_nib(&mut self, val: Nibble) -> Result<(), Error> {
         // align_nibble() and the write in one: the bits left over in a half written nibble are cleared with it
@@ -490,8 +491,8 @@ impl<'i> BufWriter<'i> {
         Ok(())
     }
 
-    /// A packed block of a `Series`, see [BitSink::put_block](crate::series::BitSink::put_block): as a
-    /// [write_un32](Self::write_un32) each, with one room check for all of it (a block that doesn't fit writes
+    /// A packed block of a `Series`, see [`BitSink::put_block`](crate::series::BitSink::put_block): as a
+    /// [`write_un32`](Self::write_un32) each, with one room check for all of it (a block that doesn't fit writes
     /// nothing).
     pub(crate) fn write_block(
         &mut self,
@@ -514,7 +515,7 @@ impl<'i> BufWriter<'i> {
     }
 
     /// Align to nibble and write `count` (1 to 7) nibbles, the low `4 * count` bits of `bits` (the first nibble in
-    /// the highest), as `count` [write_nib](Self::write_nib)s would; a run that doesn't fit writes nothing.
+    /// the highest), as `count` [`write_nib`](Self::write_nib)s would; a run that doesn't fit writes nothing.
     #[inline]
     pub(crate) fn write_nibbles(&mut self, count: u32, bits: u32) -> Result<(), Error> {
         // the zero bits to the next nibble go first, as the high bits of the write (at most 3 + 28)
@@ -535,7 +536,7 @@ impl<'i> BufWriter<'i> {
     }
 
     /// Align to nibble and write one [Nibble], 4 lower bits are used, and higher bits are ignored.
-    /// See also [write_nib](Self::write_nib)
+    /// See also [`write_nib`](Self::write_nib)
     pub fn write_nib_masked(&mut self, val: u8) -> Result<(), Error> {
         self.write_nib(Nibble::new_masked(val))
     }
@@ -613,10 +614,10 @@ impl<'i> BufWriter<'i> {
         if 7 - self.bit_idx + bit_count > 32 {
             return self.put_low_bits_split(bit_count, value);
         }
-        self.put_in_word(bit_count, value)
+        self.put_in_word(bit_count, value);
     }
 
-    /// [put_low_bits](Self::put_low_bits) of 26 or more bits from the middle of a byte: two writes that each end in
+    /// [`put_low_bits`](Self::put_low_bits) of 26 or more bits from the middle of a byte: two writes that each end in
     /// a word.
     #[inline(never)]
     #[cfg_attr(shrink_wrap_optimize, optimize(speed))]
@@ -625,7 +626,7 @@ impl<'i> BufWriter<'i> {
         self.put_in_word(16, value);
     }
 
-    /// [put_low_bits](Self::put_low_bits) of bits that end in the word starting at the open byte.
+    /// [`put_low_bits`](Self::put_low_bits) of bits that end in the word starting at the open byte.
     #[cfg_attr(feature = "fast-io", inline(always))]
     #[cfg_attr(not(feature = "fast-io"), inline)]
     fn put_in_word(&mut self, bit_count: u8, value: u32) {
@@ -643,7 +644,7 @@ impl<'i> BufWriter<'i> {
         self.bit_idx = 7 - (end % 8) as u8;
     }
 
-    /// [put_in_word](Self::put_in_word) in the last three bytes of the buffer, where a word doesn't fit: the bits
+    /// [`put_in_word`](Self::put_in_word) in the last three bytes of the buffer, where a word doesn't fit: the bits
     /// up to `end` (counted from the open byte's first bit, at most 32), byte by byte.
     #[inline(never)]
     #[cold]
@@ -690,7 +691,7 @@ impl<'i> BufWriter<'i> {
         Ok(())
     }
 
-    /// Write bool like [write_bool](Self::write_bool), but an error is kept in the writer instead of returned:
+    /// Write bool like [`write_bool`](Self::write_bool), but an error is kept in the writer instead of returned:
     /// see [latched](Self::latched).
     #[inline(never)]
     pub fn write_bool_latch(&mut self, val: bool) {
@@ -711,7 +712,7 @@ impl<'i> BufWriter<'i> {
     ///
     /// The `_latch` writes are what `#[derive_shrink_wrap]` generates for plain fields: a run of them is followed
     /// by one `wr.latched()?` instead of an error check after each write, which is about half the code on small
-    /// CPUs (docs/code_size.md). A write that fails writes nothing, and the writes after it go on.
+    /// CPUs (`docs/code_size.md`). A write that fails writes nothing, and the writes after it go on.
     #[inline]
     pub fn latched(&mut self) -> Result<(), Error> {
         // not `self.latch.take()`, which stores `None` back also when there is nothing to clear: the derive calls
@@ -726,45 +727,45 @@ impl<'i> BufWriter<'i> {
         }
     }
 
-    /// [write_u8](Self::write_u8), an error is kept for [latched](Self::latched).
+    /// [`write_u8`](Self::write_u8), an error is kept for [latched](Self::latched).
     pub fn write_u8_latch(&mut self, val: u8) {
-        self.write_le32_latch(val as u32, 1)
+        self.write_le32_latch(val as u32, 1);
     }
 
-    /// [write_u16](Self::write_u16), an error is kept for [latched](Self::latched).
+    /// [`write_u16`](Self::write_u16), an error is kept for [latched](Self::latched).
     #[inline(always)]
     pub fn write_u16_latch(&mut self, val: u16) {
-        self.write_le32_latch(val as u32, 2)
+        self.write_le32_latch(val as u32, 2);
     }
 
-    /// [write_u32](Self::write_u32), an error is kept for [latched](Self::latched).
+    /// [`write_u32`](Self::write_u32), an error is kept for [latched](Self::latched).
     #[inline(always)]
     pub fn write_u32_latch(&mut self, val: u32) {
-        self.write_le32_latch(val, 4)
+        self.write_le32_latch(val, 4);
     }
 
-    /// [write_i8](Self::write_i8), an error is kept for [latched](Self::latched).
+    /// [`write_i8`](Self::write_i8), an error is kept for [latched](Self::latched).
     #[inline(always)]
     pub fn write_i8_latch(&mut self, val: i8) {
-        self.write_u8_latch(val as u8)
+        self.write_u8_latch(val as u8);
     }
 
-    /// [write_i16](Self::write_i16), an error is kept for [latched](Self::latched).
+    /// [`write_i16`](Self::write_i16), an error is kept for [latched](Self::latched).
     #[inline(always)]
     pub fn write_i16_latch(&mut self, val: i16) {
-        self.write_le32_latch(val as u16 as u32, 2)
+        self.write_le32_latch(val as u16 as u32, 2);
     }
 
-    /// [write_i32](Self::write_i32), an error is kept for [latched](Self::latched).
+    /// [`write_i32`](Self::write_i32), an error is kept for [latched](Self::latched).
     #[inline(always)]
     pub fn write_i32_latch(&mut self, val: i32) {
-        self.write_le32_latch(val as u32, 4)
+        self.write_le32_latch(val as u32, 4);
     }
 
-    /// [write_f32](Self::write_f32), an error is kept for [latched](Self::latched).
+    /// [`write_f32`](Self::write_f32), an error is kept for [latched](Self::latched).
     #[inline(always)]
     pub fn write_f32_latch(&mut self, val: f32) {
-        self.write_le32_latch(val.to_bits(), 4)
+        self.write_le32_latch(val.to_bits(), 4);
     }
 
     /// Write u8 with alignment of 1 byte.
@@ -778,47 +779,47 @@ impl<'i> BufWriter<'i> {
         self.write_le32(val as u32, 2)
     }
 
-    /// Write u16 in UNib32 forward encoding. It will take from 1 nibble to 11 nibbles in the buffer,
+    /// Write u16 in `UNib32` forward encoding. It will take from 1 nibble to 11 nibbles in the buffer,
     /// depending on the number. Alignment of 4 bits is used.
     pub fn write_unib32(&mut self, val: u32) -> Result<(), Error> {
         UNib32(val).write_forward(self)
     }
 
-    /// Write i32 in INib32 forward encoding (zigzag over UNib32). It will take from 1 nibble to 11 nibbles in
+    /// Write i32 in `INib32` forward encoding (zigzag over `UNib32`). It will take from 1 nibble to 11 nibbles in
     /// the buffer, depending on the number. Alignment of 4 bits is used.
     pub fn write_inib32(&mut self, val: i32) -> Result<(), Error> {
         INib32(val).write_forward(self)
     }
 
-    /// Write u32 in UVlq32 encoding (big endian VLQ). It will take from 1 byte to 5 bytes in the buffer,
+    /// Write u32 in `UVlq32` encoding (big endian VLQ). It will take from 1 byte to 5 bytes in the buffer,
     /// depending on the number. Alignment of 1 byte is used.
     pub fn write_uvlq32(&mut self, val: u32) -> Result<(), Error> {
         UVlq32(val).write_forward(self)
     }
 
-    /// Write u64 in UVlq64 encoding (big endian VLQ). It will take from 1 byte to 10 bytes in the buffer,
+    /// Write u64 in `UVlq64` encoding (big endian VLQ). It will take from 1 byte to 10 bytes in the buffer,
     /// depending on the number. Alignment of 1 byte is used.
     pub fn write_uvlq64(&mut self, val: u64) -> Result<(), Error> {
         UVlq64(val).write_forward(self)
     }
 
-    /// Write i32 in IVlq32 encoding (zigzag over UVlq32). It will take from 1 byte to 5 bytes in the buffer,
+    /// Write i32 in `IVlq32` encoding (zigzag over `UVlq32`). It will take from 1 byte to 5 bytes in the buffer,
     /// depending on the number. Alignment of 1 byte is used.
     pub fn write_ivlq32(&mut self, val: i32) -> Result<(), Error> {
         IVlq32(val).write_forward(self)
     }
 
-    /// Write i64 in IVlq64 encoding (zigzag over UVlq64). It will take from 1 byte to 10 bytes in the buffer,
+    /// Write i64 in `IVlq64` encoding (zigzag over `UVlq64`). It will take from 1 byte to 10 bytes in the buffer,
     /// depending on the number. Alignment of 1 byte is used.
     pub fn write_ivlq64(&mut self, val: i64) -> Result<(), Error> {
         IVlq64(val).write_forward(self)
     }
 
-    /// Write len to the back of the buffer, later when [BufWriter::encode_len_fifo()] or [BufWriter::finish()]
-    /// are called, all the numbers will be encoded to UNib32 reverse encoding.
+    /// Write len to the back of the buffer, later when [`BufWriter::encode_len_fifo()`] or [`BufWriter::finish()`]
+    /// are called, all the numbers will be encoded to `UNib32` reverse encoding.
     ///
-    /// `BufWriter` keeps these lengths as `u16`, 2 bytes each until they are encoded: an object is at most 65_535
-    /// bytes long, a longer one is [Error::LenTooLong]. With the `len32` feature they are `u32`, 4 bytes each, as
+    /// `BufWriter` keeps these lengths as `u16`, 2 bytes each until they are encoded: an object is at most `65_535`
+    /// bytes long, a longer one is [`Error::LenTooLong`]. With the `len32` feature they are `u32`, 4 bytes each, as
     /// in `BufWriterOwned`.
     pub fn write_rev_len(&mut self, len: usize) -> Result<RevPos, Error> {
         let Ok(len) = RevLen::try_from(len) else {
@@ -833,7 +834,7 @@ impl<'i> BufWriter<'i> {
         Ok(RevPos(self.len_bytes))
     }
 
-    /// See [BufWriter::encode_len_fifo()] on how this function is used.
+    /// See [`BufWriter::encode_len_fifo()`] on how this function is used.
     pub fn rev_len_pos(&self) -> RevPos {
         RevPos(self.len_bytes)
     }
@@ -908,8 +909,8 @@ impl<'i> BufWriter<'i> {
     }
 
     /// Write the provided slice to the buffer as is. You won't be able to read it back
-    /// with BufReader without knowing the length, which is not written in this case.
-    /// See also [Self::write_bytes].
+    /// with `BufReader` without knowing the length, which is not written in this case.
+    /// See also [`Self::write_bytes`].
     pub fn write_raw_slice(&mut self, val: &[u8]) -> Result<(), Error> {
         self.align_byte();
         if self.bytes_left() < val.len() {
@@ -956,8 +957,8 @@ impl<'i> BufWriter<'i> {
         self.write_raw_slice(val.as_bytes())
     }
 
-    /// Align to byte and reserve `len` bytes (1 to 5) for a [TailSize](crate::TailSize) slot, to be filled in with
-    /// [backfill_tail_size](Self::backfill_tail_size) once everything that belongs to the enclosing value is written.
+    /// Align to byte and reserve `len` bytes (1 to 5) for a [`TailSize`](crate::TailSize) slot, to be filled in with
+    /// [`backfill_tail_size`](Self::backfill_tail_size) once everything that belongs to the enclosing value is written.
     ///
     /// This is what `#[derive_shrink_wrap(..)]` generates for a `TailSize<N>` field:
     /// ```
@@ -992,9 +993,9 @@ impl<'i> BufWriter<'i> {
         })
     }
 
-    /// Encode the reverse lengths written since [reserve_tail_size](Self::reserve_tail_size), align to byte and fill
+    /// Encode the reverse lengths written since [`reserve_tail_size`](Self::reserve_tail_size), align to byte and fill
     /// the slot in with the number of bytes from its end to the current position.
-    /// Fails with [Error::LenTooLong] if that does not fit into the slot's width.
+    /// Fails with [`Error::LenTooLong`] if that does not fit into the slot's width.
     pub fn backfill_tail_size(&mut self, slot: TailSizeSlot) -> Result<(), Error> {
         self.encode_len_fifo(self.rev_len_pos(), slot.rev_mark)?;
         self.align_byte();
@@ -1014,17 +1015,17 @@ impl<'i> BufWriter<'i> {
         val.ser_shrink_wrap_latch(self)
     }
 
-    /// Write any value that implements SerializeShrinkWrap trait.
+    /// Write any value that implements `SerializeShrinkWrap` trait.
     ///
     /// If the value is Unsized, then size is calculated and written to the back of the buffer as u16.
-    /// Which is later encoded to reverse UNib32.
+    /// Which is later encoded to reverse `UNib32`.
     ///
-    /// For serializing root structs or enums, it's better to call ser_shrink_wrap directly,
+    /// For serializing root structs or enums, it's better to call `ser_shrink_wrap` directly,
     /// as it avoids wasting space for the object size, which is known from the buffer size itself.
     ///
     /// Values serialized with this method must be deserialized with [read](crate::BufReader::read).
-    /// Values serialized with [ser_shrink_wrap](SerializeShrinkWrap::ser_shrink_wrap) must be
-    /// deserialized with [des_shrink_wrap](crate::DeserializeShrinkWrap::des_shrink_wrap).
+    /// Values serialized with [`ser_shrink_wrap`](SerializeShrinkWrap::ser_shrink_wrap) must be
+    /// deserialized with [`des_shrink_wrap`](crate::DeserializeShrinkWrap::des_shrink_wrap).
     /// (because of the additional size written by write and expected by the read).
     pub fn write<T: SerializeShrinkWrap>(&mut self, val: &T) -> Result<(), Error> {
         if matches!(T::ELEMENT_SIZE, ElementSize::Unsized) {
@@ -1036,8 +1037,8 @@ impl<'i> BufWriter<'i> {
         }
     }
 
-    /// [UnsizedBuilder::new] for [write](Self::write), which can't fail: a size slot that doesn't fit is marked in
-    /// the builder and reported by [end_unsized](Self::end_unsized) (or before it, by the value's own write that
+    /// [`UnsizedBuilder::new`] for [write](Self::write), which can't fail: a size slot that doesn't fit is marked in
+    /// the builder and reported by [`end_unsized`](Self::end_unsized) (or before it, by the value's own write that
     /// doesn't fit either). The builder is two words and comes back in registers, where the `Result` of `new` was
     /// copied out of memory at every type's copy of `write` (SW-74).
     #[cfg_attr(feature = "fast-io", inline)]
@@ -1049,7 +1050,7 @@ impl<'i> BufWriter<'i> {
         })
     }
 
-    /// [UnsizedBuilder::finish] of a builder from [begin_unsized](Self::begin_unsized).
+    /// [`UnsizedBuilder::finish`] of a builder from [`begin_unsized`](Self::begin_unsized).
     #[cfg_attr(feature = "fast-io", inline)]
     #[cfg_attr(not(feature = "fast-io"), inline(never))]
     fn end_unsized(&mut self, builder: UnsizedBuilder) -> Result<(), Error> {
@@ -1066,8 +1067,8 @@ impl<'i> BufWriter<'i> {
     /// * newer data read by old code: additional bytes can be ignored.
     /// * old data read by new code: missing bytes are expected and None or 0 length arrays are created.
     ///
-    /// This function is primarily intended to be used in wire_weaver auto generated code.
-    /// Example of how this function is used in wire_weaver when serializing a variable length object:
+    /// This function is primarily intended to be used in `wire_weaver` auto generated code.
+    /// Example of how this function is used in `wire_weaver` when serializing a variable length object:
     /// ```
     /// use shrink_wrap::BufWriter;
     /// let mut buf = [0u8; 128];
@@ -1120,7 +1121,7 @@ impl<'i> BufWriter<'i> {
             self.len_bytes = idx;
             UNib32(val).write_reversed(self)?;
         }
-        debug_assert!(self.bit_idx == 7);
+        debug_assert_eq!(self.bit_idx, 7);
         Ok(())
     }
 
@@ -1151,12 +1152,12 @@ impl<'i> BufWriter<'i> {
     }
 
     /// [finish](Self::finish) for a writer nothing pushed a length into (no
-    /// [write_rev_len](Self::write_rev_len), list, string or nested `Unsized` value): align to byte and return
+    /// [`write_rev_len`](Self::write_rev_len), list, string or nested `Unsized` value): align to byte and return
     /// the slice containing written data, the same bytes `finish` gives.
     ///
     /// Without a call to `finish` the code that encodes the lengths is not linked, about 600 bytes on a small
-    /// CPU (docs/code_size.md). If a length was pushed after all, this panics in a debug build and returns
-    /// [Error::LenFifoNotEmpty] in a release one. Prefer [finish_for](Self::finish_for), which picks by the type.
+    /// CPU (`docs/code_size.md`). If a length was pushed after all, this panics in a debug build and returns
+    /// [`Error::LenFifoNotEmpty`] in a release one. Prefer [`finish_for`](Self::finish_for), which picks by the type.
     pub fn finish_no_lens(&mut self) -> Result<&[u8], Error> {
         self.latched()?;
         if self.len_bytes != self.buf.len() {
@@ -1173,8 +1174,8 @@ impl<'i> BufWriter<'i> {
     }
 
     /// [finish](Self::finish) after `T::ser_shrink_wrap(wr)` of a root value, or
-    /// [finish_no_lens](Self::finish_no_lens) when `T` never pushes a length
-    /// ([PUSHES_LEN](SerializeShrinkWrap::PUSHES_LEN) is `false`). Decided at compile time, so only one of the
+    /// [`finish_no_lens`](Self::finish_no_lens) when `T` never pushes a length
+    /// ([`PUSHES_LEN`](SerializeShrinkWrap::PUSHES_LEN) is `false`). Decided at compile time, so only one of the
     /// two is linked. `T` must be the type of everything written since the writer was created or reset.
     #[inline(always)]
     pub fn finish_for<T: SerializeShrinkWrap + ?Sized>(&mut self) -> Result<&[u8], Error> {
@@ -1185,7 +1186,7 @@ impl<'i> BufWriter<'i> {
         }
     }
 
-    /// [finish_for](Self::finish_for) that takes self by value, allowing one to return the slice from functions.
+    /// [`finish_for`](Self::finish_for) that takes self by value, allowing one to return the slice from functions.
     #[inline(always)]
     pub fn finish_for_and_take<T: SerializeShrinkWrap + ?Sized>(
         mut self,
@@ -1243,7 +1244,7 @@ impl<'i> BufWriter<'i> {
     /// Returns the number of nibbles left. There might be space for 0 to 3 bits when this function returns 0.
     #[inline]
     pub fn nibbles_left(&self) -> usize {
-        self.bytes_left() * 2 + if self.bit_idx == 3 { 1 } else { 0 }
+        self.bytes_left() * 2 + usize::from(self.bit_idx == 3)
     }
 
     /// Return the current position in bytes and bits.
@@ -1271,7 +1272,7 @@ impl<'i> BufWriter<'i> {
     }
 }
 
-/// Room for a value serialized ahead of the write position and moved back ([put_serialized](crate::series::BitSink::put_serialized)).
+/// Room for a value serialized ahead of the write position and moved back ([`put_serialized`](crate::series::BitSink::put_serialized)).
 impl BufWriter<'_> {
     /// First byte after the current one and 6 more: where a value goes that is preceded by up to 44 bits and a
     /// padding to the byte.
@@ -1313,7 +1314,7 @@ impl UnsizedBuilder {
         // reserve one size slot
         let size_slot_pos = wr.write_rev_len(0)?;
         let unsized_start_idx = wr.pos().0;
-        Ok(UnsizedBuilder {
+        Ok(Self {
             size_slot_pos,
             unsized_start_idx,
         })
@@ -1475,7 +1476,7 @@ mod tests {
         wr.write_u8(0x10).unwrap();
         wr.write_bool(true).unwrap();
         let buf = wr.finish().unwrap();
-        assert_eq!(buf, hex!("10 81"))
+        assert_eq!(buf, hex!("10 81"));
     }
 
     #[test]
@@ -1491,7 +1492,7 @@ mod tests {
         wr.write_un32(17, 58_800).unwrap();
         wr.write_bool(false).unwrap();
         let buf = wr.finish().unwrap();
-        assert_eq!(buf, hex!("20 52 B9 6C 03"))
+        assert_eq!(buf, hex!("20 52 B9 6C 03"));
     }
 
     #[test]
@@ -1869,7 +1870,7 @@ mod tests {
         assert_eq!(wr.write_str(&data), Err(Error::LenTooLong));
     }
 
-    /// Minimal Unsized type used to exercise [BufWriter::write] and [UnsizedBuilder].
+    /// Minimal Unsized type used to exercise [`BufWriter::write`] and [`UnsizedBuilder`].
     struct DummyUnsized(u8);
 
     impl SerializeShrinkWrap for DummyUnsized {
@@ -1884,7 +1885,7 @@ mod tests {
         const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
 
         fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-            Ok(DummyUnsized(rd.read_u8()?))
+            Ok(Self(rd.read_u8()?))
         }
     }
 

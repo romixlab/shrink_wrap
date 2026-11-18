@@ -88,7 +88,7 @@ where
     assert_eq!(wr.finish().unwrap(), expected, "between bits");
 }
 
-/// [same_bytes] for [RefVecBuilderOwned], also against the borrowed builder.
+/// [`same_bytes`] for [`RefVecBuilderOwned`], also against the borrowed builder.
 fn same_bytes_owned<'a, T>(items: &'a [T])
 where
     T: SerializeShrinkWrap + SerializeShrinkWrapOwned + DeserializeShrinkWrap<'a> + Clone,
@@ -369,7 +369,7 @@ fn out_of_buffer_keeps_the_pushed_elements() {
             .write(&RefVec::Slice {
                 slice: &items[..pushed],
             })
-            .and_then(|_| wr.finish().map(|b| b.to_vec()));
+            .and_then(|()| wr.finish().map(|b| b.to_vec()));
         assert_eq!(got, expected, "buffer of {size} bytes, {pushed} pushed");
     }
     assert!(failed > 5);
@@ -755,7 +755,7 @@ fn u8_builder_errors() {
         let mut wr = BufWriter::new(&mut buf);
         let expected = wr
             .write(&RefVec::new_bytes(&pushed))
-            .and_then(|_| wr.finish().map(|b| b.to_vec()));
+            .and_then(|()| wr.finish().map(|b| b.to_vec()));
         assert_eq!(got, expected, "buffer of {size} bytes");
     }
 }

@@ -1,5 +1,5 @@
 //! Builds a C test program of the generated readers and runs it on cases from the Rust side: with
-//! AddressSanitizer and UBSan where the compiler has them, so a read past the end of a buffer fails the test.
+//! `AddressSanitizer` and `UBSan` where the compiler has them, so a read past the end of a buffer fails the test.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -69,7 +69,7 @@ pub fn run(exe: &Path, input: &str) -> String {
         .unwrap();
     // fed from a thread: the program answers while it reads, a full pipe either way would stall both
     let mut stdin = child.stdin.take().unwrap();
-    let input = input.to_string();
+    let input = input.to_owned();
     let feed = std::thread::spawn(move || stdin.write_all(input.as_bytes()));
     let out = child.wait_with_output().unwrap();
     feed.join().unwrap().unwrap();

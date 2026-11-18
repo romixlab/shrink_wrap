@@ -1,5 +1,5 @@
-//! [SeriesCells]: a ring of items as a struct of arrays of atomics, written by one context (an interrupt) and
-//! copied out by another into a [SeriesStore] (API-50, observe cells).
+//! [`SeriesCells`]: a ring of items as a struct of arrays of atomics, written by one context (an interrupt) and
+//! copied out by another into a [`SeriesStore`] (API-50, observe cells).
 
 use super::SeriesStore;
 use crate::un::{IN, U3, U4, U5, U6, UN};
@@ -9,7 +9,7 @@ use core::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, Ordering};
 
 /// Room for `R` items of `Self` as a struct of arrays of atomics, one array per leaf field (two `u32` words for a
 /// 64-bit leaf, four for a 128-bit one), shared between one writer and one reader without a lock: the writer
-/// [puts](Self::put) items with relaxed stores, the reader [copies](Self::copy_rows) them into a [SeriesStore]
+/// [puts](Self::put) items with relaxed stores, the reader [copies](Self::copy_rows) them into a [`SeriesStore`]
 /// with relaxed loads. On a Cortex-M a relaxed store or load is a plain `str` / `ldr`, the same code as a global
 /// variable, and there is no data race (no `static mut`, no UB).
 ///
@@ -18,14 +18,14 @@ use core::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, Ordering};
 /// shares the cells must make sure such rows are not used: the observe cells of `ww_stream` count rows (seqlock
 /// style) and drop the rows the writer may have overwritten during a copy.
 ///
-/// `#[derive_shrink_wrap(.., series)]` implements it next to [SeriesStore] (structs: their fields' cells; enums:
+/// `#[derive_shrink_wrap(.., series)]` implements it next to [`SeriesStore`] (structs: their fields' cells; enums:
 /// the discriminants and their data variants' cells), unless a field has none (strings, byte lists, opaque
 /// fields) or with `series(no_store)`.
 ///
 /// # Safety
 ///
 /// All-zero bytes must be a valid value of [Cells](Self::Cells) (atomics, arrays and tuples of them, unit
-/// types), so that [empty_cells] and `const` constructors can make one with `core::mem::zeroed()`. What a row of
+/// types), so that [`empty_cells`] and `const` constructors can make one with `core::mem::zeroed()`. What a row of
 /// zeroed cells copies out as needn't be a meaningful item: only rows that were [put](Self::put) are copied.
 pub unsafe trait SeriesCells: SeriesStore {
     /// The arrays of atomics of `R` items.
@@ -35,7 +35,7 @@ pub unsafe trait SeriesCells: SeriesStore {
     fn put<const R: usize>(cells: &Self::Cells<R>, i: usize, item: &Self);
 
     /// Copies rows `from..from + n` of `cells` to indices `to..to + n` of `store`, with relaxed loads, as
-    /// [SeriesStore::set] of each item would put them. Panics when a range is out of bounds, like slicing does.
+    /// [`SeriesStore::set`] of each item would put them. Panics when a range is out of bounds, like slicing does.
     fn copy_rows<const R: usize, const N: usize>(
         cells: &Self::Cells<R>,
         from: usize,
@@ -45,13 +45,13 @@ pub unsafe trait SeriesCells: SeriesStore {
     );
 }
 
-/// Cells of `R` items, all zero (see [SeriesCells]' safety section).
+/// Cells of `R` items, all zero (see [`SeriesCells`]' safety section).
 pub fn empty_cells<T: SeriesCells, const R: usize>() -> T::Cells<R> {
     // SAFETY: `SeriesCells` requires all-zero bytes to be a valid `Cells`
     unsafe { core::mem::zeroed() }
 }
 
-/// An unsigned word kept in atomics (two or four `AtomicU32`s for 64 and 128 bits): the leaves of [SeriesCells].
+/// An unsigned word kept in atomics (two or four `AtomicU32`s for 64 and 128 bits): the leaves of [`SeriesCells`].
 pub trait CellWord: Copy {
     /// `R` of them, all zero is valid.
     type Cells<const R: usize>: Send + Sync;
@@ -97,7 +97,7 @@ impl CellWord for u64 {
     fn load<const R: usize>(cells: &Self::Cells<R>, i: usize) -> Self {
         let lo = cells[0][i].load(Ordering::Relaxed);
         let hi = cells[1][i].load(Ordering::Relaxed);
-        (hi as u64) << 32 | lo as u64
+        (hi as Self) << 32 | lo as Self
     }
 }
 
@@ -116,7 +116,7 @@ impl CellWord for u128 {
     fn load<const R: usize>(cells: &Self::Cells<R>, i: usize) -> Self {
         let mut value = 0u128;
         for (w, cell) in cells.iter().enumerate() {
-            value |= (cell[i].load(Ordering::Relaxed) as u128) << (32 * w);
+            value |= (cell[i].load(Ordering::Relaxed) as Self) << (32 * w);
         }
         value
     }
@@ -136,7 +136,7 @@ impl CellWord for bool {
     }
 }
 
-/// A leaf whose store is an array of itself, kept as a [CellWord] `$word`.
+/// A leaf whose store is an array of itself, kept as a [`CellWord`] `$word`.
 macro_rules! word_leaf {
     ($($ty:ty: $word:ty = |$v:ident| $to:expr, |$w:ident| $from:expr;)*) => {
         $(
@@ -241,10 +241,10 @@ unsafe impl SeriesCells for UN {
 
     fn put<const R: usize>(cells: &UnCells<R>, i: usize, item: &Self) {
         let (width, bits, value) = match *item {
-            UN::UN8 { bit_count, value } => (0, bit_count.value(), value as u64),
-            UN::UN16 { bit_count, value } => (1, bit_count.value(), value as u64),
-            UN::UN32 { bit_count, value } => (2, bit_count.value(), value as u64),
-            UN::UN64 { bit_count, value } => (3, bit_count.value(), value),
+            Self::UN8 { bit_count, value } => (0, bit_count.value(), value as u64),
+            Self::UN16 { bit_count, value } => (1, bit_count.value(), value as u64),
+            Self::UN32 { bit_count, value } => (2, bit_count.value(), value as u64),
+            Self::UN64 { bit_count, value } => (3, bit_count.value(), value),
         };
         cells.width[i].store(width_byte(width, bits), Ordering::Relaxed);
         <u64 as CellWord>::put::<R>(&cells.value, i, value);
@@ -253,7 +253,7 @@ unsafe impl SeriesCells for UN {
     fn copy_rows<const R: usize, const N: usize>(
         cells: &UnCells<R>,
         from: usize,
-        store: &mut [UN; N],
+        store: &mut [Self; N],
         to: usize,
         n: usize,
     ) {
@@ -264,19 +264,19 @@ unsafe impl SeriesCells for UN {
             // a bit count or value out of range only comes from a row overwritten while it was copied, which the
             // owner of the cells drops: any valid value does
             *slot = match w >> 6 {
-                0 => UN::UN8 {
+                0 => Self::UN8 {
                     bit_count: U3::new(bits).unwrap_or(U3::zero()),
                     value: v as u8,
                 },
-                1 => UN::UN16 {
+                1 => Self::UN16 {
                     bit_count: U4::new(bits).unwrap_or(U4::zero()),
                     value: v as u16,
                 },
-                2 => UN::UN32 {
+                2 => Self::UN32 {
                     bit_count: U5::new(bits).unwrap_or(U5::zero()),
                     value: v as u32,
                 },
-                _ => UN::UN64 {
+                _ => Self::UN64 {
                     bit_count: U6::new(bits).unwrap_or(U6::zero()),
                     value: v,
                 },
@@ -291,10 +291,10 @@ unsafe impl SeriesCells for IN {
 
     fn put<const R: usize>(cells: &UnCells<R>, i: usize, item: &Self) {
         let (width, bits, value) = match *item {
-            IN::IN8 { bit_count, value } => (0, bit_count.value(), value as u8 as u64),
-            IN::IN16 { bit_count, value } => (1, bit_count.value(), value as u16 as u64),
-            IN::IN32 { bit_count, value } => (2, bit_count.value(), value as u32 as u64),
-            IN::IN64 { bit_count, value } => (3, bit_count.value(), value as u64),
+            Self::IN8 { bit_count, value } => (0, bit_count.value(), value as u8 as u64),
+            Self::IN16 { bit_count, value } => (1, bit_count.value(), value as u16 as u64),
+            Self::IN32 { bit_count, value } => (2, bit_count.value(), value as u32 as u64),
+            Self::IN64 { bit_count, value } => (3, bit_count.value(), value as u64),
         };
         cells.width[i].store(width_byte(width, bits), Ordering::Relaxed);
         <u64 as CellWord>::put::<R>(&cells.value, i, value);
@@ -303,7 +303,7 @@ unsafe impl SeriesCells for IN {
     fn copy_rows<const R: usize, const N: usize>(
         cells: &UnCells<R>,
         from: usize,
-        store: &mut [IN; N],
+        store: &mut [Self; N],
         to: usize,
         n: usize,
     ) {
@@ -312,19 +312,19 @@ unsafe impl SeriesCells for IN {
             let v = <u64 as CellWord>::load::<R>(&cells.value, from + k);
             let bits = w & 0x3F;
             *slot = match w >> 6 {
-                0 => IN::IN8 {
+                0 => Self::IN8 {
                     bit_count: U3::new(bits).unwrap_or(U3::zero()),
                     value: v as u8 as i8,
                 },
-                1 => IN::IN16 {
+                1 => Self::IN16 {
                     bit_count: U4::new(bits).unwrap_or(U4::zero()),
                     value: v as u16 as i16,
                 },
-                2 => IN::IN32 {
+                2 => Self::IN32 {
                     bit_count: U5::new(bits).unwrap_or(U5::zero()),
                     value: v as u32 as i32,
                 },
-                _ => IN::IN64 {
+                _ => Self::IN64 {
                     bit_count: U6::new(bits).unwrap_or(U6::zero()),
                     value: v as i64,
                 },
@@ -350,7 +350,7 @@ unsafe impl<T: ?Sized> SeriesCells for PhantomData<T> {
 }
 
 /// The flags, and `X`'s cells for the `Some` items (left as they were at a `None`). Copied out as
-/// [SeriesStore::set] does: `X`'s store only at the `Some` items.
+/// [`SeriesStore::set`] does: `X`'s store only at the `Some` items.
 // SAFETY: atomics and `X`'s cells, which are valid all zero
 unsafe impl<X: SeriesCells> SeriesCells for Option<X> {
     type Cells<const R: usize> = ([AtomicBool; R], X::Cells<R>);

@@ -38,7 +38,7 @@ pub(crate) struct Args {
     /// `fixed_layout`: the type must have a fixed byte layout (SW-44), a compile error names the field that breaks
     /// it. Without it, a type that has one gets the fast path anyway.
     pub(crate) fixed_layout: bool,
-    /// `head_tail`: a fixed head and a sequential tail (SW-46) instead of shrink_wrap's own encoding.
+    /// `head_tail`: a fixed head and a sequential tail (SW-46) instead of `shrink_wrap`'s own encoding.
     pub(crate) head_tail: bool,
     /// `sparse` (DER-13): a struct of `Option` fields, encoded as an `OptionAnyVec`, one slot per field.
     pub(crate) sparse: bool,
@@ -210,10 +210,7 @@ impl Parse for Args {
             input.parse::<Token![,]>()?;
         }
 
-        Ok(Args {
-            discriminants_enum,
-            future_version,
-            display,
+        Ok(Self {
             borrowed,
             owned,
             cfg_attr,
@@ -224,6 +221,9 @@ impl Parse for Args {
             derive_borrowed,
             size_assumption,
             ww_repr,
+            discriminants_enum,
+            future_version,
+            display,
             crate_path,
             fixed_layout,
             head_tail,

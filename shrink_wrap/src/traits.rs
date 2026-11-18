@@ -8,26 +8,26 @@ use pastey::paste;
 pub trait SerializeShrinkWrap {
     const ELEMENT_SIZE: ElementSize;
 
-    /// Whether [ser_shrink_wrap](Self::ser_shrink_wrap) can leave a length in the writer's reverse length FIFO
-    /// ([write_rev_len](BufWriter::write_rev_len): a list, a string, a nested `Unsized` value) for
+    /// Whether [`ser_shrink_wrap`](Self::ser_shrink_wrap) can leave a length in the writer's reverse length FIFO
+    /// ([`write_rev_len`](BufWriter::write_rev_len): a list, a string, a nested `Unsized` value) for
     /// [finish](BufWriter::finish) to encode.
     ///
-    /// When it is `false`, [to_ww_bytes](Self::to_ww_bytes) ends with
-    /// [finish_no_lens](BufWriter::finish_no_lens) and the FIFO encoder is not linked at all, about 600 bytes on
-    /// a small CPU (docs/code_size.md). The bytes are the same either way.
+    /// When it is `false`, [`to_ww_bytes`](Self::to_ww_bytes) ends with
+    /// [`finish_no_lens`](BufWriter::finish_no_lens) and the FIFO encoder is not linked at all, about 600 bytes on
+    /// a small CPU (`docs/code_size.md`). The bytes are the same either way.
     ///
     /// The default is `true` for everything but `Sized` types, which is always correct. `#[derive_shrink_wrap]`
     /// sets it from the fields. Set it to `false` in a hand-written impl only when no path through
-    /// `ser_shrink_wrap` pushes a length, see [write_pushes_len].
+    /// `ser_shrink_wrap` pushes a length, see [`write_pushes_len`].
     const PUSHES_LEN: bool = !matches!(Self::ELEMENT_SIZE, ElementSize::Sized { .. });
 
-    /// Upper bound of what [ser_shrink_wrap](Self::ser_shrink_wrap) writes, `None` when there is none: something
-    /// in the type can grow without a limit (a `Vec`, `RefVec` or string without [MaxLen](crate::MaxLen), a
-    /// `RefBox`), or the impl does not say (the default). [MaxSize::buffer_len] of it is the length of a buffer
-    /// [to_ww_bytes](Self::to_ww_bytes) always fits into, see [max_size](crate::max_size).
+    /// Upper bound of what [`ser_shrink_wrap`](Self::ser_shrink_wrap) writes, `None` when there is none: something
+    /// in the type can grow without a limit (a `Vec`, `RefVec` or string without [`MaxLen`](crate::MaxLen), a
+    /// `RefBox`), or the impl does not say (the default). [`MaxSize::buffer_len`] of it is the length of a buffer
+    /// [`to_ww_bytes`](Self::to_ww_bytes) always fits into, see [`max_size`](crate::max_size).
     ///
     /// `#[derive_shrink_wrap]` sets it from the fields. In a hand-written impl, build it with the `const fn`s of
-    /// [max_size](crate::max_size) from what `ser_shrink_wrap` writes, or leave it `None`.
+    /// [`max_size`](crate::max_size) from what `ser_shrink_wrap` writes, or leave it `None`.
     const MAX_SIZE: Option<MaxSize> = None;
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error>;
@@ -53,8 +53,8 @@ pub trait SerializeShrinkWrap {
     }
 }
 
-/// Whether [wr.write::\<T\>()](BufWriter::write) pushes a length: the size slot of an `Unsized` `T`, or whatever
-/// `T` pushes by itself. This is what a [PUSHES_LEN](SerializeShrinkWrap::PUSHES_LEN) of a type is made of:
+/// Whether [`wr.write::`\<T\>()](BufWriter::write) pushes a length: the size slot of an `Unsized` `T`, or whatever
+/// `T` pushes by itself. This is what a [`PUSHES_LEN`](SerializeShrinkWrap::PUSHES_LEN) of a type is made of:
 /// the `||` of it over everything the type writes.
 pub const fn write_pushes_len<T: SerializeShrinkWrap + ?Sized>() -> bool {
     matches!(T::ELEMENT_SIZE, ElementSize::Unsized) || T::PUSHES_LEN
@@ -98,7 +98,7 @@ pub trait DeserializeShrinkWrap<'i>: Sized {
         Ok(value)
     }
 
-    /// [from_ww_bytes](Self::from_ww_bytes), and for a value a `validate` hook refused, the value and the rule it
+    /// [`from_ww_bytes`](Self::from_ww_bytes), and for a value a `validate` hook refused, the value and the rule it
     /// broke ([refused](crate::refused); `refused` feature). `slot` lives as long as the bytes, as the value may
     /// keep a reader of them (a `RefVec`).
     fn from_ww_bytes_explained(buf: &'i [u8], slot: &'i Slot) -> Result<Self, ReadError> {
@@ -107,7 +107,7 @@ pub trait DeserializeShrinkWrap<'i>: Sized {
     }
 }
 
-/// Same as [SerializeShrinkWrap], but serializes into a growable [BufWriterOwned] and without
+/// Same as [`SerializeShrinkWrap`], but serializes into a growable [`BufWriterOwned`] and without
 /// the `u16::MAX` limit on lengths and Unsized object sizes.
 #[cfg(feature = "std")]
 pub trait SerializeShrinkWrapOwned {
@@ -152,7 +152,7 @@ pub trait DeserializeShrinkWrapOwned: Sized {
         Ok(value)
     }
 
-    /// [from_ww_bytes_owned](Self::from_ww_bytes_owned), and for a value a `validate` hook refused, the value and
+    /// [`from_ww_bytes_owned`](Self::from_ww_bytes_owned), and for a value a `validate` hook refused, the value and
     /// the rule it broke ([refused](crate::refused); `refused` feature, on with `std`).
     fn from_ww_bytes_explained(buf: &[u8]) -> Result<Self, ReadError> {
         let slot = Slot::new();
@@ -168,12 +168,12 @@ pub trait DeserializeShrinkWrapOwned: Sized {
 /// Then it serializes the object and encodes any potential size slots that any of child objects might have used.
 /// Finally, it updates the size slot with an actual object size (but does not encode it).
 ///
-/// Sized and SelfDescribing objects are laid out as is, without serializing size.
+/// Sized and `SelfDescribing` objects are laid out as is, without serializing size.
 ///
-/// UnsizedFinalStructure is almost like Unsized, but postpones the size calculation and encoding to a parent object.
+/// `UnsizedFinalStructure` is almost like Unsized, but postpones the size calculation and encoding to a parent object.
 /// Another way to look at it is its like a "flattening" operation - child Unsized objects are using the same size space at the back of the buffer.
 ///
-/// As an example, consider `Vec<T>` - it is marked UnsizedFinalStructure. String is Unsized.
+/// As an example, consider `Vec<T>` - it is marked `UnsizedFinalStructure`. String is Unsized.
 /// `Vec<Vec<String>>` is serialized as: `[s00 s01 s10 s11 s11_len s10_len s1_len s01_len s00_len s0_len outer_len]`.
 /// If Vec where Unsized instead, then [write](BufWriter::write) would calculate the size in bytes of each serialized sub-vector as well.
 /// Serialized buffer would then be: `[s00 s01 s01_len s00_len s0_len s10 s11 s11_len s10_len s1_len s1_size_bytes s0_size_bytes outer_len]`.
@@ -181,14 +181,14 @@ pub trait DeserializeShrinkWrapOwned: Sized {
 /// wasting space further.
 /// See tests, there is one with `Vec<Vec<String>>`.
 ///
-/// This works for both owned and borrowed objects on std and on no_std without allocator.
+/// This works for both owned and borrowed objects on std and on `no_std` without allocator.
 ///
 /// `#[sized]` or `#[self_describing]` can be used to "lower" the requirement to save space (const check will be added to ensure that).
 ///
-/// Size requirement of a struct or enum is bumped from Sized to SelfDescribing to Unsized if
+/// Size requirement of a struct or enum is bumped from Sized to `SelfDescribing` to Unsized if
 /// any field or variant is a higher "requirement" than others.
 ///
-/// UnsizedFinalStructure can only be requested manually using `#[final_structure]` to save some space at the cost of no further changes to Unsized
+/// `UnsizedFinalStructure` can only be requested manually using `#[final_structure]` to save some space at the cost of no further changes to Unsized
 /// fields without breaking compatibility.
 /// Only Unsized or UFS objects can contain UFS objects.
 ///
@@ -202,29 +202,29 @@ pub enum ElementSize {
     /// Unsized structs and enums can be evolved over time without breaking compatibility.
     ///
     /// If Unsized value is stored in a parent type (struct or enum),
-    /// parent must encode all reverse UNib32's and overall object size when serializing.
+    /// parent must encode all reverse `UNib32`'s and overall object size when serializing.
     /// Symmetrically deserializer must read a size and use split before deserializing an Unsized object.
     Unsized,
 
     /// Element size is unknown, but its structure is not going to change, unless a major version is bumped.
     ///
-    /// Only the first evolution of a type can be UnsizedFinalStructure. Unsized cannot be marked UnsizedFinalStructure,
+    /// Only the first evolution of a type can be `UnsizedFinalStructure`. Unsized cannot be marked `UnsizedFinalStructure`,
     /// without breaking compatibility. So this should be used with care, only for small types that are very likely not
     /// going to change.
     ///
-    /// If UnsizedFinalStructure is stored in a parent type (struct or enum), parent must NOT encode reverse UNib32 sizes
+    /// If `UnsizedFinalStructure` is stored in a parent type (struct or enum), parent must NOT encode reverse `UNib32` sizes
     /// of such an object, nor its overall size. Deserializing works without reading the object's size.
-    /// UnsizedFinalStructure type is flattened onto a parent type.
-    /// Reverse UNib32 sizes in the back of a buffer are shared with a parent type.
+    /// `UnsizedFinalStructure` type is flattened onto a parent type.
+    /// Reverse `UNib32` sizes in the back of a buffer are shared with a parent type.
     UnsizedFinalStructure,
 
-    /// Element's size is unknown, but deserializer is able to infer it from data itself (UNib32, LEB).
+    /// Element's size is unknown, but deserializer is able to infer it from data itself (`UNib32`, LEB).
     /// Element size is not stored.
     SelfDescribing,
 
     /// Element size is known and not stored in a buffer. `size_bits` is the exact number of bits the element takes
     /// on the wire, alignment excluded: for an enum it is the discriminant plus the fields of a variant, and every
-    /// variant has the same size (see [one_of](ElementSize::one_of)).
+    /// variant has the same size (see [`one_of`](ElementSize::one_of)).
     Sized { size_bits: usize },
 }
 
@@ -259,22 +259,19 @@ impl<T: SerializeShrinkWrapOwned> SerializeShrinkWrapOwned for &T {
 }
 
 impl ElementSize {
-    pub const fn add(&self, other: ElementSize) -> ElementSize {
+    pub const fn add(&self, other: Self) -> Self {
         // Order is very important here, size requirement is bumped from Sized to SelfDescribing to Unsized.
         // UFS is a bit tricky, it is "contagious", so that Vec<T> with T Unsized is UFS.
         // Structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
         // performed, otherwise it would have been a compatibility problem.
         match (self, other) {
-            (ElementSize::UnsizedFinalStructure, _) => ElementSize::UnsizedFinalStructure,
-            (_, ElementSize::UnsizedFinalStructure) => ElementSize::UnsizedFinalStructure,
-            (ElementSize::Unsized, _) => ElementSize::Unsized,
-            (_, ElementSize::Unsized) => ElementSize::Unsized,
-            (ElementSize::SelfDescribing, _) => ElementSize::SelfDescribing,
-            (_, ElementSize::SelfDescribing) => ElementSize::SelfDescribing,
-            (
-                ElementSize::Sized { size_bits: size_a },
-                ElementSize::Sized { size_bits: size_b },
-            ) => ElementSize::Sized {
+            (Self::UnsizedFinalStructure, _) => Self::UnsizedFinalStructure,
+            (_, Self::UnsizedFinalStructure) => Self::UnsizedFinalStructure,
+            (Self::Unsized, _) => Self::Unsized,
+            (_, Self::Unsized) => Self::Unsized,
+            (Self::SelfDescribing, _) => Self::SelfDescribing,
+            (_, Self::SelfDescribing) => Self::SelfDescribing,
+            (Self::Sized { size_bits: size_a }, Self::Sized { size_bits: size_b }) => Self::Sized {
                 size_bits: *size_a + size_b,
             },
         }
@@ -296,16 +293,13 @@ impl ElementSize {
     ///     Long(u32),
     /// }
     /// ```
-    pub const fn one_of(&self, other: ElementSize) -> ElementSize {
+    pub const fn one_of(&self, other: Self) -> Self {
         match (self, other) {
-            (
-                ElementSize::Sized { size_bits: size_a },
-                ElementSize::Sized { size_bits: size_b },
-            ) => {
+            (Self::Sized { size_bits: size_a }, Self::Sized { size_bits: size_b }) => {
                 if *size_a == size_b {
-                    ElementSize::Sized { size_bits: size_b }
+                    Self::Sized { size_bits: size_b }
                 } else {
-                    ElementSize::SelfDescribing
+                    Self::SelfDescribing
                 }
             }
             (_, other) => self.add(other),
@@ -313,12 +307,12 @@ impl ElementSize {
     }
 
     /// True if every size is `Sized`, but they are not all the same: an enum with such variants cannot be `sized`.
-    pub const fn variants_differ(variants: &[ElementSize]) -> bool {
+    pub const fn variants_differ(variants: &[Self]) -> bool {
         let mut first = None;
         let mut differ = false;
         let mut i = 0;
         while i < variants.len() {
-            let ElementSize::Sized { size_bits } = variants[i] else {
+            let Self::Sized { size_bits } = variants[i] else {
                 return false;
             };
             match first {
@@ -331,9 +325,9 @@ impl ElementSize {
     }
 
     /// Size of `count` elements one after another, as in an array `[T; count]`.
-    pub const fn repeat(&self, count: usize) -> ElementSize {
+    pub const fn repeat(&self, count: usize) -> Self {
         match self {
-            ElementSize::Sized { size_bits } => ElementSize::Sized {
+            Self::Sized { size_bits } => Self::Sized {
                 size_bits: *size_bits * count,
             },
             other => *other,
@@ -341,11 +335,11 @@ impl ElementSize {
     }
 
     pub const fn is_unsized(&self) -> bool {
-        matches!(self, ElementSize::Unsized)
+        matches!(self, Self::Unsized)
     }
 
-    pub const fn bits(size_bits: usize) -> ElementSize {
-        ElementSize::Sized { size_bits }
+    pub const fn bits(size_bits: usize) -> Self {
+        Self::Sized { size_bits }
     }
 
     pub fn discriminant(&self) -> u8 {
@@ -354,7 +348,7 @@ impl ElementSize {
 }
 
 impl SerializeShrinkWrap for ElementSize {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 2 };
+    const ELEMENT_SIZE: Self = Self::Sized { size_bits: 2 };
     const MAX_SIZE: Option<MaxSize> = Some(MaxSize::bits(2));
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
@@ -364,7 +358,7 @@ impl SerializeShrinkWrap for ElementSize {
 
 #[cfg(feature = "std")]
 impl SerializeShrinkWrapOwned for ElementSize {
-    const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 2 };
+    const ELEMENT_SIZE: Self = Self::Sized { size_bits: 2 };
 
     fn ser_shrink_wrap_owned(&self, wr: &mut BufWriterOwned) -> Result<(), Error> {
         wr.write_un8(2, self.discriminant())
@@ -372,15 +366,15 @@ impl SerializeShrinkWrapOwned for ElementSize {
 }
 
 impl<'i> DeserializeShrinkWrap<'i> for ElementSize {
-    const ELEMENT_SIZE: ElementSize = <Self as SerializeShrinkWrap>::ELEMENT_SIZE;
+    const ELEMENT_SIZE: Self = <Self as SerializeShrinkWrap>::ELEMENT_SIZE;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let discriminant = rd.read_un8(2)?;
         Ok(match discriminant {
-            0 => ElementSize::Unsized,
-            1 => ElementSize::UnsizedFinalStructure,
-            2 => ElementSize::SelfDescribing,
-            3 => ElementSize::Sized { size_bits: 0 },
+            0 => Self::Unsized,
+            1 => Self::UnsizedFinalStructure,
+            2 => Self::SelfDescribing,
+            3 => Self::Sized { size_bits: 0 },
             _ => {
                 return Err(Error::EnumFutureVersionOrMalformedData);
             }
@@ -389,7 +383,7 @@ impl<'i> DeserializeShrinkWrap<'i> for ElementSize {
 }
 
 impl DeserializeShrinkWrapOwned for ElementSize {
-    const ELEMENT_SIZE: ElementSize = <Self as SerializeShrinkWrap>::ELEMENT_SIZE;
+    const ELEMENT_SIZE: Self = <Self as SerializeShrinkWrap>::ELEMENT_SIZE;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         DeserializeShrinkWrap::des_shrink_wrap(rd)
@@ -925,7 +919,7 @@ impl<'i, T: ?Sized> DeserializeShrinkWrap<'i> for core::marker::PhantomData<T> {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
 
     fn des_shrink_wrap<'di>(_rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(core::marker::PhantomData)
+        Ok(Self)
     }
 }
 
@@ -933,7 +927,7 @@ impl<T: ?Sized> DeserializeShrinkWrapOwned for core::marker::PhantomData<T> {
     const ELEMENT_SIZE: ElementSize = ElementSize::Sized { size_bits: 0 };
 
     fn des_shrink_wrap_owned(_rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(core::marker::PhantomData)
+        Ok(Self)
     }
 }
 
@@ -966,7 +960,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let start = rd.read()?;
         let end = rd.read()?;
-        Ok(core::ops::Range { start, end })
+        Ok(Self { start, end })
     }
 }
 
@@ -976,7 +970,7 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::Ra
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         let start = rd.read_owned()?;
         let end = rd.read_owned()?;
-        Ok(core::ops::Range { start, end })
+        Ok(Self { start, end })
     }
 }
 
@@ -1009,7 +1003,7 @@ impl<'i, T: DeserializeShrinkWrap<'i>> DeserializeShrinkWrap<'i> for core::ops::
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let start = rd.read()?;
         let end = rd.read()?;
-        Ok(core::ops::RangeInclusive::new(start, end))
+        Ok(Self::new(start, end))
     }
 }
 
@@ -1019,6 +1013,6 @@ impl<T: DeserializeShrinkWrapOwned> DeserializeShrinkWrapOwned for core::ops::Ra
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         let start = rd.read_owned()?;
         let end = rd.read_owned()?;
-        Ok(core::ops::RangeInclusive::new(start, end))
+        Ok(Self::new(start, end))
     }
 }

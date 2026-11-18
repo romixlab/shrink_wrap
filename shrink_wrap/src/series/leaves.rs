@@ -1,4 +1,4 @@
-//! [SeriesColumns] of the types `shrink_wrap` itself has: numbers as numeric or float columns, `bool` as a
+//! [`SeriesColumns`] of the types `shrink_wrap` itself has: numbers as numeric or float columns, `bool` as a
 //! two-valued run, `Option` as the enum `{ None, Some(X) }`, tuples and arrays as `final_structure` structs of
 //! their elements, strings and byte lists as opaque runs.
 
@@ -66,7 +66,7 @@ fn column<R>(reader: &mut Option<R>) -> Result<&mut R, Error> {
     reader.as_mut().ok_or(Error::MalformedSeries)
 }
 
-/// A numeric leaf's column, for its [SeriesStore](super::SeriesStore) to write an array of it.
+/// A numeric leaf's column, for its [`SeriesStore`](super::SeriesStore) to write an array of it.
 pub(crate) trait NumericLeaf: Sized {
     type Word: Word;
     const KIND: NumericKind;
@@ -282,7 +282,7 @@ impl<'i> SeriesColumns<'i> for bool {
     type Reader = Option<RunReader<'i, RunKind>>;
     const MAX_ITEM_BITS: Option<usize> = Some(bound::BOOL_RUN_ITEM_BITS);
     const MAX_FIXED_BITS: Option<usize> = Some(bound::BOOL_RUN_FIXED_BITS);
-    const TAGGED: bool = false;
+    const TAGGED: Self = false;
 
     fn write_group<'a, I, S, P>(
         items: I,
@@ -291,7 +291,7 @@ impl<'i> SeriesColumns<'i> for bool {
         _level: Level,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = (&'a Self, bool)> + Clone,
+        I: Iterator<Item = (&'a Self, Self)> + Clone,
         S: BitSink,
         P: SeriesPolicy + ?Sized,
         Self: 'a,
@@ -525,7 +525,7 @@ impl<'i, T: ?Sized> SeriesColumns<'i> for core::marker::PhantomData<T> {
     }
 
     fn next(_reader: &mut Self::Reader, _restart: bool) -> Result<Self, Error> {
-        Ok(core::marker::PhantomData)
+        Ok(Self)
     }
 }
 
@@ -570,7 +570,7 @@ macro_rules! tuple {
             }
 
             // the last field's tag run is recorded but read by no later field
-            #[allow(unused_assignments)]
+            #[expect(unused_assignments)]
             fn skim<C: SeriesCtx>(
                 rd: &mut BufReader<'i>,
                 ctx: C,
@@ -654,7 +654,7 @@ macro_rules! bit_count_enum {
                         items.clone(),
                         |e: &'a Self| match e {
                             $ty::$v { bit_count, .. } => Some(bit_count),
-                            #[allow(unreachable_patterns)]
+                            #[expect(unreachable_patterns)]
                             _ => None,
                         },
                         no_earlier::<Self>,
@@ -664,7 +664,7 @@ macro_rules! bit_count_enum {
                         items.clone(),
                         |e: &'a Self| match e {
                             $ty::$v { value, .. } => Some(value),
-                            #[allow(unreachable_patterns)]
+                            #[expect(unreachable_patterns)]
                             _ => None,
                         },
                         no_earlier::<Self>,

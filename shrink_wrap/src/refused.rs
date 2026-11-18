@@ -3,12 +3,12 @@
 //!
 //! [Error] stays a fieldless `u32` so that every `Result` of a firmware stays a register wide; the numbers travel
 //! beside it. A `validate = path` function may return `Result<(), Refused>` instead of `Result<(), Error>`: the
-//! derive turns a [Refused] into [Error::SubtypeOutOfRange] for the result, and, with the `refused` feature (on with
+//! derive turns a [Refused] into [`Error::SubtypeOutOfRange`] for the result, and, with the `refused` feature (on with
 //! `std`), writes it into the [Slot] of a reader made with
-//! [BufReader::with_refusal_slot](crate::BufReader::with_refusal_slot), a pointer more in the reader.
-//! [DeserializeShrinkWrapOwned::from_ww_bytes_explained](crate::DeserializeShrinkWrapOwned::from_ww_bytes_explained)
-//! makes one and returns the numbers in a [ReadError], also for a value nested at any depth, read latched or in a
-//! list. A reader made with [BufReader::new](crate::BufReader::new) has no slot. Without the feature (firmware)
+//! [`BufReader::with_refusal_slot`](crate::BufReader::with_refusal_slot), a pointer more in the reader.
+//! [`DeserializeShrinkWrapOwned::from_ww_bytes_explained`](crate::DeserializeShrinkWrapOwned::from_ww_bytes_explained)
+//! makes one and returns the numbers in a [`ReadError`], also for a value nested at any depth, read latched or in a
+//! list. A reader made with [`BufReader::new`](crate::BufReader::new) has no slot. Without the feature (firmware)
 //! the reader doesn't grow and the numbers are dropped where they are made, with the code that makes them.
 //!
 //! ```
@@ -55,8 +55,8 @@ pub enum RefusedNum {
 impl PartialEq for RefusedNum {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (RefusedNum::Int(a), RefusedNum::Int(b)) => a == b,
-            (RefusedNum::Float(a), RefusedNum::Float(b)) => a.to_bits() == b.to_bits(),
+            (Self::Int(a), Self::Int(b)) => a == b,
+            (Self::Float(a), Self::Float(b)) => a.to_bits() == b.to_bits(),
             _ => false,
         }
     }
@@ -67,8 +67,8 @@ impl Eq for RefusedNum {}
 impl Display for RefusedNum {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            RefusedNum::Int(i) => write!(f, "{i}"),
-            RefusedNum::Float(x) => write!(f, "{x}"),
+            Self::Int(i) => write!(f, "{i}"),
+            Self::Float(x) => write!(f, "{x}"),
         }
     }
 }
@@ -109,7 +109,7 @@ impl Refused {
     /// `value` is outside `low..=high`.
     #[inline(always)]
     pub const fn out_of(value: RefusedNum, low: RefusedNum, high: RefusedNum) -> Self {
-        Refused {
+        Self {
             value,
             rule: Rule::Range { low, high },
         }
@@ -118,7 +118,7 @@ impl Refused {
     /// `value` broke `rule`.
     #[inline(always)]
     pub const fn new(value: RefusedNum, rule: Rule) -> Self {
-        Refused { value, rule }
+        Self { value, rule }
     }
 }
 
@@ -138,11 +138,11 @@ impl Display for Refused {
 #[cfg(feature = "std")]
 impl std::error::Error for Refused {}
 
-/// Every refusal is [Error::SubtypeOutOfRange] as a plain error.
+/// Every refusal is [`Error::SubtypeOutOfRange`] as a plain error.
 impl From<Refused> for Error {
     #[inline(always)]
     fn from(_: Refused) -> Self {
-        Error::SubtypeOutOfRange
+        Self::SubtypeOutOfRange
     }
 }
 
@@ -178,16 +178,16 @@ impl Refusal for Refused {
 }
 
 /// A failed read with what a `validate` hook refused, if one did:
-/// [from_ww_bytes_explained](crate::DeserializeShrinkWrapOwned::from_ww_bytes_explained).
+/// [`from_ww_bytes_explained`](crate::DeserializeShrinkWrapOwned::from_ww_bytes_explained).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ReadError {
     /// The error of the read.
     pub error: Error,
-    /// The value and rule, when the error is [Error::SubtypeOutOfRange] from a hook that returned [Refused].
+    /// The value and rule, when the error is [`Error::SubtypeOutOfRange`] from a hook that returned [Refused].
     pub refused: Option<Refused>,
 }
 
-/// Where a reader made with [BufReader::with_refusal_slot](crate::BufReader::with_refusal_slot) keeps what a hook
+/// Where a reader made with [`BufReader::with_refusal_slot`](crate::BufReader::with_refusal_slot) keeps what a hook
 /// refused: one per read, owned by the caller. Every reader split off that reader (a nested value, an item of a
 /// list) writes into the same slot; a reader made anywhere else, a nested decode inside a `validate` included, has
 /// none, so two reads never see each other's refusal.
@@ -218,7 +218,7 @@ impl fmt::Debug for Slot {
 impl Slot {
     /// An empty slot.
     pub const fn new() -> Self {
-        Slot {
+        Self {
             #[cfg(feature = "refused")]
             busy: core::sync::atomic::AtomicBool::new(false),
             #[cfg(feature = "refused")]
@@ -239,7 +239,7 @@ impl Slot {
     }
 
     /// Keep `refused`. A read refuses once: a plain read stops at its first refusal, a latched one takes none
-    /// after an error ([BufReader::refuse_latch](crate::BufReader::refuse_latch)), so the first refusal wins.
+    /// after an error ([`BufReader::refuse_latch`](crate::BufReader::refuse_latch)), so the first refusal wins.
     #[cfg(feature = "refused")]
     #[inline]
     pub(crate) fn keep(&self, refused: Refused) {
@@ -264,7 +264,7 @@ impl Slot {
     }
 }
 
-/// The [Slot] a [BufReader](crate::BufReader) writes into, a pointer wide (`refused` feature). Equal when it is the
+/// The [Slot] a [`BufReader`](crate::BufReader) writes into, a pointer wide (`refused` feature). Equal when it is the
 /// same slot.
 #[cfg(feature = "refused")]
 #[derive(Copy, Clone)]
@@ -290,14 +290,14 @@ impl fmt::Debug for SlotRef<'_> {
 #[cfg(all(feature = "refused", feature = "defmt"))]
 impl defmt::Format for SlotRef<'_> {
     fn format(&self, f: defmt::Formatter) {
-        defmt::write!(f, "SlotRef")
+        defmt::write!(f, "SlotRef");
     }
 }
 
 impl ReadError {
-    /// `error`, with what `slot` kept when it is [Error::SubtypeOutOfRange].
+    /// `error`, with what `slot` kept when it is [`Error::SubtypeOutOfRange`].
     pub fn of(error: Error, slot: &Slot) -> Self {
-        ReadError {
+        Self {
             error,
             refused: match error {
                 Error::SubtypeOutOfRange => slot.take(),

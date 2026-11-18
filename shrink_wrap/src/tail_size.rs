@@ -9,16 +9,16 @@ use crate::{
 /// Size of the rest of the enclosing value, in bytes: filled in by `#[derive_shrink_wrap(..)]` once the value is
 /// serialized, and used by the reader to bound the value, or to skip it without parsing.
 ///
-/// On the wire it is a [UVlq32] right-justified in `N` bytes (1 to 5, 5 by default), padded with empty `0x80`
+/// On the wire it is a [`UVlq32`] right-justified in `N` bytes (1 to 5, 5 by default), padded with empty `0x80`
 /// groups in front, so any `UVlq32` reader decodes it. The value counts the bytes from the end of the slot to the
 /// end of the value it is in, including the reverse lengths that value's own fields put at the back. `N` is the
 /// capacity of the slot: the value must fit into `7 * N` bits (127 bytes for `N = 1`, 16 KB for 2, 2 MB for 3,
-/// 256 MB for 4, 4 GB for 5), serialization fails with [Error::LenTooLong] otherwise.
+/// 256 MB for 4, 4 GB for 5), serialization fails with [`Error::LenTooLong`] otherwise.
 ///
 /// In a struct or enum variant, the generated code ignores the field's value when writing (put `TailSize(0)` or
 /// `Default::default()`), fills the slot in once the fields after it are written, and when reading, reads the slot
 /// and bounds the rest of the value to it: a buffer longer than the value (a file region, a record at a fixed
-/// offset) stops at the right byte, a truncated one fails with [Error::OutOfBoundsSplit] instead of reading
+/// offset) stops at the right byte, a truncated one fails with [`Error::OutOfBoundsSplit`] instead of reading
 /// garbage, and bytes a newer writer appended after the fields this reader knows are skipped. Rules the macro
 /// checks: one `TailSize` per struct or variant, a plain field (not inside `Option`, `Vec`, tuples or arrays), only
 /// in `Unsized` types (no `sized`, `final_structure` or `self_describing`), and every field before it must be
@@ -27,8 +27,8 @@ use crate::{
 /// part of the wire layout: add it in the first version of a type, like any other field that is not evolvable.
 ///
 /// Standalone (outside the derive macro), `TailSize(n)` serializes `n` padded to `N` bytes and reads back the
-/// same way, like [UVlq32Backfill](crate::UVlq32Backfill) with a chosen width. To write a value by hand, use
-/// [BufWriter::reserve_tail_size] and [BufWriter::backfill_tail_size] (same on `BufWriterOwned`).
+/// same way, like [`UVlq32Backfill`](crate::UVlq32Backfill) with a chosen width. To write a value by hand, use
+/// [`BufWriter::reserve_tail_size`] and [`BufWriter::backfill_tail_size`] (same on `BufWriterOwned`).
 ///
 /// ```
 /// use shrink_wrap::prelude::*;
@@ -63,7 +63,7 @@ impl<const N: usize> TailSize<N> {
         N
     };
 
-    /// The slot bytes for `value`: a `UVlq32` right-justified in `N` bytes, or [Error::LenTooLong] if it does not
+    /// The slot bytes for `value`: a `UVlq32` right-justified in `N` bytes, or [`Error::LenTooLong`] if it does not
     /// fit.
     pub(crate) fn encode(value: u32) -> Result<[u8; MAX_LEN], Error> {
         encode_slot(value, Self::LEN)
@@ -71,7 +71,7 @@ impl<const N: usize> TailSize<N> {
 
     /// Decode the slot bytes, which must hold a `UVlq32` spanning exactly `N` bytes.
     pub(crate) fn decode(slot: &[u8]) -> Result<Self, Error> {
-        Ok(TailSize(decode_slot(slot)?))
+        Ok(Self(decode_slot(slot)?))
     }
 }
 
@@ -137,7 +137,7 @@ impl<const N: usize> From<TailSize<N>> for u32 {
 
 impl<const N: usize> From<u32> for TailSize<N> {
     fn from(num: u32) -> Self {
-        TailSize(num)
+        Self(num)
     }
 }
 

@@ -30,7 +30,7 @@ impl Generics {
                 Some(param)
             })
             .collect();
-        Generics {
+        Self {
             params,
             where_clause: generics.where_clause.clone(),
             phantom_only: HashSet::new(),

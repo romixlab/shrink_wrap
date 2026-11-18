@@ -21,12 +21,12 @@ pub const SERIES_MAX_ITEMS: usize = u16::MAX as usize;
 ///
 /// `ElementSize::Unsized`: as a field its byte length goes into the parent's length FIFO; nothing inside uses the
 /// FIFO. Serializing walks the items once per column and allocates nothing. Deserializing reads `n` and validates
-/// every column in one pass ([SeriesColumns::skim]), keeping a cursor per column; [iter](Self::iter) then decodes
+/// every column in one pass ([`SeriesColumns::skim`]), keeping a cursor per column; [iter](Self::iter) then decodes
 /// the items one by one, all columns in parallel, zero-copy for `&str` / `&[u8]` leaves. Malformed data is an
 /// `Error`, never a panic, and the work is bounded by `n` times the columns.
 ///
-/// `P` is how the codecs of the columns are picked: [CodecPolicy] at run time, or a [SeriesPolicy] type fixed at
-/// compile time ([DeltaPacked](super::DeltaPacked)), which links only its own codecs. Both write the same bytes for
+/// `P` is how the codecs of the columns are picked: [`CodecPolicy`] at run time, or a [`SeriesPolicy`] type fixed at
+/// compile time ([`DeltaPacked`](super::DeltaPacked)), which links only its own codecs. Both write the same bytes for
 /// the same codecs.
 pub enum Series<'i, T: SeriesColumns<'i>, P: SeriesPolicy = CodecPolicy> {
     /// Items to serialize, and how to pick the codecs of their columns.
@@ -50,9 +50,9 @@ impl<'i, T: SeriesColumns<'i>> Series<'i, T> {
     }
 
     /// The most bytes a `Series` of `n` items of `T` takes, written from a byte boundary (as a field it always is)
-    /// with any [CodecPolicy]: `n`, [MAX_FIXED_BITS](SeriesColumns::MAX_FIXED_BITS) and `n` ×
-    /// [MAX_ITEM_BITS](SeriesColumns::MAX_ITEM_BITS), the padding. `None` for a `T` without a bound and for more
-    /// than [SERIES_MAX_ITEMS].
+    /// with any [`CodecPolicy`]: `n`, [`MAX_FIXED_BITS`](SeriesColumns::MAX_FIXED_BITS) and `n` ×
+    /// [`MAX_ITEM_BITS`](SeriesColumns::MAX_ITEM_BITS), the padding. `None` for a `T` without a bound and for more
+    /// than [`SERIES_MAX_ITEMS`].
     pub const fn max_bytes(n: usize) -> Option<usize> {
         if n > SERIES_MAX_ITEMS {
             return None;
@@ -74,13 +74,13 @@ impl<'i, T: SeriesColumns<'i>> Series<'i, T> {
 }
 
 impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy> Series<'i, T, P> {
-    /// Items to serialize with `policy`: a fixed [CodecPolicy] (a small MCU can skip trying every codec), or a
-    /// [SeriesPolicy] type that also leaves the other codecs out of the firmware.
+    /// Items to serialize with `policy`: a fixed [`CodecPolicy`] (a small MCU can skip trying every codec), or a
+    /// [`SeriesPolicy`] type that also leaves the other codecs out of the firmware.
     pub const fn with_policy(items: &'i [T], policy: P) -> Self {
         Series::Slice { items, policy }
     }
 
-    /// The bytes this `Series` takes, written from a byte boundary: counted with a [BitCounter](super::BitCounter)
+    /// The bytes this `Series` takes, written from a byte boundary: counted with a [`BitCounter`](super::BitCounter)
     /// pass over the items (about the CPU of writing them, nothing written), the raw length of a decoded one.
     pub fn encoded_len(&self) -> Result<usize, Error> {
         match self {
@@ -172,7 +172,7 @@ impl<'i, T: SeriesColumns<'i> + Clone + core::fmt::Debug, P: SeriesPolicy> core:
 #[cfg(feature = "defmt")]
 impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy> defmt::Format for Series<'i, T, P> {
     fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "Series({} items)", self.len())
+        defmt::write!(fmt, "Series({} items)", self.len());
     }
 }
 
@@ -246,7 +246,7 @@ impl<'i, T: SeriesColumns<'i> + Clone> Iterator for SeriesIter<'_, 'i, T> {
     }
 }
 
-/// [Series::try_iter].
+/// [`Series::try_iter`].
 pub struct SeriesTryIter<'s, 'i, T: SeriesColumns<'i>>(SeriesIter<'s, 'i, T>);
 
 impl<'i, T: SeriesColumns<'i> + Clone> Iterator for SeriesTryIter<'_, 'i, T> {
@@ -358,7 +358,7 @@ pub struct SeriesOwned<T>(pub Vec<T>);
 #[cfg(feature = "std")]
 impl<T> SeriesOwned<T> {
     pub const fn new() -> Self {
-        SeriesOwned(Vec::new())
+        Self(Vec::new())
     }
 
     pub fn into_inner(self) -> Vec<T> {
@@ -369,14 +369,14 @@ impl<T> SeriesOwned<T> {
 #[cfg(feature = "std")]
 impl<T> From<Vec<T>> for SeriesOwned<T> {
     fn from(items: Vec<T>) -> Self {
-        SeriesOwned(items)
+        Self(items)
     }
 }
 
 #[cfg(feature = "std")]
 impl<T> FromIterator<T> for SeriesOwned<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        SeriesOwned(iter.into_iter().collect())
+        Self(iter.into_iter().collect())
     }
 }
 
@@ -403,7 +403,7 @@ impl<T: for<'i> SeriesColumns<'i>> SeriesOwned<T> {
         Series::new(&self.0)
     }
 
-    /// [as_borrowed](Self::as_borrowed) with a fixed [CodecPolicy] or a [SeriesPolicy] type.
+    /// [`as_borrowed`](Self::as_borrowed) with a fixed [`CodecPolicy`] or a [`SeriesPolicy`] type.
     pub fn as_borrowed_with<P: SeriesPolicy>(&self, policy: P) -> Series<'_, T, P> {
         Series::with_policy(&self.0, policy)
     }
@@ -441,6 +441,6 @@ impl<T: for<'i> SeriesColumns<'i>> crate::DeserializeShrinkWrapOwned for SeriesO
                 items.push(T::next(&mut reader, false)?);
             }
         }
-        Ok(SeriesOwned(items))
+        Ok(Self(items))
     }
 }

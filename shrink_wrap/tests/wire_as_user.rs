@@ -71,7 +71,7 @@ impl SeriesStore for ScaleId {
     }
 
     fn get<const N: usize>(store: &Self::Store<N>, i: usize) -> Self {
-        ScaleId(u8::get::<N>(store, i))
+        Self(u8::get::<N>(store, i))
     }
 }
 

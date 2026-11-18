@@ -1,4 +1,4 @@
-//! Writing a [RefVec](super::RefVec) in place, element by element (SW-61).
+//! Writing a [`RefVec`](super::RefVec) in place, element by element (SW-61).
 
 use core::borrow::Borrow;
 use core::marker::PhantomData;
@@ -7,7 +7,7 @@ use crate::buf_writer::{RevPos, UnsizedBuilder};
 use crate::traits::ElementSize;
 use crate::{BufWriter, Error, SerializeShrinkWrap};
 
-/// no_std and no-alloc writer of a [RefVec](super::RefVec) in place, into a [BufWriter] that may hold other data
+/// `no_std` and no-alloc writer of a [`RefVec`](super::RefVec) in place, into a [`BufWriter`] that may hold other data
 /// too, without a slice of the elements: from an iterator, a sensor loop, a nested builder.
 ///
 /// [new](Self::new) reserves the element count at the back of the buffer, each [push](Self::push) writes one
@@ -51,10 +51,10 @@ impl<T: SerializeShrinkWrap> RefVecBuilder<T> {
     }
 
     /// [new](Self::new) for a `MaxLen<RefVec<'_, T>, N>` (pass `N`, or `MaxLen::<RefVec<'_, T>, N>::MAX_LEN`):
-    /// a push after `max_len` elements fails with [Error::MaxLenExceeded] and writes nothing.
+    /// a push after `max_len` elements fails with [`Error::MaxLenExceeded`] and writes nothing.
     pub fn with_max_len(wr: &mut BufWriter<'_>, max_len: usize) -> Result<Self, Error> {
         let count_pos = wr.write_rev_len(0)?;
-        Ok(RefVecBuilder {
+        Ok(Self {
             count_pos,
             count: 0,
             max_len,
@@ -71,12 +71,12 @@ impl<T: SerializeShrinkWrap> RefVecBuilder<T> {
         self.count == 0
     }
 
-    /// Write one element, as the list writes it ([BufWriter::write]: with its size if `T` is `Unsized`).
+    /// Write one element, as the list writes it ([`BufWriter::write`]: with its size if `T` is `Unsized`).
     pub fn push(&mut self, wr: &mut BufWriter<'_>, value: &T) -> Result<(), Error> {
         self.push_with(wr, |wr| value.ser_shrink_wrap(wr))
     }
 
-    /// Write one element with `f`, which writes it as [SerializeShrinkWrap::ser_shrink_wrap] of `T` would; the
+    /// Write one element with `f`, which writes it as [`SerializeShrinkWrap::ser_shrink_wrap`] of `T` would; the
     /// builder adds the size of an `Unsized` element around it. For an element that is itself a list: a nested
     /// `RefVecBuilder` started and finished inside `f`.
     pub fn push_with<'b>(
@@ -145,10 +145,10 @@ impl<T: SerializeShrinkWrap> RefVecBuilder<T> {
     }
 }
 
-/// [RefVecBuilder] for a [BufWriterOwned](crate::BufWriterOwned), writing
-/// [SerializeShrinkWrapOwned](crate::SerializeShrinkWrapOwned) elements: same bytes.
+/// [`RefVecBuilder`] for a [`BufWriterOwned`](crate::BufWriterOwned), writing
+/// [`SerializeShrinkWrapOwned`](crate::SerializeShrinkWrapOwned) elements: same bytes.
 ///
-/// A push that fails leaves the writer as it was before it, as with [RefVecBuilder].
+/// A push that fails leaves the writer as it was before it, as with [`RefVecBuilder`].
 #[cfg(feature = "std")]
 #[must_use = "the element count is only written by finish()"]
 pub struct RefVecBuilderOwned<T> {
@@ -160,15 +160,15 @@ pub struct RefVecBuilderOwned<T> {
 
 #[cfg(feature = "std")]
 impl<T: crate::SerializeShrinkWrapOwned> RefVecBuilderOwned<T> {
-    /// See [RefVecBuilder::new].
+    /// See [`RefVecBuilder::new`].
     pub fn new(wr: &mut crate::BufWriterOwned) -> Result<Self, Error> {
         Self::with_max_len(wr, usize::MAX)
     }
 
-    /// See [RefVecBuilder::with_max_len].
+    /// See [`RefVecBuilder::with_max_len`].
     pub fn with_max_len(wr: &mut crate::BufWriterOwned, max_len: usize) -> Result<Self, Error> {
         let count_pos = wr.write_rev_len(0)?;
-        Ok(RefVecBuilderOwned {
+        Ok(Self {
             count_pos,
             count: 0,
             max_len,
@@ -185,12 +185,12 @@ impl<T: crate::SerializeShrinkWrapOwned> RefVecBuilderOwned<T> {
         self.count == 0
     }
 
-    /// See [RefVecBuilder::push].
+    /// See [`RefVecBuilder::push`].
     pub fn push(&mut self, wr: &mut crate::BufWriterOwned, value: &T) -> Result<(), Error> {
         self.push_with(wr, |wr| value.ser_shrink_wrap_owned(wr))
     }
 
-    /// See [RefVecBuilder::push_with].
+    /// See [`RefVecBuilder::push_with`].
     pub fn push_with(
         &mut self,
         wr: &mut crate::BufWriterOwned,
@@ -231,7 +231,7 @@ impl<T: crate::SerializeShrinkWrapOwned> RefVecBuilderOwned<T> {
         Ok(())
     }
 
-    /// See [RefVecBuilder::extend].
+    /// See [`RefVecBuilder::extend`].
     pub fn extend<I>(&mut self, wr: &mut crate::BufWriterOwned, items: I) -> Result<(), Error>
     where
         I: IntoIterator,
@@ -243,7 +243,7 @@ impl<T: crate::SerializeShrinkWrapOwned> RefVecBuilderOwned<T> {
         Ok(())
     }
 
-    /// See [RefVecBuilder::finish].
+    /// See [`RefVecBuilder::finish`].
     pub fn finish(self, wr: &mut crate::BufWriterOwned) -> Result<(), Error> {
         wr.update_rev_len(self.count_pos, self.count)
     }
@@ -264,8 +264,8 @@ impl RefVecBuilder<u8> {
         Ok(())
     }
 
-    /// Write bytes with `f` by any means ([BufWriter::write_raw_slice], [write_u8](BufWriter::write_u8), other
-    /// shrink_wrap values, making the list a byte blob that holds them): every byte it writes is an element.
+    /// Write bytes with `f` by any means ([`BufWriter::write_raw_slice`], [`write_u8`](BufWriter::write_u8), other
+    /// `shrink_wrap` values, making the list a byte blob that holds them): every byte it writes is an element.
     ///
     /// Aligns to a byte before `f`, then encodes the lengths the values inside pushed (so they are part of the
     /// blob) and aligns again. Nothing written is nothing added, not even the alignment: the same bytes as the
@@ -328,10 +328,10 @@ impl RefVecBuilder<u8> {
     }
 }
 
-/// See the `RefVecBuilder<u8>` methods: [RefVecBuilder::extend_from_slice], [RefVecBuilder::write_bytes_with].
+/// See the `RefVecBuilder<u8>` methods: [`RefVecBuilder::extend_from_slice`], [`RefVecBuilder::write_bytes_with`].
 #[cfg(feature = "std")]
 impl RefVecBuilderOwned<u8> {
-    /// See [RefVecBuilder::extend_from_slice].
+    /// See [`RefVecBuilder::extend_from_slice`].
     pub fn extend_from_slice(
         &mut self,
         wr: &mut crate::BufWriterOwned,
@@ -346,7 +346,7 @@ impl RefVecBuilderOwned<u8> {
         Ok(())
     }
 
-    /// See [RefVecBuilder::write_bytes_with].
+    /// See [`RefVecBuilder::write_bytes_with`].
     pub fn write_bytes_with(
         &mut self,
         wr: &mut crate::BufWriterOwned,

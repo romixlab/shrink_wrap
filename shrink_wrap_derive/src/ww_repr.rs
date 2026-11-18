@@ -14,7 +14,7 @@ pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
     let enum_def: ItemEnum = parse2(item).unwrap();
     let mut current_discriminant = 0;
     let mut max_discriminant = 0;
-    for variant in enum_def.variants.iter() {
+    for variant in &enum_def.variants {
         let discriminant = if let Some((_, discriminant)) = &variant.discriminant {
             let Expr::Lit(discriminant) = discriminant else {
                 panic!("Only literal discriminants are supported");
@@ -32,9 +32,10 @@ pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
         };
         max_discriminant = max_discriminant.max(discriminant);
     }
-    if max_discriminant > ww_repr.max_discriminant() {
-        panic!("Maximum discriminant exceeded the {ww_repr:?}");
-    }
+    assert!(
+        max_discriminant <= ww_repr.max_discriminant(),
+        "Maximum discriminant exceeded the {ww_repr:?}"
+    );
 
     let base_ty = Ident::new(
         format!("u{}", ww_repr.std_bits()).as_str(),
@@ -59,15 +60,14 @@ pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
                 "u32" => 32,
                 r => panic!("Only u8 / u16 and u32 is supported, got '{r}'"),
             };
-            if ww_repr.required_bits() > available_bits {
-                panic!(
-                    "repr used is not big enough to hold all the enum variants, required is u{}",
-                    ww_repr.required_bits()
-                );
-            }
+            assert!(
+                ww_repr.required_bits() <= available_bits,
+                "repr used is not big enough to hold all the enum variants, required is u{}",
+                ww_repr.required_bits()
+            );
         } else {
             panic!("Wrong repr provided, expected no #[repr(...)] or #[repr(u8 / u16 or u32)]");
-        };
+        }
         quote! {}
     } else {
         quote! {

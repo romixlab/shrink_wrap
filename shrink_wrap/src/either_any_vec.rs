@@ -5,39 +5,39 @@ use crate::traits::ElementSize;
 use crate::{BufReader, BufWriter, DeserializeShrinkWrap, Error, SerializeShrinkWrap};
 use either::Either;
 
-/// Zero-copy, no_std and no-alloc array of `Either::L(Any), R(Any)`.
+/// Zero-copy, `no_std` and no-alloc array of `Either::L(Any), R(Any)`.
 ///
 /// LR flags are stored in-line with data in groups of 8:
 /// `|1B: flags|[up to 8 objects: false: L bytes, true: R bytes]|1B: flags|...|dynamic object sizes (reverse UNib32's)|`
 ///
-/// Each element can be of any type that implements [DeserializeShrinkWrap].
+/// Each element can be of any type that implements [`DeserializeShrinkWrap`].
 /// Including user defined structs with dynamic size, etc.
 /// Elements don't have to be of the same type, hence there is no generic parameter.
 ///
-/// EitherVec is a low-level machinery that requires knowledge of types for each element, but it can allow for
+/// `EitherVec` is a low-level machinery that requires knowledge of types for each element, but it can allow for
 /// pretty neat optimizations. Length is not stored, as it is implied from type knowledge.
-/// It is used to implemenent multi-calls and multi-read/write operations with arbitrary types in wire_weaver (storing `Result<Any, E>`).
+/// It is used to implemenent multi-calls and multi-read/write operations with arbitrary types in `wire_weaver` (storing `Result<Any, E>`).
 ///
-/// Use [EitherAnyVecWriter] or [EitherAnyVecBuilder] to construct the array.
+/// Use [`EitherAnyVecWriter`] or [`EitherAnyVecBuilder`] to construct the array.
 #[derive(Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct EitherAnyVec<'i> {
     data: &'i [u8],
-    /// Of the reader it was read from: its elements are read at that depth, see [BufReader::with_max_depth]
+    /// Of the reader it was read from: its elements are read at that depth, see [`BufReader::with_max_depth`]
     depth_left: u16,
 }
 
-/// Iterator over EitherAnyVec
+/// Iterator over `EitherAnyVec`
 pub struct EitherAnyVecIter<'i> {
     flags: Option<BufReader<'i>>,
     rd: BufReader<'i>,
 }
 
-/// no_std and no-alloc array writer of `Either::L(Any), R(Any)` elements.
+/// `no_std` and no-alloc array writer of `Either::L(Any), R(Any)` elements.
 ///
-/// Each element is written in 1 stage with the call to [EitherAnyVecWriter::write].
+/// Each element is written in 1 stage with the call to [`EitherAnyVecWriter::write`].
 ///
-/// Elements can be of any type that implements [SerializeShrinkWrap].
+/// Elements can be of any type that implements [`SerializeShrinkWrap`].
 /// Including user defined structs with dynamic size, etc.
 /// Elements don't have to be of the same type, hence there is no generic parameter.
 pub struct EitherAnyVecWriter<'i> {
@@ -45,18 +45,18 @@ pub struct EitherAnyVecWriter<'i> {
     builder: EitherAnyVecBuilder,
 }
 
-/// no_std and no-alloc array builder of `Either::L(Any), R(Any)` elements.
+/// `no_std` and no-alloc array builder of `Either::L(Any), R(Any)` elements.
 ///
-/// Each element is written in 3 stages: `start`, `write` (with regular BufWriter), `finish`.
+/// Each element is written in 3 stages: `start`, `write` (with regular `BufWriter`), `finish`.
 /// Information about whether written element was actually left or right is only required at the `finish` stage.
-/// This allows getting mutable BufWriter without closures and keeps borrow checker happy.
+/// This allows getting mutable `BufWriter` without closures and keeps borrow checker happy.
 pub struct EitherAnyVecBuilder {
     // unsized_builder: UnsizedBuilder,
     flags: Option<BufWriterState>,
     items: BufWriterState,
 }
 
-/// Special type returned by [EitherAnyVecBuilder::write_item_start] and consumed by [EitherAnyVecBuilder::write_item_finish]
+/// Special type returned by [`EitherAnyVecBuilder::write_item_start`] and consumed by [`EitherAnyVecBuilder::write_item_finish`]
 pub struct EitherAnyVecMarker {
     flags: BufWriterState,
 }
@@ -132,8 +132,8 @@ impl EitherAnyVecBuilder {
         Ok(marker)
     }
 
-    /// Serialize the next item using wr BufWriter itself.
-    /// Then call this method, providing marker from [Self::write_item_start] and whether left or right item was written.
+    /// Serialize the next item using wr `BufWriter` itself.
+    /// Then call this method, providing marker from [`Self::write_item_start`] and whether left or right item was written.
     pub fn write_item_finish(
         &mut self,
         marker: EitherAnyVecMarker,
@@ -175,7 +175,7 @@ impl EitherAnyVecBuilder {
         wr.restore_state(self.items);
     }
 
-    /// Finalize the BufWriter and get result bytes
+    /// Finalize the `BufWriter` and get result bytes
     pub fn finish_and_take(self, mut wr: BufWriter<'_>) -> Result<&[u8], Error> {
         wr.restore_state(self.items);
         wr.finish_and_take()
@@ -221,14 +221,14 @@ impl<'i> EitherAnyVecWriter<'i> {
         Ok(())
     }
 
-    /// Finalize the BufWriter and get result bytes
+    /// Finalize the `BufWriter` and get result bytes
     pub fn finish_and_take(self) -> Result<&'i [u8], Error> {
         let wr = BufWriter::new(self.data);
         self.builder.finish_and_take(wr)
     }
 }
 
-impl<'i> SerializeShrinkWrap for EitherAnyVec<'i> {
+impl SerializeShrinkWrap for EitherAnyVec<'_> {
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn ser_shrink_wrap(&self, wr: &mut BufWriter) -> Result<(), Error> {
@@ -237,7 +237,7 @@ impl<'i> SerializeShrinkWrap for EitherAnyVec<'i> {
 }
 
 #[cfg(feature = "std")]
-impl<'i> crate::SerializeShrinkWrapOwned for EitherAnyVec<'i> {
+impl crate::SerializeShrinkWrapOwned for EitherAnyVec<'_> {
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn ser_shrink_wrap_owned(&self, wr: &mut crate::BufWriterOwned) -> Result<(), Error> {
@@ -287,8 +287,8 @@ impl<'i> EitherAnyVecIter<'i> {
 
     /// Reads the next item's flag and lets the caller deserialize the chosen side itself, given the (correctly
     /// bounded, for an `Unsized` one) reader for it: for an item type not known at compile time (e.g. a value
-    /// deserialized according to a runtime type descriptor), which [Self::next]/[Self::next_owned] can't express as
-    /// a static `L`/`R`. The caller is responsible for bounding its own read the way [BufReader::read] does for a
+    /// deserialized according to a runtime type descriptor), which [`Self::next`]/[`Self::next_owned`] can't express as
+    /// a static `L`/`R`. The caller is responsible for bounding its own read the way [`BufReader::read`] does for a
     /// compile-time type (an `Unsized` one is `rd.split`-bounded by its size in the trailer first).
     pub fn next_with<T>(
         &mut self,

@@ -62,7 +62,7 @@ impl Deref for TailBytes<'_> {
     }
 }
 
-/// See [TailBytes] for documentation.
+/// See [`TailBytes`] for documentation.
 #[cfg(feature = "std")]
 #[derive(Clone, Debug)]
 pub struct TailBytesOwned(pub Vec<u8>);
@@ -72,7 +72,7 @@ impl crate::DeserializeShrinkWrapOwned for TailBytesOwned {
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        Ok(TailBytesOwned(rd.read_raw_slice(rd.bytes_left())?.to_vec()))
+        Ok(Self(rd.read_raw_slice(rd.bytes_left())?.to_vec()))
     }
 }
 
@@ -81,7 +81,7 @@ impl<'i> DeserializeShrinkWrap<'i> for TailBytesOwned {
     const ELEMENT_SIZE: ElementSize = ElementSize::UnsizedFinalStructure;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(TailBytesOwned(rd.read_raw_slice(rd.bytes_left())?.to_vec()))
+        Ok(Self(rd.read_raw_slice(rd.bytes_left())?.to_vec()))
     }
 }
 

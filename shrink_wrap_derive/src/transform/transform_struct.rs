@@ -15,7 +15,7 @@ use crate::transform::util::{
 };
 
 impl ItemStruct {
-    /// `sparse`: the struct has the `sparse` directive (DER-13), see [Self::from_syn_sparse].
+    /// `sparse`: the struct has the `sparse` directive (DER-13), see [`Self::from_syn_sparse`].
     pub(crate) fn from_syn(item_struct: &syn::ItemStruct, sparse: bool) -> Result<Self, String> {
         if sparse {
             return Self::from_syn_sparse(item_struct);
@@ -73,7 +73,7 @@ impl ItemStruct {
         )?;
         propagate_default_to_flags(&mut fields)?;
         change_is_ok_to_is_some(&mut fields);
-        Ok(ItemStruct {
+        Ok(Self {
             docs,
             // ident: item_struct.ident.clone(),
             fields,
@@ -150,7 +150,7 @@ impl ItemStruct {
         let docs = collect_docs_attrs(&mut attrs);
         let display = take_display_attr(&mut attrs)?;
         let repr = take_repr_attrs(&mut attrs);
-        Ok(ItemStruct {
+        Ok(Self {
             docs,
             fields,
             display,
@@ -218,7 +218,7 @@ pub(crate) fn propagate_default_to_flags(fields: &mut [Field]) -> Result<(), Str
     Ok(())
 }
 
-/// Change IsOk to IsSome for explicit flags, as a full field list is needed to determine which one to use.
+/// Change `IsOk` to `IsSome` for explicit flags, as a full field list is needed to determine which one to use.
 pub(crate) fn change_is_ok_to_is_some(fields: &mut [Field]) {
     let mut flip = vec![];
     for (idx, f) in fields.iter().enumerate() {

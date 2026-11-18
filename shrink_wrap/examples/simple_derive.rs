@@ -13,5 +13,5 @@ fn main() {
     assert_eq!(bytes, &[0xAA, 0xCC]);
 
     let des = CoordV1::from_ww_bytes(bytes).unwrap();
-    println!("{:02x?}", des);
+    println!("{des:02x?}");
 }

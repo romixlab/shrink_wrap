@@ -18,20 +18,20 @@ pub(crate) enum Repr {
 impl Repr {
     pub(crate) fn parse_str(s: &str) -> Option<Self> {
         if s == "unib32" || s == "UNib32" {
-            return Some(Repr::UNib32);
+            return Some(Self::UNib32);
         }
         if s == "nib" || s == "Nibble" {
-            return Some(Repr::Nibble);
+            return Some(Self::Nibble);
         }
         if let Some(s) = s.strip_prefix("ub") {
-            return Some(Repr::U(Self::parse_bits(s)?));
+            return Some(Self::U(Self::parse_bits(s)?));
         }
         let bits = Self::parse_bits(s.strip_prefix("u")?)?;
         match bits {
-            8 => Some(Repr::U8),
-            16 => Some(Repr::U16),
-            32 => Some(Repr::U32),
-            other => Some(Repr::U(other)),
+            8 => Some(Self::U8),
+            16 => Some(Self::U16),
+            32 => Some(Self::U32),
+            other => Some(Self::U(other)),
         }
     }
 
@@ -43,42 +43,42 @@ impl Repr {
 
     pub(crate) fn max_discriminant(&self) -> u32 {
         match self {
-            Repr::U(bits) => {
+            Self::U(bits) => {
                 if *bits == 32 {
                     u32::MAX
                 } else {
                     2u32.pow(*bits as u32) - 1
                 }
             }
-            Repr::UNib32 => u32::MAX,
-            Repr::Nibble => 15,
-            Repr::U8 => 255,
-            Repr::U16 => 65_535,
-            Repr::U32 => u32::MAX,
+            Self::UNib32 => u32::MAX,
+            Self::Nibble => 15,
+            Self::U8 => 255,
+            Self::U16 => 65_535,
+            Self::U32 => u32::MAX,
         }
     }
 
     pub(crate) fn required_bits(&self) -> u8 {
         match self {
-            Repr::U(bits) => *bits,
-            Repr::UNib32 => 32,
-            Repr::Nibble => 4,
-            Repr::U8 => 8,
-            Repr::U16 => 16,
-            Repr::U32 => 32,
+            Self::U(bits) => *bits,
+            Self::UNib32 => 32,
+            Self::Nibble => 4,
+            Self::U8 => 8,
+            Self::U16 => 16,
+            Self::U32 => 32,
         }
     }
 
     pub(crate) fn std_bits(&self) -> u8 {
         match &self {
-            Repr::Nibble => 8,
-            Repr::U8 => 8,
-            Repr::U16 => 16,
-            Repr::U32 => 32,
-            Repr::UNib32 => 32,
-            Repr::U(bits) if *bits < 8 => 8,
-            Repr::U(bits) if *bits < 16 => 16,
-            Repr::U(bits) if *bits < 32 => 32,
+            Self::Nibble => 8,
+            Self::U8 => 8,
+            Self::U16 => 16,
+            Self::U32 => 32,
+            Self::UNib32 => 32,
+            Self::U(bits) if *bits < 8 => 8,
+            Self::U(bits) if *bits < 16 => 16,
+            Self::U(bits) if *bits < 32 => 32,
             _ => 32,
         }
     }

@@ -1,6 +1,6 @@
-//! [XorBits] / [XorCodec]: the SW-32 Gorilla XOR code for `f32` / `f64`, against the previous value. Internal to
+//! [`XorBits`] / [`XorCodec`]: the SW-32 Gorilla XOR code for `f32` / `f64`, against the previous value. Internal to
 //! [Series](super::Series)' float columns; `dynamic::read_float` and the `columns::check` fuzz/test helper are
-//! generic over [XorBits] too.
+//! generic over [`XorBits`] too.
 
 use super::{BitSink, Codec};
 use crate::{BufReader, Error};
@@ -25,11 +25,11 @@ impl XorBits for f32 {
     const LEAD_BITS: u8 = 5;
     #[inline]
     fn to_bits(self) -> u64 {
-        f32::to_bits(self) as u64
+        Self::to_bits(self) as u64
     }
     #[inline]
     fn from_bits(bits: u64) -> Self {
-        f32::from_bits(bits as u32)
+        Self::from_bits(bits as u32)
     }
 }
 
@@ -39,11 +39,11 @@ impl XorBits for f64 {
     const LEAD_BITS: u8 = 6;
     #[inline]
     fn to_bits(self) -> u64 {
-        f64::to_bits(self)
+        Self::to_bits(self)
     }
     #[inline]
     fn from_bits(bits: u64) -> Self {
-        f64::from_bits(bits)
+        Self::from_bits(bits)
     }
 }
 
@@ -65,7 +65,7 @@ impl<T> Copy for XorCodec<T> {}
 
 impl<T> Default for XorCodec<T> {
     fn default() -> Self {
-        XorCodec {
+        Self {
             prev: None,
             window: None,
             _ty: core::marker::PhantomData,
@@ -114,12 +114,7 @@ impl<T: XorBits> Codec<T> for XorCodec<T> {
         if !rd.read_bool()? {
             return Ok(T::from_bits(prev));
         }
-        let x = if !rd.read_bool()? {
-            let Some((plead, ptrail)) = self.window else {
-                return Err(Error::MalformedSeries); // a window reuse before any window
-            };
-            rd.read_un64(T::BITS - plead - ptrail)? << ptrail
-        } else {
+        let x = if rd.read_bool()? {
             let lead = rd.read_un64(T::LEAD_BITS)? as u8;
             let len = rd.read_un64(T::LEAD_BITS)? as u8 + 1;
             if lead + len > T::BITS {
@@ -128,6 +123,11 @@ impl<T: XorBits> Codec<T> for XorCodec<T> {
             let trail = T::BITS - lead - len;
             self.window = Some((lead, trail));
             rd.read_un64(len)? << trail
+        } else {
+            let Some((plead, ptrail)) = self.window else {
+                return Err(Error::MalformedSeries); // a window reuse before any window
+            };
+            rd.read_un64(T::BITS - plead - ptrail)? << ptrail
         };
         let bits = prev ^ x;
         self.prev = Some(bits);

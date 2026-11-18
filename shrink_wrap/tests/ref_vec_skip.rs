@@ -1,6 +1,6 @@
 //! `RefVec<T>` of `u8`..`u128`, `i8`..`i128`, `f32`, `f64` finds its end without decoding the elements (SW-37).
 //! That must not be observable: for every input the result (the list or the error) and the whole reader state
-//! afterwards are the ones of the decode pass, which is kept here as [PassVec] to compare against.
+//! afterwards are the ones of the decode pass, which is kept here as [`PassVec`] to compare against.
 
 use shrink_wrap::prelude::*;
 use shrink_wrap::{BufReader, BufWriter, BufWriterOwned, ElementSize, Error};
@@ -36,7 +36,7 @@ impl<'i, T: SerializeShrinkWrap + DeserializeShrinkWrap<'i> + Clone> SerializeSh
 }
 
 /// What a decoded list is made of: where it starts (a whole reader) and its count.
-fn parts<'i, T>(list: RefVec<'i, T>) -> (BufReader<'i>, usize) {
+fn parts<T>(list: RefVec<'_, T>) -> (BufReader<'_>, usize) {
     match list {
         RefVec::Buf {
             buf,
@@ -87,7 +87,7 @@ macro_rules! for_each_plain {
     (@types $T:ident $body:block; $($ty:ty),*) => {
         $({
             const _: () = assert!(<$ty as DeserializeShrinkWrap>::PLAIN_BYTES.unwrap() == size_of::<$ty>());
-            #[allow(dead_code)]
+            #[expect(dead_code)]
             type $T = $ty;
             $body
         })*

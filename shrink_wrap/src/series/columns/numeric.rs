@@ -35,7 +35,7 @@ impl NumericKind {
             width >= 1 && width <= 64,
             "numeric column width is 1 to 64 bits"
         );
-        NumericKind { width, signed }
+        Self { width, signed }
     }
 }
 
@@ -147,7 +147,7 @@ impl<W: Word> Predict<W> {
             kind.width as u32 <= W::BITS,
             "numeric column wider than its word"
         );
-        Predict {
+        Self {
             shift: W::BITS - kind.width as u32,
             signed: kind.signed,
             predictor,
@@ -189,7 +189,7 @@ impl<W: Word> Predict<W> {
 }
 
 /// Writes a column's values with the packed coder, one item at a time: segment starts at full width, residuals in
-/// blocks of up to [PACKED_BLOCK] (a block ends early at a segment start or the column end), each block its width
+/// blocks of up to [`PACKED_BLOCK`] (a block ends early at a segment start or the column end), each block its width
 /// and the residuals at that width. A block's residuals are kept until its width is known.
 ///
 /// The column writers are structs stepped by a loop over the items, not functions over an iterator: the loop is
@@ -204,7 +204,7 @@ struct PackedWriter<W> {
 
 impl<W: Word> PackedWriter<W> {
     fn new(kind: NumericKind, predictor: Predictor) -> Self {
-        PackedWriter {
+        Self {
             predict: Predict::new(kind, predictor),
             w: kind.width,
             block: [W::ZERO; PACKED_BLOCK as usize],
@@ -259,7 +259,7 @@ impl<W: Word> PackedWriter<W> {
     }
 }
 
-/// Writes a column's values with the prefix, constant or plain coder, one item at a time (see [PackedWriter]).
+/// Writes a column's values with the prefix, constant or plain coder, one item at a time (see [`PackedWriter`]).
 struct ResidualWriter<W> {
     predict: Predict<W>,
     w: u8,
@@ -269,7 +269,7 @@ struct ResidualWriter<W> {
 
 impl<W: Word> ResidualWriter<W> {
     fn new(kind: NumericKind, codec: NumericCodec) -> Self {
-        ResidualWriter {
+        Self {
             predict: Predict::new(kind, codec.predictor),
             w: kind.width,
             coder: codec.coder,
@@ -297,7 +297,7 @@ impl<W: Word> ResidualWriter<W> {
 }
 
 /// Bits a column takes under one predictor with each coder, in [CODERS] order (header included), counted one item
-/// at a time (see [PackedWriter]): what the writers write, `None` for constant when the residuals differ.
+/// at a time (see [`PackedWriter`]): what the writers write, `None` for constant when the residuals differ.
 struct Sizes<W> {
     predict: Predict<W>,
     w: u8,
@@ -313,7 +313,7 @@ struct Sizes<W> {
 
 impl<W: Word> Sizes<W> {
     fn new(kind: NumericKind, predictor: Predictor) -> Self {
-        Sizes {
+        Self {
             predict: Predict::new(kind, predictor),
             w: kind.width,
             starts: 0,
@@ -415,7 +415,7 @@ where
 }
 
 /// Bits the column takes with `codec` (header included), `None` if the codec can't encode it: counted by writing
-/// it into a [BitCounter](super::BitCounter), what [coder_bits] is checked against.
+/// it into a [`BitCounter`](super::BitCounter), what [`coder_bits`] is checked against.
 #[cfg(any(test, fuzzing))]
 pub(crate) fn numeric_bits<I, W>(kind: NumericKind, codec: NumericCodec, items: I) -> Option<usize>
 where
@@ -440,7 +440,7 @@ where
     Some(counter.bits())
 }
 
-/// [coder_bits] of `codec`, for the checks against [numeric_bits].
+/// [`coder_bits`] of `codec`, for the checks against [`numeric_bits`].
 #[cfg(any(test, fuzzing))]
 pub(crate) fn counted_bits<I, W>(kind: NumericKind, codec: NumericCodec, items: I) -> Option<usize>
 where
@@ -477,7 +477,7 @@ where
 /// predictor. Returns the codec written. Writes nothing but the header for no items: a `Series` doesn't write
 /// empty columns at all.
 ///
-/// Inlined, so that a `codec` known at compile time ([SeriesPolicy](super::SeriesPolicy) types) leaves the
+/// Inlined, so that a `codec` known at compile time ([`SeriesPolicy`](super::SeriesPolicy) types) leaves the
 /// trials and the other coders' writers out of the firmware.
 #[inline(always)]
 pub(crate) fn write_numeric<I, W>(
@@ -504,10 +504,10 @@ where
     Ok(codec)
 }
 
-/// Writes a numeric column of `values` without restarts, the bits [write_numeric] writes for
-/// `values.map(|v| (word(v), false))`, from an array as a [SeriesStore](crate::series::SeriesStore) keeps it:
+/// Writes a numeric column of `values` without restarts, the bits [`write_numeric`] writes for
+/// `values.map(|v| (word(v), false))`, from an array as a [`SeriesStore`](crate::series::SeriesStore) keeps it:
 /// delta packed is one pass with the block widths and bits packed in a word; every other codec goes through
-/// [write_numeric].
+/// [`write_numeric`].
 #[inline(always)]
 pub(crate) fn write_numeric_slice<T, W>(
     sink: &mut impl BitSink,
@@ -528,9 +528,9 @@ where
     }
 }
 
-/// Delta packed without restarts, one pass: the first value at the width, then blocks of [PACKED_BLOCK]
-/// residuals, each its width field and the residuals in one [put_block](BitSink::put_block). The same bits as
-/// [PackedWriter].
+/// Delta packed without restarts, one pass: the first value at the width, then blocks of [`PACKED_BLOCK`]
+/// residuals, each its width field and the residuals in one [`put_block`](BitSink::put_block). The same bits as
+/// [`PackedWriter`].
 #[inline(never)]
 fn delta_packed_slice<T, W: Word>(
     sink: &mut impl BitSink,
@@ -638,14 +638,15 @@ impl<'i> NumericReader<'i> {
         let z = match self.codec.coder {
             Coder::Prefix => get_delta(&mut self.rd, w)?,
             Coder::Plain => self.rd.read_un64(w)?,
-            Coder::Constant => match self.constant {
-                Some(z) => z,
-                None => {
+            Coder::Constant => {
+                if let Some(z) = self.constant {
+                    z
+                } else {
                     let z = get_delta(&mut self.rd, w)?;
                     self.constant = Some(z);
                     z
                 }
-            },
+            }
             Coder::Packed => {
                 if self.block_left == 0 {
                     let block_width = self.rd.read_un32(block_width_bits(w))? as u8;
@@ -713,7 +714,7 @@ where
     Ok(())
 }
 
-/// Reader of a [write_numeric128] column.
+/// Reader of a [`write_numeric128`] column.
 #[derive(Clone, Copy, Debug)]
 pub struct Numeric128Reader<'i> {
     rd: BufReader<'i>,

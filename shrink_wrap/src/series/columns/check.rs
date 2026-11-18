@@ -37,7 +37,7 @@ pub fn numeric_codecs() -> impl Iterator<Item = NumericCodec> {
 }
 
 /// A numeric column of `width` (1..=64) bits: written with `codec` (`None`: the smallest), it reads back the same
-/// values with only the bytes it takes, its bit count is what [numeric_bits] says, and the smallest is no bigger
+/// values with only the bytes it takes, its bit count is what [`numeric_bits`] says, and the smallest is no bigger
 /// than any other codec. Returns the codec written and its bits.
 pub fn numeric(
     buf: &mut [u8],
@@ -138,7 +138,7 @@ pub fn float<T: XorBits>(
 
 /// Writes `offset` (0..8) one bits ahead of a column, so that byte alignment inside it is exercised, and returns
 /// a reader positioned after them.
-fn skip_offset<'i>(buf: &'i [u8], offset: u8) -> BufReader<'i> {
+fn skip_offset(buf: &[u8], offset: u8) -> BufReader<'_> {
     let mut rd = BufReader::new(buf);
     assert_eq!(rd.read_un32(offset), Ok(mask(offset) as u32));
     rd

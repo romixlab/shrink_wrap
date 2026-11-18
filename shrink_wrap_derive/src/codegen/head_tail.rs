@@ -558,7 +558,7 @@ fn flag_at(head: &Head, name: &str) -> TokenStream {
 /// The view members of an Option's or Result's payload: `(member, payload)`.
 fn payload_members<'p>(name: &str, kind: &'p HKind) -> Vec<(String, &'p Payload)> {
     match kind {
-        HKind::Option(p) => vec![(name.to_string(), p)],
+        HKind::Option(p) => vec![(name.to_owned(), p)],
         HKind::Result(ok, err) => vec![(format!("{name}_ok"), ok), (format!("{name}_err"), err)],
         _ => vec![],
     }
@@ -936,7 +936,7 @@ impl Names {
     }
 }
 
-/// The inherent fns every head_tail type gets, on top of `HeadTail`.
+/// The inherent fns every `head_tail` type gets, on top of `HeadTail`.
 fn inherent(names: &Names, cp: &CratePath) -> TokenStream {
     let error = cp.error();
     let ht = cp.item(quote! { head_tail::HeadTail });
@@ -993,15 +993,12 @@ pub(crate) fn ht_struct(
     let upper_ty = cp.item(quote! { fixed_layout::Upper });
 
     let reads = reads(&head, false, cp);
-    let construct = match kind {
-        StructKind::Tuple => {
-            let fields = construct_fields(&head, false);
-            quote! { #ident ( #(#fields),* ) }
-        }
-        _ => {
-            let fields = construct_fields(&head, true);
-            quote! { #ident { #(#fields),* } }
-        }
+    let construct = if kind == StructKind::Tuple {
+        let fields = construct_fields(&head, false);
+        quote! { #ident ( #(#fields),* ) }
+    } else {
+        let fields = construct_fields(&head, true);
+        quote! { #ident { #(#fields),* } }
     };
     let view_ident = format_ident!("{}View", ident);
     let view_def = view_struct(

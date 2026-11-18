@@ -1,6 +1,6 @@
 //! The wire line of a crate's own `Cargo.toml`, read at compile time: `[package.metadata.wire_weaver] wire = "w1.0"`
 //! gives line 1. The foundation crates of the link setup hello (`shrink_wrap`, `ww_framer`, `ww_link`,
-//! `ww_client_server`) take their `GENERATION` from it with [generation_from_manifest](crate::generation_from_manifest),
+//! `ww_client_server`) take their `GENERATION` from it with [`generation_from_manifest`](crate::generation_from_manifest),
 //! so a wire break is bumped in one place, where the evolution checker reads it too (EVO-26).
 //!
 //! A `const fn` over `include_str!`, no build script: `no_std`, nothing to compile or run before the crate, and
@@ -78,9 +78,10 @@ const fn value_of_wire(b: &[u8], at: usize) -> Option<usize> {
 
 /// `"wN.M"` at `at`: `N`, with `M` checked to be there.
 const fn parse_line(b: &[u8], at: usize) -> u8 {
-    if !starts_with(b, at, b"\"w") {
-        panic!("the wire version in Cargo.toml is written \"wN.M\", like \"w1.0\"");
-    }
+    assert!(
+        starts_with(b, at, b"\"w"),
+        "the wire version in Cargo.toml is written \"wN.M\", like \"w1.0\""
+    );
     let mut i = at + 2;
     let mut line: u32 = 0;
     let start = i;
@@ -88,24 +89,23 @@ const fn parse_line(b: &[u8], at: usize) -> u8 {
         line = line * 10 + (b[i] - b'0') as u32;
         i += 1;
     }
-    if i == start || line > 255 || i >= b.len() || b[i] != b'.' {
-        panic!(
-            "the wire version in Cargo.toml is written \"wN.M\" with a line N of 1 to 255, like \"w1.0\""
-        );
-    }
+    assert!(
+        !(i == start || line > 255 || i >= b.len() || b[i] != b'.'),
+        "the wire version in Cargo.toml is written \"wN.M\" with a line N of 1 to 255, like \"w1.0\""
+    );
     let revision = i + 1;
     i = revision;
     while i < b.len() && b[i].is_ascii_digit() {
         i += 1;
     }
-    if i == revision || i >= b.len() || b[i] != b'"' {
-        panic!(
-            "the wire version in Cargo.toml is written \"wN.M\" with a revision M, like \"w1.0\""
-        );
-    }
-    if line == 0 {
-        panic!("a generation counts from 1: the wire line in Cargo.toml is w1 or later");
-    }
+    assert!(
+        !(i == revision || i >= b.len() || b[i] != b'"'),
+        "the wire version in Cargo.toml is written \"wN.M\" with a revision M, like \"w1.0\""
+    );
+    assert!(
+        line != 0,
+        "a generation counts from 1: the wire line in Cargo.toml is w1 or later"
+    );
     line as u8
 }
 

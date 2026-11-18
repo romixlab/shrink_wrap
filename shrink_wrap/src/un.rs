@@ -297,8 +297,9 @@ inx!(49, 50, 51, 52, 53, 54, 55, 56 / 64);
 inx!(57, 58, 59, 60, 61, 62, 63, 64 / 64);
 
 /// N-bit unsigned number, unlike Ux and Ix which are const size, here N is serialized as well and not known beforehand.
+///
 /// Serialized as `3 + 3(N<8) or 4(N<16) or 5(N<32) or 6(N<64) + N bits`.
-/// Serialized layout: discriminant(U3), bit_count(U3, U4, U5 or U6), value (N-bits). N is `bit_count`; a value
+/// Serialized layout: discriminant(U3), `bit_count(U3`, U4, U5 or U6), value (N-bits). N is `bit_count`; a value
 /// that needs more bits fails to serialize with `SubtypeOutOfRange`.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -330,10 +331,10 @@ impl UN {
     /// Variant number, bit count and value; `SubtypeOutOfRange` when the value needs more bits than `bit_count`.
     fn to_wire_parts(self) -> Result<(u8, u8, u64), Error> {
         let (discriminant, bit_count, value) = match self {
-            UN::UN8 { bit_count, value } => (0, bit_count.value(), u64::from(value)),
-            UN::UN16 { bit_count, value } => (1, bit_count.value(), u64::from(value)),
-            UN::UN32 { bit_count, value } => (2, bit_count.value(), u64::from(value)),
-            UN::UN64 { bit_count, value } => (3, bit_count.value(), value),
+            Self::UN8 { bit_count, value } => (0, bit_count.value(), u64::from(value)),
+            Self::UN16 { bit_count, value } => (1, bit_count.value(), u64::from(value)),
+            Self::UN32 { bit_count, value } => (2, bit_count.value(), u64::from(value)),
+            Self::UN64 { bit_count, value } => (3, bit_count.value(), value),
         };
         if value >> bit_count != 0 {
             return Err(Error::SubtypeOutOfRange);
@@ -344,19 +345,19 @@ impl UN {
     /// The value of variant `discriminant` from the `bit_count` low bits of `raw`.
     fn from_wire_parts(discriminant: u8, bit_count: u8, raw: u64) -> Result<Self, Error> {
         Ok(match discriminant {
-            0 => UN::UN8 {
+            0 => Self::UN8 {
                 bit_count: U3::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: raw as u8,
             },
-            1 => UN::UN16 {
+            1 => Self::UN16 {
                 bit_count: U4::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: raw as u16,
             },
-            2 => UN::UN32 {
+            2 => Self::UN32 {
                 bit_count: U5::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: raw as u32,
             },
-            3 => UN::UN64 {
+            3 => Self::UN64 {
                 bit_count: U6::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: raw,
             },
@@ -387,10 +388,10 @@ impl IN {
     /// more bits than `bit_count`.
     fn to_wire_parts(self) -> Result<(u8, u8, u64), Error> {
         let (discriminant, bit_count, value) = match self {
-            IN::IN8 { bit_count, value } => (0, bit_count.value(), i64::from(value)),
-            IN::IN16 { bit_count, value } => (1, bit_count.value(), i64::from(value)),
-            IN::IN32 { bit_count, value } => (2, bit_count.value(), i64::from(value)),
-            IN::IN64 { bit_count, value } => (3, bit_count.value(), value),
+            Self::IN8 { bit_count, value } => (0, bit_count.value(), i64::from(value)),
+            Self::IN16 { bit_count, value } => (1, bit_count.value(), i64::from(value)),
+            Self::IN32 { bit_count, value } => (2, bit_count.value(), i64::from(value)),
+            Self::IN64 { bit_count, value } => (3, bit_count.value(), value),
         };
         Ok((discriminant, bit_count, signed_to_bits(value, bit_count)?))
     }
@@ -399,19 +400,19 @@ impl IN {
     fn from_wire_parts(discriminant: u8, bit_count: u8, raw: u64) -> Result<Self, Error> {
         let value = sign_extend(raw, bit_count);
         Ok(match discriminant {
-            0 => IN::IN8 {
+            0 => Self::IN8 {
                 bit_count: U3::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: value as i8,
             },
-            1 => IN::IN16 {
+            1 => Self::IN16 {
                 bit_count: U4::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: value as i16,
             },
-            2 => IN::IN32 {
+            2 => Self::IN32 {
                 bit_count: U5::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value: value as i32,
             },
-            3 => IN::IN64 {
+            3 => Self::IN64 {
                 bit_count: U6::new(bit_count).ok_or(Error::InvalidBitCount)?,
                 value,
             },

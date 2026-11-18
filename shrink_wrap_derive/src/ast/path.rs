@@ -8,27 +8,26 @@ pub(crate) struct Path {
     pub(crate) segments: Vec<Ident>,
     /// Generic arguments of the last segment as written, the leading lifetime included; emitted as written, except
     /// that [def](crate::ast::ty::Type::def) replaces the lifetime with the one of the generated type and
-    /// [make_owned](Self::make_owned) drops it.
+    /// [`make_owned`](Self::make_owned) drops it.
     pub(crate) args: Vec<GenericArgument>,
 }
 
 impl Path {
     pub(crate) fn new_ident(ident: Ident) -> Self {
-        Path {
+        Self {
             segments: vec![ident],
             args: Vec::new(),
         }
     }
 
     pub(crate) fn new(segments: Vec<Ident>, args: Vec<GenericArgument>) -> Self {
-        Path { segments, args }
+        Self { segments, args }
     }
 
     /// The owned counterpart: `Foo<'i, T>` is `FooOwned<T>`.
     pub(crate) fn make_owned(&mut self) {
         if let Some(last_segment) = self.segments.last_mut() {
-            *last_segment =
-                Ident::new(format!("{}Owned", last_segment).as_str(), Span::call_site());
+            *last_segment = Ident::new(format!("{last_segment}Owned").as_str(), Span::call_site());
         }
         if matches!(self.args.first(), Some(GenericArgument::Lifetime(_))) {
             self.args.remove(0);
@@ -61,6 +60,6 @@ impl Path {
 
 impl ToTokens for &Path {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append_all(self.tokens(None))
+        tokens.append_all(self.tokens(None));
     }
 }

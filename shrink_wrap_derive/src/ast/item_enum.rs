@@ -26,7 +26,7 @@ pub(crate) struct ItemEnum {
 pub(crate) struct FutureVersion {
     pub(crate) docs: Docs,
     pub(crate) ident: Ident,
-    /// Attributes the derive doesn't read, as [Variant::attrs].
+    /// Attributes the derive doesn't read, as [`Variant::attrs`].
     pub(crate) attrs: Vec<syn::Attribute>,
     /// The field's type: `u32`, or `u8` / `u16` written to keep the enum small (DER-25).
     pub(crate) ty: Ident,
@@ -54,9 +54,9 @@ impl Fields {
     /// Field types in wire order, flags included.
     pub(crate) fn types(&self) -> Vec<&Type> {
         match self {
-            Fields::Named(named) => named.iter().map(|f| &f.ty).collect(),
-            Fields::Unnamed(unnamed) => unnamed.iter().collect(),
-            Fields::Unit => vec![],
+            Self::Named(named) => named.iter().map(|f| &f.ty).collect(),
+            Self::Unnamed(unnamed) => unnamed.iter().collect(),
+            Self::Unit => vec![],
         }
     }
 }
@@ -76,7 +76,7 @@ pub(crate) struct Variant {
     /// The variant's attributes the derive doesn't read (`#[serde(..)]`, `#[cfg_attr(..)]`, ...), kept as written on
     /// the generated type that has the item's own name.
     pub(crate) attrs: Vec<syn::Attribute>,
-    /// The same for each field of a tuple variant ([Fields::Unnamed]), empty for other variants.
+    /// The same for each field of a tuple variant ([`Fields::Unnamed`]), empty for other variants.
     pub(crate) unnamed_attrs: Vec<Vec<syn::Attribute>>,
 }
 

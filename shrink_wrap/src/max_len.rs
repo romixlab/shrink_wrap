@@ -1,4 +1,4 @@
-//! [MaxLen]: a list or string with a maximum length (SW-19).
+//! [`MaxLen`]: a list or string with a maximum length (SW-19).
 
 use crate::max_size::{MaxSize, write_max_size};
 use crate::{
@@ -12,10 +12,10 @@ use core::ops::{Deref, DerefMut};
 ///
 /// On the wire it is exactly the value inside, so a bound can be added to, changed in or removed from a field
 /// without changing a single byte. A longer value is never cut: serializing it fails with
-/// [Error::MaxLenExceeded], and so does deserializing one, before any of its elements are read.
+/// [`Error::MaxLenExceeded`], and so does deserializing one, before any of its elements are read.
 ///
-/// Its [MAX_SIZE](SerializeShrinkWrap::MAX_SIZE) is known if the elements' is, so the worst-case size of a type or a
-/// message made of bounded parts is known at compile time (see [max_size](crate::max_size)).
+/// Its [`MAX_SIZE`](SerializeShrinkWrap::MAX_SIZE) is known if the elements' is, so the worst-case size of a type or a
+/// message made of bounded parts is known at compile time (see [`max_size`](crate::max_size)).
 ///
 /// ```
 /// use shrink_wrap::prelude::*;
@@ -50,7 +50,7 @@ impl<T, const N: usize> MaxLen<T, N> {
     /// The value without a check: one that is too long fails to serialize instead. For a `const`, where
     /// [new](Self::new) can't be used.
     pub const fn new_unchecked(value: T) -> Self {
-        MaxLen(value)
+        Self(value)
     }
 
     pub fn into_inner(self) -> T {
@@ -59,15 +59,15 @@ impl<T, const N: usize> MaxLen<T, N> {
 }
 
 impl<T: LenBounded, const N: usize> MaxLen<T, N> {
-    /// `value` if it has at most `N` elements, [Error::MaxLenExceeded] otherwise.
+    /// `value` if it has at most `N` elements, [`Error::MaxLenExceeded`] otherwise.
     pub fn new(value: T) -> Result<Self, Error> {
         check_max_len(value.bounded_len(), N)?;
-        Ok(MaxLen(value))
+        Ok(Self(value))
     }
 }
 
 /// The bound check shared by every `MaxLen<_, N>` instance: `ser_shrink_wrap`, `ser_shrink_wrap_owned`, `new` and
-/// `des_shrink_wrap` (through [check_len]) all call this instead of each writing the same `if len > max` on its
+/// `des_shrink_wrap` (through [`check_len`]) all call this instead of each writing the same `if len > max` on its
 /// own. Not `#[inline(never)]` (SW-72, measured on `tests/flash_budget_api::MaxLenBounds*`): the compiler folds
 /// this tiny comparison back in at every call site anyway, so forcing it out of line only adds call overhead
 /// without removing anything to merge (`N` is baked into the call site's argument either way, byte for byte) —
@@ -95,15 +95,15 @@ impl<T, const N: usize> DerefMut for MaxLen<T, N> {
     }
 }
 
-/// A list or string that [MaxLen] can bound: `RefVec`, `Vec`, `&str`, `String`.
+/// A list or string that [`MaxLen`] can bound: `RefVec`, `Vec`, `&str`, `String`.
 pub trait LenBounded {
     /// Number of elements, bytes for a string.
     fn bounded_len(&self) -> usize;
 }
 
-/// [MAX_SIZE](SerializeShrinkWrap::MAX_SIZE) of one element of a [LenBounded] list as written in it, for the
-/// `MAX_SIZE` of [MaxLen]. A separate trait, so that bounding a list of types that are only
-/// [SerializeShrinkWrapOwned](crate::SerializeShrinkWrapOwned) works too.
+/// [`MAX_SIZE`](SerializeShrinkWrap::MAX_SIZE) of one element of a [`LenBounded`] list as written in it, for the
+/// `MAX_SIZE` of [`MaxLen`]. A separate trait, so that bounding a list of types that are only
+/// [`SerializeShrinkWrapOwned`](crate::SerializeShrinkWrapOwned) works too.
 pub trait ItemMaxSize {
     const ITEM_MAX_SIZE: Option<MaxSize>;
 }
@@ -177,7 +177,7 @@ impl<T: crate::SerializeShrinkWrapOwned + LenBounded, const N: usize>
     }
 }
 
-/// Every type [LenBounded] is for starts with its length at the back of the buffer: read it from a copy of the
+/// Every type [`LenBounded`] is for starts with its length at the back of the buffer: read it from a copy of the
 /// reader and fail before the value itself is read (or allocated).
 fn check_len(rd: &BufReader<'_>, max_len: usize) -> Result<(), Error> {
     let mut peek = *rd;
@@ -190,11 +190,11 @@ impl<'i, T: DeserializeShrinkWrap<'i> + LenBounded, const N: usize> DeserializeS
     const ELEMENT_SIZE: ElementSize = T::ELEMENT_SIZE;
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
-        Ok(MaxLen(des_bounded(rd, N)?))
+        Ok(Self(des_bounded(rd, N)?))
     }
 }
 
-/// A [LenBounded] `T` of at most `max_len` elements: one copy per `T`, not per `MaxLen<T, N>` (SRV-55). Bounds
+/// A [`LenBounded`] `T` of at most `max_len` elements: one copy per `T`, not per `MaxLen<T, N>` (SRV-55). Bounds
 /// rarely repeat in an API, and inlined into each `N`'s decoder `T`'s decoder (a `&str`'s, a list's) was one
 /// copy per bound.
 #[inline(never)]
@@ -213,6 +213,6 @@ impl<T: DeserializeShrinkWrapOwned + LenBounded, const N: usize> DeserializeShri
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
         check_len(rd, N)?;
-        Ok(MaxLen(T::des_shrink_wrap_owned(rd)?))
+        Ok(Self(T::des_shrink_wrap_owned(rd)?))
     }
 }

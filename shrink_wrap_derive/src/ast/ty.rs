@@ -16,10 +16,10 @@ pub(crate) enum ArrayLen {
 impl ToTokens for ArrayLen {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ArrayLen::Lit(len) => {
-                LitInt::new(format!("{len}").as_str(), Span::call_site()).to_tokens(tokens)
+            Self::Lit(len) => {
+                LitInt::new(format!("{len}").as_str(), Span::call_site()).to_tokens(tokens);
             }
-            ArrayLen::Expr(expr) => expr.to_tokens(tokens),
+            Self::Expr(expr) => expr.to_tokens(tokens),
         }
     }
 }
@@ -56,11 +56,11 @@ pub(crate) enum Type {
     // Bytes,
     String,
 
-    Array(ArrayLen, Box<Type>),
-    Tuple(Vec<Type>),
-    Vec(Box<Type>),
-    Range(Box<Type>),
-    RangeInclusive(Box<Type>),
+    Array(ArrayLen, Box<Self>),
+    Tuple(Vec<Self>),
+    Vec(Box<Self>),
+    Range(Box<Self>),
+    RangeInclusive(Box<Self>),
 
     /// A user type; `has_lifetime` when it is written with one (`Foo<'i>`)
     External {
@@ -69,29 +69,29 @@ pub(crate) enum Type {
     },
 
     // is_some_flag, optional_ty
-    Option(Ident, Box<Type>),
+    Option(Ident, Box<Self>),
     // Only used for relocation of is_some flag in structs and enum struct variants.
     IsSome(Ident),
 
     // is_ok_flag, (ok_ty, err_ty)
-    Result(Ident, Box<(Type, Type)>),
+    Result(Ident, Box<(Self, Self)>),
     // Only used for relocation of is_ok flag in structs and enum struct variants.
     IsOk(Ident),
 
-    RefBox(Box<Type>),
+    RefBox(Box<Self>),
 
     /// `TailSize<N>`, the size of the rest of the enclosing value, backfilled; `None` is the default width.
     TailSize(Option<Expr>),
 
     /// `MaxLen<T, N>`: a `Vec`/`RefVec` or string `T` with at most `N` elements, `N` kept as written.
-    MaxLen(Expr, Box<Type>),
+    MaxLen(Expr, Box<Self>),
 
     /// `#[wire(W)] field: T` (DER-19): a plain integer `T` in Rust, written as the integer type `W` on the wire; or
     /// any `T` written as a user type `W` (`user`, DER-23), through `W: WireAs<T>`. `cfg` is the predicate of
     /// `#[cfg_attr(pred, wire(W))]`.
     Wire {
-        plain: Box<Type>,
-        wire: Box<Type>,
+        plain: Box<Self>,
+        wire: Box<Self>,
         cfg: Option<syn::Meta>,
         user: bool,
     },
@@ -100,7 +100,7 @@ pub(crate) enum Type {
 impl Type {
     pub(crate) fn make_owned(&mut self) {
         match self {
-            Type::External {
+            Self::External {
                 path,
                 has_lifetime: potential_lifetimes,
             } => {
@@ -110,46 +110,46 @@ impl Type {
                     *potential_lifetimes = false;
                 }
             }
-            Type::Option(_, some_ty) => some_ty.make_owned(),
-            Type::Result(_, ok_err_ty) => {
+            Self::Option(_, some_ty) => some_ty.make_owned(),
+            Self::Result(_, ok_err_ty) => {
                 ok_err_ty.0.make_owned();
                 ok_err_ty.1.make_owned();
             }
-            Type::Array(_, layout) => {
+            Self::Array(_, layout) => {
                 layout.make_owned();
             }
-            Type::Tuple(types) => {
+            Self::Tuple(types) => {
                 for ty in types {
                     ty.make_owned();
                 }
             }
-            Type::Vec(layout) => {
+            Self::Vec(layout) => {
                 layout.make_owned();
             }
-            Type::RefBox(ref_box) => {
+            Self::RefBox(ref_box) => {
                 ref_box.make_owned();
             }
-            Type::MaxLen(_, inner) => inner.make_owned(),
+            Self::MaxLen(_, inner) => inner.make_owned(),
             _ => {}
         }
     }
 
     /// Whether `pred` holds for this type or any type nested in it.
-    pub(crate) fn any(&self, pred: &dyn Fn(&Type) -> bool) -> bool {
+    pub(crate) fn any(&self, pred: &dyn Fn(&Self) -> bool) -> bool {
         if pred(self) {
             return true;
         }
         match self {
-            Type::Array(_, ty)
-            | Type::Vec(ty)
-            | Type::Range(ty)
-            | Type::RangeInclusive(ty)
-            | Type::Option(_, ty)
-            | Type::RefBox(ty)
-            | Type::MaxLen(_, ty) => ty.any(pred),
-            Type::Tuple(types) => types.iter().any(|ty| ty.any(pred)),
-            Type::Result(_, ok_err_ty) => ok_err_ty.0.any(pred) || ok_err_ty.1.any(pred),
-            Type::Wire { wire, .. } => wire.any(pred),
+            Self::Array(_, ty)
+            | Self::Vec(ty)
+            | Self::Range(ty)
+            | Self::RangeInclusive(ty)
+            | Self::Option(_, ty)
+            | Self::RefBox(ty)
+            | Self::MaxLen(_, ty) => ty.any(pred),
+            Self::Tuple(types) => types.iter().any(|ty| ty.any(pred)),
+            Self::Result(_, ok_err_ty) => ok_err_ty.0.any(pred) || ok_err_ty.1.any(pred),
+            Self::Wire { wire, .. } => wire.any(pred),
             _ => false,
         }
     }
@@ -158,8 +158,8 @@ impl Type {
     /// fields of a `transparent` struct (DER-18).
     pub(crate) fn is_zero_bits(&self) -> bool {
         match self {
-            Type::Tuple(types) => types.is_empty(),
-            Type::External { path, .. } => path
+            Self::Tuple(types) => types.is_empty(),
+            Self::External { path, .. } => path
                 .segments
                 .last()
                 .is_some_and(|ident| ident == "PhantomData"),
@@ -179,13 +179,13 @@ impl Type {
 
     /// Whether this type is or contains `TailSize<N>`.
     pub(crate) fn contains_tail_size(&self) -> bool {
-        self.any(&|ty| matches!(ty, Type::TailSize(_)))
+        self.any(&|ty| matches!(ty, Self::TailSize(_)))
     }
 
     /// Whether this type is or contains an external type whose last path segment is one of `names`.
     fn contains_external(&self, names: &[&str]) -> bool {
         self.any(&|ty| match ty {
-            Type::External { path, .. } => path
+            Self::External { path, .. } => path
                 .segments
                 .last()
                 .is_some_and(|ident| names.iter().any(|name| ident == name)),
@@ -196,27 +196,27 @@ impl Type {
     /// Every user type (`Type::External`) in this type, nested ones included, with whether it takes a lifetime.
     pub(crate) fn externals(&self, out: &mut Vec<(Path, bool)>) {
         match self {
-            Type::External {
+            Self::External {
                 path,
                 has_lifetime: is_lifetime,
             } => out.push((path.clone(), *is_lifetime)),
-            Type::Array(_, ty)
-            | Type::Vec(ty)
-            | Type::Range(ty)
-            | Type::RangeInclusive(ty)
-            | Type::Option(_, ty)
-            | Type::RefBox(ty)
-            | Type::MaxLen(_, ty) => ty.externals(out),
-            Type::Tuple(types) => {
+            Self::Array(_, ty)
+            | Self::Vec(ty)
+            | Self::Range(ty)
+            | Self::RangeInclusive(ty)
+            | Self::Option(_, ty)
+            | Self::RefBox(ty)
+            | Self::MaxLen(_, ty) => ty.externals(out),
+            Self::Tuple(types) => {
                 for ty in types {
                     ty.externals(out);
                 }
             }
-            Type::Result(_, ok_err_ty) => {
+            Self::Result(_, ok_err_ty) => {
                 ok_err_ty.0.externals(out);
                 ok_err_ty.1.externals(out);
             }
-            Type::Wire { wire, .. } => wire.externals(out),
+            Self::Wire { wire, .. } => wire.externals(out),
             _ => {}
         }
     }
@@ -226,10 +226,10 @@ impl Type {
     /// plain fields gets a literal `false`. What `SerializeShrinkWrap::PUSHES_LEN` of a derived type is made of.
     pub(crate) fn pushes_len_expr(&self, cp: &CratePath) -> Option<TokenStream> {
         match self {
-            Type::String | Type::Vec(_) | Type::RefBox(_) | Type::MaxLen(_, _) => {
+            Self::String | Self::Vec(_) | Self::RefBox(_) | Self::MaxLen(_, _) => {
                 Some(quote! { true })
             }
-            Type::External {
+            Self::External {
                 path,
                 has_lifetime: is_lifetime,
             } => {
@@ -243,13 +243,13 @@ impl Type {
                         || <#ty as #ser_trait>::PUSHES_LEN)
                 })
             }
-            Type::Array(_, ty)
-            | Type::Range(ty)
-            | Type::RangeInclusive(ty)
-            | Type::Option(_, ty) => ty.pushes_len_expr(cp),
-            Type::Tuple(types) => Self::any_pushes_len(types.iter(), cp),
-            Type::Wire { wire, .. } => wire.pushes_len_expr(cp),
-            Type::Result(_, ok_err_ty) => {
+            Self::Array(_, ty)
+            | Self::Range(ty)
+            | Self::RangeInclusive(ty)
+            | Self::Option(_, ty) => ty.pushes_len_expr(cp),
+            Self::Tuple(types) => Self::any_pushes_len(types.iter(), cp),
+            Self::Wire { wire, .. } => wire.pushes_len_expr(cp),
+            Self::Result(_, ok_err_ty) => {
                 Self::any_pushes_len([&ok_err_ty.0, &ok_err_ty.1].into_iter(), cp)
             }
             // integers, flags, varints, the TailSize slot (its backfill encodes what was pushed after it)
@@ -263,19 +263,19 @@ impl Type {
         let max_size = cp.item(quote! { MaxSize });
         let some = |size: TokenStream| quote! { Some(#max_size::#size) };
         match self {
-            Type::Bool | Type::IsSome(_) | Type::IsOk(_) => some(quote! { bits(1) }),
-            Type::Nibble => some(quote! { nibbles(1) }),
-            Type::U8 | Type::I8 => some(quote! { bytes(1) }),
-            Type::U16 | Type::I16 => some(quote! { bytes(2) }),
-            Type::U32 | Type::I32 | Type::F32 => some(quote! { bytes(4) }),
-            Type::U64 | Type::I64 | Type::F64 => some(quote! { bytes(8) }),
-            Type::U128 | Type::I128 => some(quote! { bytes(16) }),
+            Self::Bool | Self::IsSome(_) | Self::IsOk(_) => some(quote! { bits(1) }),
+            Self::Nibble => some(quote! { nibbles(1) }),
+            Self::U8 | Self::I8 => some(quote! { bytes(1) }),
+            Self::U16 | Self::I16 => some(quote! { bytes(2) }),
+            Self::U32 | Self::I32 | Self::F32 => some(quote! { bytes(4) }),
+            Self::U64 | Self::I64 | Self::F64 => some(quote! { bytes(8) }),
+            Self::U128 | Self::I128 => some(quote! { bytes(16) }),
             // unbounded
-            Type::String | Type::Vec(_) | Type::RefBox(_) => quote! { None },
+            Self::String | Self::Vec(_) | Self::RefBox(_) => quote! { None },
             // the flag is a field of its own (IsSome / IsOk), only the value is written here
-            Type::Option(_, ty) => Self::write_max_size(ty, cp),
+            Self::Option(_, ty) => Self::write_max_size(ty, cp),
             // a user `W` may promise less for the plain values it takes (`WireAs::PLAIN_MAX_SIZE`)
-            Type::Wire {
+            Self::Wire {
                 plain,
                 wire,
                 user: true,
@@ -285,47 +285,48 @@ impl Type {
                 let (plain, wire) = (plain.def(true, cp), wire.def(true, cp));
                 quote! { #size::<#wire, #plain>() }
             }
-            Type::Wire { wire, .. } => wire.max_size_expr(cp),
-            Type::Result(_, ok_err_ty) => {
+            Self::Wire { wire, .. } => wire.max_size_expr(cp),
+            Self::Result(_, ok_err_ty) => {
                 let ok = Self::write_max_size(&ok_err_ty.0, cp);
                 let err = Self::write_max_size(&ok_err_ty.1, cp);
                 quote! { #max_size::one_of(#ok, #err) }
             }
             // the slot, and when it is filled in, the lengths encoded after the fields: up to a padding nibble and
             // an alignment to a byte, which 2 more bytes cover
-            Type::TailSize(width) => {
-                let width = match width {
-                    Some(width) => quote! { (#width) },
-                    None => quote! { 5 },
+            Self::TailSize(width) => {
+                let width = if let Some(width) = width {
+                    quote! { (#width) }
+                } else {
+                    quote! { 5 }
                 };
                 some(quote! { bytes(#width + 2) })
             }
             // written with `wr.write()`: what the type's impl says
-            Type::UNib32
-            | Type::INib32
-            | Type::IVlq32
-            | Type::IVlq64
-            | Type::UVlq32
-            | Type::UVlq64
-            | Type::Array(_, _)
-            | Type::Tuple(_)
-            | Type::Range(_)
-            | Type::RangeInclusive(_)
-            | Type::External { .. }
-            | Type::MaxLen(_, _) => Self::write_max_size(self, cp),
+            Self::UNib32
+            | Self::INib32
+            | Self::IVlq32
+            | Self::IVlq64
+            | Self::UVlq32
+            | Self::UVlq64
+            | Self::Array(_, _)
+            | Self::Tuple(_)
+            | Self::Range(_)
+            | Self::RangeInclusive(_)
+            | Self::External { .. }
+            | Self::MaxLen(_, _) => Self::write_max_size(self, cp),
         }
     }
 
     /// `MaxSize::of_write::<T>()` of this type, as a const expression.
-    fn write_max_size(ty: &Type, cp: &CratePath) -> TokenStream {
+    fn write_max_size(ty: &Self, cp: &CratePath) -> TokenStream {
         let max_size = cp.item(quote! { MaxSize });
         let ty = ty.def(true, cp);
         quote! { #max_size::of_write::<#ty>() }
     }
 
-    /// `MaxSize::seq` of [max_size_expr](Self::max_size_expr) over `types`, fields one after another.
+    /// `MaxSize::seq` of [`max_size_expr`](Self::max_size_expr) over `types`, fields one after another.
     pub(crate) fn seq_max_size<'a>(
-        types: impl Iterator<Item = &'a Type>,
+        types: impl Iterator<Item = &'a Self>,
         cp: &CratePath,
     ) -> TokenStream {
         let max_size = cp.item(quote! { MaxSize });
@@ -337,9 +338,9 @@ impl Type {
         }}
     }
 
-    /// `||` of [pushes_len_expr](Self::pushes_len_expr) over `types`, `None` when none of them pushes a length.
+    /// `||` of [`pushes_len_expr`](Self::pushes_len_expr) over `types`, `None` when none of them pushes a length.
     pub(crate) fn any_pushes_len<'a>(
-        types: impl Iterator<Item = &'a Type>,
+        types: impl Iterator<Item = &'a Self>,
         cp: &CratePath,
     ) -> Option<TokenStream> {
         let exprs: Vec<_> = types.filter_map(|ty| ty.pushes_len_expr(cp)).collect();
@@ -350,31 +351,31 @@ impl Type {
         }
     }
 
-    /// Return ElementSize if it is known. None is returned for Unsized.
+    /// Return `ElementSize` if it is known. None is returned for Unsized.
     pub(crate) fn element_size(&self) -> Option<ObjectSize> {
         let size_bits = match self {
-            Type::Bool => 1,
-            Type::Nibble => 4,
-            Type::U8 => 8,
-            Type::U16 => 16,
-            Type::U32 => 32,
-            Type::U64 => 64,
-            Type::U128 => 128,
-            Type::UNib32 => return Some(ObjectSize::SelfDescribing),
-            Type::UVlq32 => return Some(ObjectSize::SelfDescribing),
-            Type::UVlq64 => return Some(ObjectSize::SelfDescribing),
-            Type::I8 => 8,
-            Type::I16 => 16,
-            Type::I32 => 32,
-            Type::I64 => 64,
-            Type::I128 => 128,
-            Type::INib32 | Type::IVlq32 | Type::IVlq64 => {
+            Self::Bool => 1,
+            Self::Nibble => 4,
+            Self::U8 => 8,
+            Self::U16 => 16,
+            Self::U32 => 32,
+            Self::U64 => 64,
+            Self::U128 => 128,
+            Self::UNib32 => return Some(ObjectSize::SelfDescribing),
+            Self::UVlq32 => return Some(ObjectSize::SelfDescribing),
+            Self::UVlq64 => return Some(ObjectSize::SelfDescribing),
+            Self::I8 => 8,
+            Self::I16 => 16,
+            Self::I32 => 32,
+            Self::I64 => 64,
+            Self::I128 => 128,
+            Self::INib32 | Self::IVlq32 | Self::IVlq64 => {
                 return Some(ObjectSize::SelfDescribing);
             }
-            Type::F32 => 32,
-            Type::F64 => 64,
-            Type::String => return Some(ObjectSize::Unsized),
-            Type::Array(len, ty) => {
+            Self::F32 => 32,
+            Self::F64 => 64,
+            Self::String => return Some(ObjectSize::Unsized),
+            Self::Array(len, ty) => {
                 let size = match ty.element_size()? {
                     ObjectSize::Unsized => ObjectSize::Unsized,
                     ObjectSize::UnsizedFinalStructure => ObjectSize::UnsizedFinalStructure,
@@ -397,36 +398,36 @@ impl Type {
                 };
                 return Some(size);
             }
-            Type::Tuple(types) => {
+            Self::Tuple(types) => {
                 let mut sum = ObjectSize::sized(0);
                 for ty in types {
                     sum = sum.add(ty.element_size()?);
                 }
                 return Some(sum);
             }
-            Type::Vec(_) => return Some(ObjectSize::UnsizedFinalStructure),
-            Type::Range(ty) | Type::RangeInclusive(ty) => {
+            Self::Vec(_) => return Some(ObjectSize::UnsizedFinalStructure),
+            Self::Range(ty) | Self::RangeInclusive(ty) => {
                 // start and end
                 let size = ty.element_size()?;
                 return Some(size.add(size.clone()));
             }
-            Type::External { .. } => return None, // cannot know if it's actually Unsized or not, const calculation will be performed instead
-            Type::IsSome(_) | Type::IsOk(_) => return Some(ObjectSize::sized(1)),
-            Type::Result(_, ok_err_ty) => {
+            Self::External { .. } => return None, // cannot know if it's actually Unsized or not, const calculation will be performed instead
+            Self::IsSome(_) | Self::IsOk(_) => return Some(ObjectSize::sized(1)),
+            Self::Result(_, ok_err_ty) => {
                 let mut sum = ObjectSize::SelfDescribing;
                 sum = sum.add(ok_err_ty.0.element_size()?);
                 sum = sum.add(ok_err_ty.1.element_size()?);
                 return Some(sum);
             }
-            Type::Option(_, option_ty) => {
+            Self::Option(_, option_ty) => {
                 return Some(option_ty.element_size()?.add(ObjectSize::SelfDescribing));
             }
-            Type::RefBox(_) => return Some(ObjectSize::Unsized),
+            Self::RefBox(_) => return Some(ObjectSize::Unsized),
             // same as the list or string inside
-            Type::MaxLen(_, inner) => return inner.element_size(),
-            Type::Wire { wire, .. } => return wire.element_size(),
-            Type::TailSize(None) => 5 * 8,
-            Type::TailSize(Some(width)) => {
+            Self::MaxLen(_, inner) => return inner.element_size(),
+            Self::Wire { wire, .. } => return wire.element_size(),
+            Self::TailSize(None) => 5 * 8,
+            Self::TailSize(Some(width)) => {
                 if let Expr::Lit(lit) = width
                     && let syn::Lit::Int(lit_int) = &lit.lit
                     && let Ok(width) = lit_int.base10_parse::<usize>()
@@ -441,14 +442,14 @@ impl Type {
     }
 
     /// `ElementSize` const expression of this type, also when a user type is somewhere inside
-    /// ([element_size](Self::element_size) gives up on those): the compiler folds it.
+    /// ([`element_size`](Self::element_size) gives up on those): the compiler folds it.
     pub(crate) fn size_expr(&self, is_ref: bool, cp: &CratePath) -> TokenStream {
         if let Some(size) = self.element_size() {
             return size.tokens(cp);
         }
         let element_size = cp.item(quote! { ElementSize });
         match self {
-            Type::External {
+            Self::External {
                 path,
                 has_lifetime: is_lifetime,
             } => {
@@ -457,24 +458,24 @@ impl Type {
                 let ty = path.tokens((*is_lifetime && is_ref).then(|| quote! { 'static }));
                 quote! { <#ty as #ser_trait>::ELEMENT_SIZE }
             }
-            Type::Array(len, ty) => {
+            Self::Array(len, ty) => {
                 let size = ty.size_expr(is_ref, cp);
                 quote! { #size.repeat(#len) }
             }
-            Type::Tuple(types) => {
+            Self::Tuple(types) => {
                 let sizes = types.iter().map(|ty| ty.size_expr(is_ref, cp));
                 quote! { #element_size::Sized { size_bits: 0 } #(.add(#sizes))* }
             }
-            Type::Range(ty) | Type::RangeInclusive(ty) => {
+            Self::Range(ty) | Self::RangeInclusive(ty) => {
                 let size = ty.size_expr(is_ref, cp);
                 quote! { #size.add(#size) }
             }
-            Type::Option(_, ty) => {
+            Self::Option(_, ty) => {
                 let size = ty.size_expr(is_ref, cp);
                 quote! { #size.add(#element_size::SelfDescribing) }
             }
-            Type::Wire { wire, .. } => wire.size_expr(is_ref, cp),
-            Type::Result(_, ok_err_ty) => {
+            Self::Wire { wire, .. } => wire.size_expr(is_ref, cp),
+            Self::Result(_, ok_err_ty) => {
                 let ok = ok_err_ty.0.size_expr(is_ref, cp);
                 let err = ok_err_ty.1.size_expr(is_ref, cp);
                 quote! { #element_size::SelfDescribing.add(#ok).add(#err) }

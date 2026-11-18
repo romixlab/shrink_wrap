@@ -74,7 +74,7 @@ impl ItemEnum {
         let docs = collect_docs_attrs(&mut attrs);
 
         attrs.retain(|a| !a.path().is_ident("repr"));
-        Ok(ItemEnum {
+        Ok(Self {
             docs,
             attrs,
             // ident: item_enum.ident.clone(),
@@ -255,7 +255,7 @@ fn convert_fields(
                 if is_explicit_flag {
                     explicit_flags.push(field_syn.ident.clone().unwrap());
                 }
-                named.push(field)
+                named.push(field);
             }
             create_flags(&mut named, &explicit_flags);
             check_flag_order(&named)?;

@@ -20,8 +20,8 @@
 //! per-type generic reader. Nothing in the head is written twice, and a reader that wants one field never has to
 //! look at the others.
 //!
-//! This is a wire format of its own, not shrink_wrap's: a `head_tail` type has no `SerializeShrinkWrap` /
-//! `DeserializeShrinkWrap`, only [HeadTail] and the inherent `from_head_tail` / `to_head_tail` /
+//! This is a wire format of its own, not `shrink_wrap`'s: a `head_tail` type has no `SerializeShrinkWrap` /
+//! `DeserializeShrinkWrap`, only [`HeadTail`] and the inherent `from_head_tail` / `to_head_tail` /
 //! `head_tail_len` / `view` (and `write_<variant>` on enums). Lists are [List] (not `RefVec`, whose items are read through a `BufReader`), strings
 //! `&str`. A type is either `head_tail` or not: nothing is decided from the values.
 //!
@@ -30,8 +30,8 @@
 //! - numbers, arrays of numbers and bit fields, as in the fixed layout;
 //! - `&str` and `List<'i, T>` anywhere, `T` a number or a fixed-layout type of one length (`SAME_LEN`);
 //! - `Option<T>` and `Result<T, E>` anywhere, `T` / `E` a number, an array of numbers or a type implementing
-//!   [HeadTail];
-//! - other types implementing [HeadTail]: other `head_tail` types and every fixed-layout type (the derive
+//!   [`HeadTail`];
+//! - other types implementing [`HeadTail`]: other `head_tail` types and every fixed-layout type (the derive
 //!   implements it for them: one of length `SAME_LEN` is all head, any other all tail).
 //!
 //! Not: `Vec` / `RefVec` (use [List]), varints, `RefBox`, `TailSize`, tuples, `#[default]`, owned (`std`)
@@ -149,10 +149,10 @@ pub trait HeadTail<'i>: Sized {
     /// head, and its C view is the fixed-layout one).
     const C_TAIL: bool;
 
-    /// Reads the value from its head (at least [HEAD_LEN](Self::HEAD_LEN) bytes) and the tail cursor.
+    /// Reads the value from its head (at least [`HEAD_LEN`](Self::HEAD_LEN) bytes) and the tail cursor.
     fn read_ht(head: &'i [u8], tail: &mut Tail<'i>) -> Result<Self, Error>;
 
-    /// Writes the head into `head` (at least [HEAD_LEN](Self::HEAD_LEN) bytes) and the tail through `tail`.
+    /// Writes the head into `head` (at least [`HEAD_LEN`](Self::HEAD_LEN) bytes) and the tail through `tail`.
     fn write_ht(&self, head: &mut [u8], tail: &mut TailWr) -> Result<(), Error>;
 
     /// Bytes this value takes in the tail.
@@ -163,12 +163,12 @@ pub trait HeadTail<'i>: Sized {
     /// `head_tail` enum the `XView` enum of the variants' views; for a fixed-layout type the value itself.
     type View;
 
-    /// Views the value from its head (at least [HEAD_LEN](Self::HEAD_LEN) bytes) and the tail cursor: checks the
+    /// Views the value from its head (at least [`HEAD_LEN`](Self::HEAD_LEN) bytes) and the tail cursor: checks the
     /// lengths and walks the tail, reads no field of the head but the counts and flags it needs for that.
     fn view_ht(head: &'i [u8], tail: &mut Tail<'i>) -> Result<Self::View, Error>;
 
     /// The C defines, checked view, readers and tail walker of this type, names starting with `prefix`. Needs
-    /// [C_PRELUDE](crate::fixed_layout::C_PRELUDE) and [C_TAIL_PRELUDE] in front of it, and the C text of the
+    /// [`C_PRELUDE`](crate::fixed_layout::C_PRELUDE) and [`C_TAIL_PRELUDE`] in front of it, and the C text of the
     /// types it holds.
     fn write_c_ht(prefix: &str, out: &mut dyn Write) -> core::fmt::Result;
 }
@@ -182,7 +182,7 @@ pub fn read<'i, T: HeadTail<'i>>(buf: &'i [u8]) -> Result<T, Error> {
     T::read_ht(head, &mut Tail::new(rest))
 }
 
-/// Views a value that starts at `buf[0]`: see [HeadTail::View].
+/// Views a value that starts at `buf[0]`: see [`HeadTail::View`].
 #[inline]
 pub fn view<'i, T: HeadTail<'i>>(buf: &'i [u8]) -> Result<T::View, Error> {
     let Some((head, rest)) = buf.split_at_checked(T::HEAD_LEN) else {
@@ -241,7 +241,7 @@ impl<'i> Tail<'i> {
     pub fn take_items(&mut self, n: usize, item_len: usize) -> Result<&'i [u8], Error> {
         // a count is a u16: with items of at most 64 KiB the product fits a 32-bit usize, and the check folds away
         // (a checked multiplication is a call to a division routine on a Cortex-M0)
-        if usize::BITS >= 32 && n <= u16::MAX as usize && item_len <= u16::MAX as usize {
+        if usize::BITS >= 32 && u16::try_from(n).is_ok() && u16::try_from(item_len).is_ok() {
             return self.take(n * item_len);
         }
         match n.checked_mul(item_len) {
@@ -298,7 +298,7 @@ pub fn count(n: usize) -> Result<[u8; 2], Error> {
 }
 
 /// A list in a `head_tail` type: its count in the head, its items one after another in the tail, each a
-/// fixed-layout value of [ENCODED_LEN](FixedLayout::ENCODED_LEN) bytes. A list read from the wire keeps the bytes
+/// fixed-layout value of [`ENCODED_LEN`](FixedLayout::ENCODED_LEN) bytes. A list read from the wire keeps the bytes
 /// and reads an item when asked for it.
 pub enum List<'i, T> {
     /// Items in memory, to write.
@@ -380,7 +380,7 @@ impl<'i, T: FixedLayout + Clone> List<'i, T> {
             List::Slice(items) => {
                 // not `chunks_exact_mut`: it divides by the chunk length
                 let mut at = 0;
-                for item in items.iter() {
+                for item in *items {
                     match out.get_mut(at..) {
                         Some(rest) => at += item.write_fixed(rest)?,
                         None => return Err(Error::OutOfBoundsWriteRawSlice),

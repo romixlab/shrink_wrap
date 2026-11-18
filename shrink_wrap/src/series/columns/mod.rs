@@ -10,7 +10,7 @@
 //! Every code goes through the bit cursor, most significant bit first, with no alignment (opaque run values align
 //! to a byte). Writers take an iterator over the column's items (with the restart flag of each where the column has
 //! segments) and walk it more than once (codec choice, packed block widths), so it must be `Clone`; they allocate
-//! nothing. Readers own a copy of the [BufReader] positioned at the column and are stepped one item at a time by
+//! nothing. Readers own a copy of the [`BufReader`] positioned at the column and are stepped one item at a time by
 //! the caller, which knows the item count and the restarts (from the runs before the column). Malformed data is an
 //! [Error] (`MalformedSeries` or an out-of-bounds read), never a panic, and every read is bounded by
 //! the number of items stepped.
@@ -47,7 +47,7 @@ pub enum Predictor {
 pub enum Coder {
     /// Each residual in the SW-31 delta code.
     Prefix = 0,
-    /// Blocks of [PACKED_BLOCK] residuals of a segment, each block a width field and the residuals at that width.
+    /// Blocks of [`PACKED_BLOCK`] residuals of a segment, each block a width field and the residuals at that width.
     Packed = 1,
     /// The first residual in the SW-31 delta code, every later one equal to it and not written.
     Constant = 2,
@@ -65,7 +65,7 @@ pub struct NumericCodec {
 
 impl NumericCodec {
     pub const fn new(predictor: Predictor, coder: Coder) -> Self {
-        NumericCodec { predictor, coder }
+        Self { predictor, coder }
     }
 }
 
@@ -94,14 +94,14 @@ pub struct CodecPolicy {
 
 impl CodecPolicy {
     /// The smallest encoding of every column.
-    pub const SMALLEST: CodecPolicy = CodecPolicy {
+    pub const SMALLEST: Self = Self {
         numeric: None,
         float: None,
     };
 
     /// The same codecs for every column, no trials.
     pub const fn fixed(numeric: NumericCodec, float: FloatCodec) -> Self {
-        CodecPolicy {
+        Self {
             numeric: Some(numeric),
             float: Some(float),
         }
@@ -110,13 +110,13 @@ impl CodecPolicy {
 
 impl Default for CodecPolicy {
     fn default() -> Self {
-        CodecPolicy::SMALLEST
+        Self::SMALLEST
     }
 }
 
-/// How a writer picks the codecs of a `Series`' columns: at run time ([CodecPolicy]), or fixed at compile time (a
-/// type with [FixedCodecs], such as [DeltaPacked]). The bytes are the same for the same codecs; a type leaves the
-/// trials of [CodecPolicy::SMALLEST] and every codec it doesn't use out of the firmware, where a [CodecPolicy] value
+/// How a writer picks the codecs of a `Series`' columns: at run time ([`CodecPolicy`]), or fixed at compile time (a
+/// type with [`FixedCodecs`], such as [`DeltaPacked`]). The bytes are the same for the same codecs; a type leaves the
+/// trials of [`CodecPolicy::SMALLEST`] and every codec it doesn't use out of the firmware, where a [`CodecPolicy`] value
 /// links them all.
 pub trait SeriesPolicy {
     /// The codec of every numeric column, `None` for the smallest of each.
@@ -137,8 +137,8 @@ impl SeriesPolicy for CodecPolicy {
     }
 }
 
-/// A [SeriesPolicy] fixed at compile time: the same codecs for every column, except where they can't encode one (as
-/// [CodecPolicy::fixed]). Implemented for a unit struct:
+/// A [`SeriesPolicy`] fixed at compile time: the same codecs for every column, except where they can't encode one (as
+/// [`CodecPolicy::fixed`]). Implemented for a unit struct:
 ///
 /// ```
 /// use shrink_wrap::series::{Coder, FixedCodecs, FloatCodec, NumericCodec, Predictor};
@@ -169,7 +169,7 @@ impl<F: FixedCodecs> SeriesPolicy for F {
 }
 
 /// Delta and packed residuals for numbers, XOR for floats, fixed at compile time: one pass per column, for a small
-/// MCU (see [SeriesPolicy]).
+/// MCU (see [`SeriesPolicy`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct DeltaPacked;
@@ -180,7 +180,7 @@ impl FixedCodecs for DeltaPacked {
 }
 
 /// Every value at full width, numbers and floats, fixed at compile time: no prediction and no residual coding, the
-/// cheapest writer in CPU and flash and the biggest in bytes (see [SeriesPolicy]). Runs of prefixes and tags are
+/// cheapest writer in CPU and flash and the biggest in bytes (see [`SeriesPolicy`]). Runs of prefixes and tags are
 /// still collapsed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -194,16 +194,16 @@ impl FixedCodecs for RawPlain {
 impl<F: FixedCodecs> From<F> for CodecPolicy {
     /// The same codecs as a run-time value.
     fn from(_: F) -> Self {
-        CodecPolicy::fixed(F::NUMERIC, F::FLOAT)
+        Self::fixed(F::NUMERIC, F::FLOAT)
     }
 }
 
 /// Residuals per block of the packed coder.
 pub const PACKED_BLOCK: u8 = 8;
 
-/// A [BitSink] that only counts, to compare codecs or to measure a group without writing. Opaque values of
-/// `#[series(opaque)]` fields ([put_serialized](BitSink::put_serialized)) are serialized to be measured: into the
-/// scratch memory of [with_scratch](Self::with_scratch), else (`std`) into a `Vec`.
+/// A [`BitSink`] that only counts, to compare codecs or to measure a group without writing. Opaque values of
+/// `#[series(opaque)]` fields ([`put_serialized`](BitSink::put_serialized)) are serialized to be measured: into the
+/// scratch memory of [`with_scratch`](Self::with_scratch), else (`std`) into a `Vec`.
 #[derive(Debug)]
 pub struct BitCounter<'s> {
     start: usize,
@@ -212,7 +212,7 @@ pub struct BitCounter<'s> {
 }
 
 impl BitCounter<'static> {
-    /// Counts from a byte boundary (only [align_byte](BitSink::align_byte) depends on the start).
+    /// Counts from a byte boundary (only [`align_byte`](BitSink::align_byte) depends on the start).
     pub const fn new() -> Self {
         BitCounter::at(0)
     }
@@ -294,7 +294,7 @@ impl BitSink for BitCounter<'_> {
     }
 }
 
-/// `nib(x)`: the UNib32 code through the bit cursor without nibble alignment, groups of 4 bits, least significant
+/// `nib(x)`: the `UNib32` code through the bit cursor without nibble alignment, groups of 4 bits, least significant
 /// group first, `0b1000` in a group when one more follows: 0..=7 in 4 bits, up to 63 in 8, up to 511 in 12.
 pub(crate) fn put_nib(sink: &mut impl BitSink, mut value: u32) -> Result<(), Error> {
     loop {
@@ -307,7 +307,7 @@ pub(crate) fn put_nib(sink: &mut impl BitSink, mut value: u32) -> Result<(), Err
     }
 }
 
-/// Reads a [put_nib] code: at most 11 groups, and the last one may not carry bits above `u32`.
+/// Reads a [`put_nib`] code: at most 11 groups, and the last one may not carry bits above `u32`.
 pub(crate) fn get_nib(rd: &mut BufReader<'_>) -> Result<u32, Error> {
     let mut value = 0u32;
     for group in 0..10 {

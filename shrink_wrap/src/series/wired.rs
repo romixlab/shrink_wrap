@@ -1,6 +1,6 @@
 //! The columns of a `#[wire(W)] field: T` (DER-19): `W`'s numeric column, from the plain values range-checked as
-//! they are written ([Error::SubtypeOutOfRange] before anything of the group is written, never cut).
-//! [WiredOpaque] is the column of a user wire type (DER-23).
+//! they are written ([`Error::SubtypeOutOfRange`] before anything of the group is written, never cut).
+//! [`WiredOpaque`] is the column of a user wire type (DER-23).
 
 use super::columns::numeric::{Word, write_numeric};
 use super::columns::run::write_opaque_values;
@@ -24,14 +24,14 @@ pub struct Wired<W, T>(pub T, PhantomData<fn() -> W>);
 impl<W, T> Wired<W, T> {
     #[inline(always)]
     pub fn new(value: T) -> Self {
-        Wired(value, PhantomData)
+        Self(value, PhantomData)
     }
 
     /// The field `value` seen as its column.
     #[inline(always)]
     pub fn from_ref(value: &T) -> &Self {
         // SAFETY: `Wired` is `repr(transparent)` over `T` (`PhantomData` is a ZST with alignment 1)
-        unsafe { &*(value as *const T as *const Self) }
+        unsafe { &*core::ptr::from_ref::<T>(value).cast::<Self>() }
     }
 }
 
@@ -179,7 +179,7 @@ wired_un!(PlainSigned, I: 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
     55, 56, 57, 58, 59, 60, 61, 62, 63, 64);
 
 /// A plain value `T` in a `Series` as the user wire type `W` of its `#[wire(W)]` field (DER-23): an opaque run of
-/// `W`'s bytes, each changed value (by `T`'s `==`) built with [WireAs::from_plain] as it is written, the same bytes as
+/// `W`'s bytes, each changed value (by `T`'s `==`) built with [`WireAs::from_plain`] as it is written, the same bytes as
 /// a `#[series(opaque)]` field of type `W`; the store and cells keep `T` (a one-byte handle stays one byte per row).
 /// Nothing needs to lend a `&W`, so a handle can stand for values computed on the fly instead of a `static` table.
 #[repr(transparent)]
@@ -188,14 +188,14 @@ pub struct WiredOpaque<W, T>(pub T, PhantomData<fn() -> W>);
 impl<W, T> WiredOpaque<W, T> {
     #[inline(always)]
     pub fn new(value: T) -> Self {
-        WiredOpaque(value, PhantomData)
+        Self(value, PhantomData)
     }
 
     /// The field `value` seen as its column.
     #[inline(always)]
     pub fn from_ref(value: &T) -> &Self {
         // SAFETY: `WiredOpaque` is `repr(transparent)` over `T` (`PhantomData` is a ZST with alignment 1)
-        unsafe { &*(value as *const T as *const Self) }
+        unsafe { &*core::ptr::from_ref::<T>(value).cast::<Self>() }
     }
 }
 
@@ -240,13 +240,13 @@ where
     }
 
     fn next(reader: &mut Self::Reader, _restart: bool) -> Result<Self, Error> {
-        Ok(WiredOpaque::new(
+        Ok(Self::new(
             W::from_ww_bytes(reader.next_bytes()?)?.into_plain()?,
         ))
     }
 }
 
-/// The store of `T`, written item by item through the opaque run (never [SeriesStore::write_store]).
+/// The store of `T`, written item by item through the opaque run (never [`SeriesStore::write_store`]).
 impl<W, T: SeriesStore> SeriesStore for WiredOpaque<W, T> {
     type Store<const N: usize> = T::Store<N>;
 
@@ -265,7 +265,7 @@ impl<W, T: SeriesStore> SeriesStore for WiredOpaque<W, T> {
 
     #[inline(always)]
     fn get<const N: usize>(store: &Self::Store<N>, i: usize) -> Self {
-        WiredOpaque::new(T::get::<N>(store, i))
+        Self::new(T::get::<N>(store, i))
     }
 
     // `columnar` stays false: the rows are written item by item

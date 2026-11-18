@@ -341,12 +341,11 @@ impl SeriesSeed<'_> {
         let pattern = |v: &Variant, fields: &[SeriesField]| -> TokenStream {
             let vi = &v.ident;
             let binds = fields.iter().map(bind);
-            match &v.fields {
-                Fields::Named(_) => {
-                    let members = fields.iter().map(|f| &f.member);
-                    quote! { Self::#vi { #(#members: #binds),* } }
-                }
-                _ => quote! { Self::#vi(#(#binds),*) },
+            if let Fields::Named(_) = &v.fields {
+                let members = fields.iter().map(|f| &f.member);
+                quote! { Self::#vi { #(#members: #binds),* } }
+            } else {
+                quote! { Self::#vi(#(#binds),*) }
             }
         };
 
@@ -389,12 +388,11 @@ impl SeriesSeed<'_> {
                             quote! { <#ty as #store_trait>::get::<__N>(&store.#s, i) },
                         )
                     });
-                    match &v.fields {
-                        Fields::Named(_) => {
-                            let members = fields.iter().map(|f| &f.member);
-                            quote! { Self::#vi { #(#members: #gets),* } }
-                        }
-                        _ => quote! { Self::#vi(#(#gets),*) },
+                    if let Fields::Named(_) = &v.fields {
+                        let members = fields.iter().map(|f| &f.member);
+                        quote! { Self::#vi { #(#members: #gets),* } }
+                    } else {
+                        quote! { Self::#vi(#(#gets),*) }
                     }
                 }
                 None => match &v.fields {
@@ -646,12 +644,11 @@ impl SeriesSeed<'_> {
         let pattern = |v: &Variant, fields: &[SeriesField]| -> TokenStream {
             let vi = &v.ident;
             let binds = fields.iter().map(bind);
-            match &v.fields {
-                Fields::Named(_) => {
-                    let members = fields.iter().map(|f| &f.member);
-                    quote! { Self::#vi { #(#members: #binds),* } }
-                }
-                _ => quote! { Self::#vi(#(#binds),*) },
+            if let Fields::Named(_) = &v.fields {
+                let members = fields.iter().map(|f| &f.member);
+                quote! { Self::#vi { #(#members: #binds),* } }
+            } else {
+                quote! { Self::#vi(#(#binds),*) }
             }
         };
         let mut cells_fields = vec![];
@@ -681,14 +678,15 @@ impl SeriesSeed<'_> {
                 #dv => { #(<#tys as #cells_trait>::copy_rows::<__R, __N>(&cells.#slots, from + k, &mut store.#slots, to + k, 1);)* }
             });
         }
-        let tag = match future_version {
-            Some(fv) => quote! {
+        let tag = if let Some(fv) = future_version {
+            quote! {
                 match item {
                     Self::#fv(__d) => *__d,
                     _ => item.discriminant() as #tag_ty,
                 }
-            },
-            None => quote! { item.discriminant() as #tag_ty },
+            }
+        } else {
+            quote! { item.discriminant() as #tag_ty }
         };
         let copy = if data.is_empty() {
             quote! {
@@ -854,7 +852,10 @@ impl SeriesSeed<'_> {
             .filter(|(_, f)| f.tagged)
             .map(|(k, _)| syn::Index::from(k))
             .collect();
-        let earlier = if !tagged.is_empty() {
+        let earlier = if tagged.is_empty() {
+            let no_earlier = self.sc(quote! { no_earlier });
+            quote! { #no_earlier::<Self> }
+        } else {
             // unrolled over the earlier fields that may have a tag: those whose type can't fold away
             let tag_changed = self.sc(quote! { tag_changed });
             quote! {
@@ -863,9 +864,6 @@ impl SeriesSeed<'_> {
                     false #(|| #tag_changed(__p[#tagged], __c[#tagged]))*
                 }
             }
-        } else {
-            let no_earlier = self.sc(quote! { no_earlier });
-            quote! { #no_earlier::<Self> }
         };
         quote! {
             {
@@ -1167,9 +1165,10 @@ impl SeriesSeed<'_> {
         let skims = fields.iter().enumerate().map(|(j, f)| {
             let skim = self.skim_field(f, j, quote! { ctx.clone() });
             // an older writer's struct without the field: its default, or malformed when it has none
-            let missing = match f.default {
-                Some(_) => quote! { None },
-                None => quote! { return Err(#error::MalformedSeries) },
+            let missing = if f.default.is_some() {
+                quote! { None }
+            } else {
+                quote! { return Err(#error::MalformedSeries) }
             };
             quote! {
                 if __head.has_field(rd, #j) { Some(#skim) } else { #missing },
@@ -1343,12 +1342,11 @@ impl SeriesSeed<'_> {
             let binds = fields
                 .iter()
                 .map(|f| format_ident!("__x_{}", f.member.to_string()));
-            match &v.fields {
-                Fields::Named(_) => {
-                    let members = fields.iter().map(|f| &f.member);
-                    quote! { Self::#vi { #(#members: #binds),* } }
-                }
-                _ => quote! { Self::#vi(#(#binds),*) },
+            if let Fields::Named(_) = &v.fields {
+                let members = fields.iter().map(|f| &f.member);
+                quote! { Self::#vi { #(#members: #binds),* } }
+            } else {
+                quote! { Self::#vi(#(#binds),*) }
             }
         };
         let bind = |f: &SeriesField| {
@@ -1476,9 +1474,10 @@ impl SeriesSeed<'_> {
                 let d = discriminant(v);
                 let on = v.cfg_attrs();
                 let vi = &v.ident;
-                match &v.fields {
-                    Fields::Named(_) => quote! { #on #d => Ok(Self::#vi {}), },
-                    _ => quote! { #on #d => Ok(Self::#vi()), },
+                if let Fields::Named(_) = &v.fields {
+                    quote! { #on #d => Ok(Self::#vi {}), }
+                } else {
+                    quote! { #on #d => Ok(Self::#vi()), }
                 }
             })
             .collect::<Vec<_>>();

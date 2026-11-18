@@ -1,5 +1,5 @@
 //! DER-17: a `#[default = ..]` field also defaults in serde, so serde data written before the field was added
-//! (a saved RON or JSON file) still reads, as shrink_wrap data does.
+//! (a saved RON or JSON file) still reads, as `shrink_wrap` data does.
 
 use shrink_wrap::prelude::*;
 

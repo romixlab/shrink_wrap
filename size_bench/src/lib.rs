@@ -26,7 +26,7 @@ pub struct Case {
 pub enum Target {
     /// RISC-V RV32I, no compressed instructions
     Rv32i,
-    /// RISC-V RV32IC (the QERV softcore of fpga_tools' busgen)
+    /// RISC-V RV32IC (the QERV softcore of `fpga_tools`' busgen)
     Rv32ic,
     /// RV32IC with linker relaxation (`-C target-feature=+relax`): calls take 2 or 4 bytes instead of 8
     Rv32icRelax,
@@ -40,27 +40,27 @@ impl Target {
     /// The name in the table's header and in `--target`
     pub fn name(self) -> &'static str {
         match self {
-            Target::Rv32i => "rv32i",
-            Target::Rv32ic => "rv32ic",
-            Target::Rv32icRelax => "rv32ic-relax",
-            Target::Thumbv6m => "thumbv6m",
-            Target::Thumbv7em => "thumbv7em",
+            Self::Rv32i => "rv32i",
+            Self::Rv32ic => "rv32ic",
+            Self::Rv32icRelax => "rv32ic-relax",
+            Self::Thumbv6m => "thumbv6m",
+            Self::Thumbv7em => "thumbv7em",
         }
     }
 
     fn triple(self) -> &'static str {
         match self {
-            Target::Rv32i | Target::Rv32ic | Target::Rv32icRelax => "riscv32i-unknown-none-elf",
-            Target::Thumbv6m => "thumbv6m-none-eabi",
-            Target::Thumbv7em => "thumbv7em-none-eabihf",
+            Self::Rv32i | Self::Rv32ic | Self::Rv32icRelax => "riscv32i-unknown-none-elf",
+            Self::Thumbv6m => "thumbv6m-none-eabi",
+            Self::Thumbv7em => "thumbv7em-none-eabihf",
         }
     }
 
     fn rustflags(self) -> String {
         let common = "-C link-arg=-Tlink.x -Zlocation-detail=none -Zfmt-debug=none";
         match self {
-            Target::Rv32ic => format!("{common} -C target-feature=+c"),
-            Target::Rv32icRelax => format!("{common} -C target-feature=+c,+relax"),
+            Self::Rv32ic => format!("{common} -C target-feature=+c"),
+            Self::Rv32icRelax => format!("{common} -C target-feature=+c,+relax"),
             _ => common.to_owned(),
         }
     }
@@ -88,7 +88,7 @@ pub struct Args {
     /// Only the flavor with size assumptions (`sized` / `final_structure` types), or only the evolvable one
     #[arg(long)]
     pub flavor: Option<Flavor>,
-    /// shrink_wrap features to build with, e.g. `fast-io`
+    /// `shrink_wrap` features to build with, e.g. `fast-io`
     #[arg(long, value_delimiter = ',')]
     pub sw_features: Vec<String>,
     /// Features of the firmware itself, e.g. `byte_memcpy` (its own byte-wise `memcpy`)

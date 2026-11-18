@@ -44,7 +44,7 @@ pub(crate) struct CGItemStruct<'i> {
     pub(crate) repr: &'i [syn::Attribute],
 }
 
-impl<'i> CGItemStruct<'i> {
+impl CGItemStruct<'_> {
     pub(crate) fn def_rust(&self, is_ref: bool) -> TokenStream {
         let cfg = self.cfg.map(|cond| quote! { #[cfg(#cond)] });
         let docs = &self.docs;

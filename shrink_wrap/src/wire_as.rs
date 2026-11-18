@@ -1,17 +1,17 @@
 //! A plain Rust integer written as another integer type on the wire (DER-19): `#[wire(I4)] offset: i8`, `#[wire(UNib32)]
 //! count: u64`. The field stays a plain type in Rust, the bytes are the wire type's.
 //!
-//! [WireAs] is what the derive calls: a value is range-checked when it is written ([Error::SubtypeOutOfRange], never
+//! [`WireAs`] is what the derive calls: a value is range-checked when it is written ([`Error::SubtypeOutOfRange`], never
 //! cut) and when it is read (a wider or variable-length wire type can hold more than the field). Wire types are
 //! implemented for every plain integer of the same signedness: unsigned ones (`u8`..`u64`, [Nibble], `U1`..`U64`,
-//! [UNib32], [UVlq32], [UVlq64]) for `u8`..`u128` and `usize`, signed ones (`i8`..`i64`, `I2`..`I64`, [INib32], [IVlq32], [IVlq64]) for
+//! [`UNib32`], [`UVlq32`], [`UVlq64`]) for `u8`..`u128` and `usize`, signed ones (`i8`..`i64`, `I2`..`I64`, [`INib32`], [`IVlq32`], [`IVlq64`]) for
 //! `i8`..`i128` and `isize`.
 //!
 //! A user type can be the wire type too (DER-23): `#[wire(Scale)] scale: ScaleId` keeps a one-byte handle in
-//! Rust and writes the full value it stands for. Such a `W` implements [WireAs] for the field's type; in a
-//! [Series](crate::series::Series) the field is an opaque run of `W`'s bytes ([WiredOpaque](crate::series::WiredOpaque)).
+//! Rust and writes the full value it stands for. Such a `W` implements [`WireAs`] for the field's type; in a
+//! [Series](crate::series::Series) the field is an opaque run of `W`'s bytes ([`WiredOpaque`](crate::series::WiredOpaque)).
 //! When the plain values reach only part of `W` (a handle of known scales, each a small `Magnitude`), the impl says so
-//! with [WireAs::PLAIN_MAX_SIZE], and buffers and series bounds are sized by that instead of `W::MAX_SIZE`.
+//! with [`WireAs::PLAIN_MAX_SIZE`], and buffers and series bounds are sized by that instead of `W::MAX_SIZE`.
 
 use crate::{
     ElementSize, Error, INib32, IVlq32, IVlq64, MaxSize, Nibble, SerializeShrinkWrap, UNib32,
@@ -20,10 +20,10 @@ use crate::{
 
 /// A wire type that a plain Rust value `T` is written as, with `#[wire(Self)]` on a field of type `T` (DER-19).
 pub trait WireAs<T>: Sized {
-    /// The wire value of `value`, [Error::SubtypeOutOfRange] when it doesn't fit.
+    /// The wire value of `value`, [`Error::SubtypeOutOfRange`] when it doesn't fit.
     fn from_plain(value: T) -> Result<Self, Error>;
 
-    /// The plain value of what was read, [Error::SubtypeOutOfRange] when it doesn't fit in `T`.
+    /// The plain value of what was read, [`Error::SubtypeOutOfRange`] when it doesn't fit in `T`.
     fn into_plain(self) -> Result<T, Error>;
 
     /// The most `from_plain` of any `T` writes, when it is less than `Self::MAX_SIZE` (as `Self` alone, without the
@@ -32,8 +32,8 @@ pub trait WireAs<T>: Sized {
     const PLAIN_MAX_SIZE: Option<MaxSize> = None;
 }
 
-/// `MAX_SIZE` of a `#[wire(W)]` field of type `T` (the `MAX_SIZE` of `W` alone, see [MaxSize::of_write] for the field):
-/// [WireAs::PLAIN_MAX_SIZE] when the impl gives one, else `W::MAX_SIZE`.
+/// `MAX_SIZE` of a `#[wire(W)]` field of type `T` (the `MAX_SIZE` of `W` alone, see [`MaxSize::of_write`] for the field):
+/// [`WireAs::PLAIN_MAX_SIZE`] when the impl gives one, else `W::MAX_SIZE`.
 pub const fn plain_max_size<W: SerializeShrinkWrap + WireAs<T>, T>() -> Option<MaxSize> {
     match W::PLAIN_MAX_SIZE {
         Some(size) => Some(size),
@@ -41,7 +41,7 @@ pub const fn plain_max_size<W: SerializeShrinkWrap + WireAs<T>, T>() -> Option<M
     }
 }
 
-/// [plain_max_size] written as a field with [BufWriter::write](crate::BufWriter::write): an `Unsized` `W` gets its
+/// [`plain_max_size`] written as a field with [`BufWriter::write`](crate::BufWriter::write): an `Unsized` `W` gets its
 /// size slot.
 pub const fn plain_write_max_size<W: SerializeShrinkWrap + WireAs<T>, T>() -> Option<MaxSize> {
     if matches!(W::ELEMENT_SIZE, ElementSize::Unsized) {

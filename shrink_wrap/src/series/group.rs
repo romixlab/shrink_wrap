@@ -1,4 +1,4 @@
-//! [SeriesColumns]: how a type writes and reads its group of columns in a [Series](super::Series), and the pieces
+//! [`SeriesColumns`]: how a type writes and reads its group of columns in a [Series](super::Series), and the pieces
 //! its impls are made of (by hand here for the primitives, by `#[derive_shrink_wrap(.., series)]` for user types).
 //!
 //! A group covers a subsequence of the `Series`' items: all of them at the top, fewer inside enum variants and
@@ -6,7 +6,7 @@
 //! reading side is two passes over the same rules:
 //!
 //! - [skim](SeriesColumns::skim) finds where every column starts and validates it, in column order. A column's
-//!   item count and restarts come from the runs before it, which a [SeriesCtx] re-walks with their own cursors,
+//!   item count and restarts come from the runs before it, which a [`SeriesCtx`] re-walks with their own cursors,
 //!   one step per item of the `Series`: no allocation, work bounded by the items times the columns.
 //! - [next](SeriesColumns::next) yields one item from the column cursors the skim left at the column starts,
 //!   stepping all of them in parallel; restarts come from the values just decoded.
@@ -85,7 +85,7 @@ pub struct RootCtx {
 
 impl RootCtx {
     pub const fn new(n: usize) -> Self {
-        RootCtx { left: n }
+        Self { left: n }
     }
 }
 
@@ -122,7 +122,7 @@ pub struct VariantCtx<'i, C> {
 }
 
 impl<'i, C: SeriesCtx> VariantCtx<'i, C> {
-    /// `run` is the enum's [EnumTags::tag_run], `None` only when the parent has no items.
+    /// `run` is the enum's [`EnumTags::tag_run`], `None` only when the parent has no items.
     pub fn new(parent: C, run: Option<TagRun<'i>>, tag: u32) -> Self {
         VariantCtx {
             parent,
@@ -155,7 +155,7 @@ impl<C: SeriesCtx> SeriesCtx for VariantCtx<'_, C> {
 }
 
 /// The context of a field of a struct (tuple, array, variant) with `N` fields: the parent's, plus a restart
-/// where the tag of an earlier enum-typed field changed. `runs` holds [SeriesColumns::tag_run] of the fields
+/// where the tag of an earlier enum-typed field changed. `runs` holds [`SeriesColumns::tag_run`] of the fields
 /// skimmed so far (`None` for fields that are not enums), so field `j` sees only the `j` before it.
 #[derive(Clone, Copy, Debug)]
 pub struct SiblingCtx<'i, C, const N: usize> {
@@ -193,7 +193,7 @@ impl<C: SeriesCtx, const N: usize> SeriesCtx for SiblingCtx<'_, C, N> {
     }
 }
 
-/// The reading side of [SiblingCtx] in [next](SeriesColumns::next): the tags of an item's fields as they are
+/// The reading side of [`SiblingCtx`] in [next](SeriesColumns::next): the tags of an item's fields as they are
 /// decoded, against the previous item's.
 #[derive(Clone, Copy, Debug)]
 pub struct SiblingTags<const N: usize> {
@@ -203,7 +203,7 @@ pub struct SiblingTags<const N: usize> {
 
 impl<const N: usize> SiblingTags<N> {
     pub const fn new() -> Self {
-        SiblingTags {
+        Self {
             prev: [None; N],
             changed: false,
         }
@@ -219,7 +219,7 @@ impl<const N: usize> SiblingTags<N> {
         item_restart || self.changed
     }
 
-    /// After field `j`: its [series_tag](SeriesColumns::series_tag).
+    /// After field `j`: its [`series_tag`](SeriesColumns::series_tag).
     pub fn record(&mut self, j: usize, tag: Option<u32>) {
         if let Some(tag) = tag {
             self.changed |= self.prev[j].is_some_and(|p| p != tag);
@@ -230,14 +230,14 @@ impl<const N: usize> SiblingTags<N> {
 
 impl<const N: usize> Default for SiblingTags<N> {
     fn default() -> Self {
-        SiblingTags::new()
+        Self::new()
     }
 }
 
 /// The items of one field of a struct (tuple, array, enum variant) for the field's
-/// [write_group](SeriesColumns::write_group): `field` picks it from an item (`None` outside the variant), `earlier`
+/// [`write_group`](SeriesColumns::write_group): `field` picks it from an item (`None` outside the variant), `earlier`
 /// tells whether an enum-typed field before it changed from the previous item (compare
-/// [series_tag](SeriesColumns::series_tag)s). Restarts where the parent's item restarts, where the item enters
+/// [`series_tag`](SeriesColumns::series_tag)s). Restarts where the parent's item restarts, where the item enters
 /// the variant, and where an earlier enum field changed.
 pub struct FieldItems<'a, P: 'a, F: 'a, I, G, E> {
     items: I,
@@ -264,7 +264,7 @@ where
     }
 }
 
-impl<'a, P, F, I: Clone, G: Clone, E: Clone> Clone for FieldItems<'a, P, F, I, G, E> {
+impl<P, F, I: Clone, G: Clone, E: Clone> Clone for FieldItems<'_, P, F, I, G, E> {
     fn clone(&self) -> Self {
         FieldItems {
             items: self.items.clone(),
@@ -298,14 +298,14 @@ where
     }
 }
 
-/// Whether the [series_tag](SeriesColumns::series_tag) of a field changed from the previous item to the current
+/// Whether the [`series_tag`](SeriesColumns::series_tag) of a field changed from the previous item to the current
 /// one: both have one and they differ.
 #[inline]
 pub fn tag_changed(prev: Option<u32>, cur: Option<u32>) -> bool {
     matches!((prev, cur), (Some(p), Some(c)) if p != c)
 }
 
-/// `earlier` of [FieldItems] for field `j`, from the [series_tag](SeriesColumns::series_tag)s of all fields of the
+/// `earlier` of [`FieldItems`] for field `j`, from the [`series_tag`](SeriesColumns::series_tag)s of all fields of the
 /// previous and the current item: whether an enum-typed field before `j` changed.
 #[inline]
 pub fn changed_before(prev: &[Option<u32>], cur: &[Option<u32>], j: usize) -> bool {
@@ -315,7 +315,7 @@ pub fn changed_before(prev: &[Option<u32>], cur: &[Option<u32>], j: usize) -> bo
         .any(|(p, c)| p.is_some() && c.is_some() && p != c)
 }
 
-/// `earlier` of [FieldItems] for a first field: nothing before it.
+/// `earlier` of [`FieldItems`] for a first field: nothing before it.
 pub fn no_earlier<P>(_prev: &P, _cur: &P) -> bool {
     false
 }
@@ -371,7 +371,7 @@ impl<'i> EnumTags<'i> {
         })
     }
 
-    /// The run at its first item, for [VariantCtx] and [SiblingCtx].
+    /// The run at its first item, for [`VariantCtx`] and [`SiblingCtx`].
     pub fn tag_run(&self) -> Option<TagRun<'i>> {
         self.run
     }
@@ -385,7 +385,7 @@ impl<'i> EnumTags<'i> {
     }
 }
 
-/// How much of a struct's group the data has, from [skim_struct_head]: an evolvable struct of an older writer has
+/// How much of a struct's group the data has, from [`skim_struct_head`]: an evolvable struct of an older writer has
 /// fewer fields (the rest take their defaults), one of a newer writer more (skipped).
 #[derive(Clone, Copy, Debug)]
 pub enum StructExtent {
@@ -401,9 +401,9 @@ impl StructExtent {
     /// Whether field `j` (from 0) is in the data, asked right before skimming it.
     pub fn has_field(&self, rd: &BufReader<'_>, j: usize) -> bool {
         match *self {
-            StructExtent::All => true,
-            StructExtent::Count(count) => j < count as usize,
-            StructExtent::End(end) => rd.bit_pos() < end,
+            Self::All => true,
+            Self::Count(count) => j < count as usize,
+            Self::End(end) => rd.bit_pos() < end,
         }
     }
 
@@ -411,11 +411,11 @@ impl StructExtent {
     /// group read past its length is `MalformedSeries`.
     pub fn finish(self, rd: &mut BufReader<'_>, known: usize) -> Result<(), Error> {
         match self {
-            StructExtent::All => Ok(()),
+            Self::All => Ok(()),
             // the outermost group is the last thing in the Series
-            StructExtent::Count(count) if count as usize > known => rd.skip_rest(),
-            StructExtent::Count(_) => Ok(()),
-            StructExtent::End(end) => rd.skip_to_bit(end),
+            Self::Count(count) if count as usize > known => rd.skip_rest(),
+            Self::Count(_) => Ok(()),
+            Self::End(end) => rd.skip_to_bit(end),
         }
     }
 }
@@ -443,8 +443,8 @@ pub fn skim_struct_head<C: SeriesCtx>(
 }
 
 /// Writes what a struct's group has before its fields, for items present: the field count `fields` of an
-/// evolvable struct at [Level::Outermost], or its group length at [Level::Nested], measured by `body` writing the
-/// struct's fields ([Level::Fields]) into a [BitCounter] that starts where they will. The length is the shortest
+/// evolvable struct at [`Level::Outermost`], or its group length at [`Level::Nested`], measured by `body` writing the
+/// struct's fields ([`Level::Fields`]) into a [`BitCounter`] that starts where they will. The length is the shortest
 /// `nib` that fits; when byte-aligned fields make the length depend on its own size, it takes one more group than
 /// it needs.
 pub fn write_struct_head<S: BitSink>(
@@ -486,7 +486,7 @@ pub(crate) fn put_group_len<S: BitSink>(
     Err(Error::LenTooLong)
 }
 
-/// Groups of 4 bits [put_nib] takes for `value`.
+/// Groups of 4 bits [`put_nib`] takes for `value`.
 fn nib_groups(value: u32) -> u8 {
     let mut groups = 1;
     let mut value = value >> 3;
@@ -497,8 +497,8 @@ fn nib_groups(value: u32) -> u8 {
     groups
 }
 
-/// `nib(value)` in exactly `groups` groups (at least [nib_groups]): the extra ones are `0b1000` / `0b0000`, which
-/// [get_nib] reads as the same value.
+/// `nib(value)` in exactly `groups` groups (at least [`nib_groups`]): the extra ones are `0b1000` / `0b0000`, which
+/// [`get_nib`] reads as the same value.
 fn put_nib_groups(sink: &mut impl BitSink, mut value: u32, groups: u8) -> Result<(), Error> {
     for g in 0..groups {
         let more = g + 1 < groups;
@@ -566,17 +566,17 @@ pub trait SeriesColumns<'i>: Sized {
     /// Column cursors and codec state of all of `Self`'s columns.
     type Reader: Clone;
 
-    /// The most bits one item adds to this type's group, at any [Level] and with any [CodecPolicy]: every column
+    /// The most bits one item adds to this type's group, at any [Level] and with any [`CodecPolicy`]: every column
     /// at its worst code (see [bound](super::bound)), every run changing at every item. `None` when a column has
     /// no bound (a string, a byte list, an opaque field), also the default for impls that don't say.
     ///
     /// The group of `m` items (1 or more) takes at most `MAX_FIXED_BITS + m × MAX_ITEM_BITS` bits; a whole
-    /// `Series` is bounded by [Series::max_bytes](super::Series::max_bytes).
+    /// `Series` is bounded by [`Series::max_bytes`](super::Series::max_bytes).
     const MAX_ITEM_BITS: Option<usize> = None;
 
     /// The most bits this type's group takes besides its items: column headers, the first value and end of each
     /// run, an evolvable struct's head, for every column whether it has items or not. `None` together with
-    /// [MAX_ITEM_BITS](Self::MAX_ITEM_BITS).
+    /// [`MAX_ITEM_BITS`](Self::MAX_ITEM_BITS).
     const MAX_FIXED_BITS: Option<usize> = None;
 
     /// Writes this type's group over `items` (the subsequence, with the restart flag of each), column by column,
@@ -604,7 +604,7 @@ pub trait SeriesColumns<'i>: Sized {
     /// The next item of the subsequence from the column cursors, `restart` as the context had it.
     fn next(reader: &mut Self::Reader, restart: bool) -> Result<Self, Error>;
 
-    /// Whether [series_tag](Self::series_tag) can be `Some` (an enum, an `Option`): `false` tells the writer of a
+    /// Whether [`series_tag`](Self::series_tag) can be `Some` (an enum, an `Option`): `false` tells the writer of a
     /// struct that a change of this field can't restart the fields after it, so it doesn't compare its tags at
     /// every item. `true` by default, which is always correct; the primitives, tuples, arrays and derived structs
     /// say `false`.
@@ -622,12 +622,12 @@ pub trait SeriesColumns<'i>: Sized {
     }
 }
 
-/// The group of a field marked `#[series(opaque)]`, of a type `V` without [SeriesColumns] (a list, an
+/// The group of a field marked `#[series(opaque)]`, of a type `V` without [`SeriesColumns`] (a list, an
 /// `OptionAnyVec`, a foreign type): an opaque run of each value's own `to_ww_bytes`, a change where the value is not
 /// `==` the one before. `..._owned` for the owned side (`SerializeShrinkWrapOwned` / `DeserializeShrinkWrapOwned`).
 pub struct OpaqueField<V: ?Sized>(PhantomData<V>);
 
-/// Column cursor of an [OpaqueField].
+/// Column cursor of an [`OpaqueField`].
 #[derive(Clone, Copy, Debug)]
 pub struct OpaqueReader<'i>(Option<RunReader<'i, Opaque>>);
 

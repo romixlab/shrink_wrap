@@ -153,7 +153,7 @@ pub(crate) fn classify(ty: &Type) -> Result<Kind, String> {
         Type::Bool => return Ok(Kind::Bits(1, Bits::Bool)),
         Type::Nibble => return Ok(Kind::Bits(4, Bits::Nibble)),
         Type::IsSome(target) | Type::IsOk(target) => return Ok(Kind::Flag(target.clone())),
-        Type::External(path, has_lifetime) => {
+        Type::External { path, has_lifetime } => {
             let name = path.segments.last().map(|s| s.to_string()).unwrap_or_default();
             let signed = name.starts_with(['I', 'i']);
             let bits = name

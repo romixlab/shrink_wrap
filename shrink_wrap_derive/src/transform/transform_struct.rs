@@ -315,7 +315,10 @@ mod tests {
         )
         .unwrap();
         let ext = |i: usize| match &s.fields[i].ty {
-            Type::External(path, is_lifetime) => (path.clone(), *is_lifetime),
+            Type::External {
+                path,
+                has_lifetime: is_lifetime,
+            } => (path.clone(), *is_lifetime),
             other => panic!("{other:?}"),
         };
         let (a, a_lt) = ext(0);

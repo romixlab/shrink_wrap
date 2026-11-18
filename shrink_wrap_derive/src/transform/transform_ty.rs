@@ -33,12 +33,19 @@ pub(crate) fn transform_type(
                     .into_iter()
                     .map(|s| s.ident)
                     .collect();
-                Ok(Type::External(Path::new(segments, args), is_lifetime))
+                Ok(Type::External {
+                    path: Path::new(segments, args),
+                    has_lifetime: is_lifetime,
+                })
             }
         }
         syn::Type::Reference(type_ref) => {
             let mut ty = transform_type(type_ref.elem.as_ref().clone(), _attrs, path)?;
-            if let Type::External(_, lifetime) = &mut ty {
+            if let Type::External {
+                has_lifetime: lifetime,
+                ..
+            } = &mut ty
+            {
                 *lifetime = true;
             }
             Ok(ty)
@@ -126,21 +133,21 @@ fn transform_path_segment(
                 if let Ok(bits) = bits
                     && (1..=63).contains(&bits)
                 {
-                    return Ok(Type::External(
-                        Path::new_ident(Ident::new(other_ty, path_segment.ident.span())),
-                        false,
-                    ));
+                    return Ok(Type::External {
+                        path: Path::new_ident(Ident::new(other_ty, path_segment.ident.span())),
+                        has_lifetime: false,
+                    });
                 }
             }
 
             // a user type, with its generic arguments as written (`Foo<u8>`, `Series<'i, f32>`)
-            return Ok(Type::External(
-                Path::new(
+            return Ok(Type::External {
+                path: Path::new(
                     vec![Ident::new(other_ty, path_segment.ident.span())],
                     generic_args(&path_segment.arguments),
                 ),
-                is_lifetime(&path_segment.arguments),
-            ));
+                has_lifetime: is_lifetime(&path_segment.arguments),
+            });
         }
     };
     Ok(ty)
@@ -333,7 +340,10 @@ fn transform_type_max_len(path_segment: &PathSegment, path: &FieldPath) -> Resul
     };
     let inner_ty = transform_type(inner_ty.clone(), None, path)?;
     // a path to one (`shrink_wrap::RefVec<'i, u8>`) is an external type, checked by the trait bounds instead
-    if !matches!(inner_ty, Type::Vec(_) | Type::String | Type::External(_, _)) {
+    if !matches!(
+        inner_ty,
+        Type::Vec(_) | Type::String | Type::External { .. }
+    ) {
         return Err(
             "MaxLen<T, N> bounds a list or a string: T is Vec, RefVec, String or &str".into(),
         );

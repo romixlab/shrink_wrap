@@ -95,9 +95,10 @@ impl Type {
             //     let path = user_layout.path();
             //     quote! { #path }
             // }
-            Type::External(path, is_lifetime) => {
-                path.tokens((*is_lifetime && no_alloc).then(|| quote! { 'i }))
-            }
+            Type::External {
+                path,
+                has_lifetime: is_lifetime,
+            } => path.tokens((*is_lifetime && no_alloc).then(|| quote! { 'i })),
             Type::Result(_, ok_err_ty) => {
                 let ok_ty = ok_err_ty.0.def(no_alloc, cp);
                 let err_ty = ok_err_ty.1.def(no_alloc, cp);
@@ -294,7 +295,7 @@ impl Type {
                 }
                 return;
             }
-            Type::External(_, _) => {
+            Type::External { .. } => {
                 let field_path = field_path.by_ref();
                 // `write_field` is `write`, but plain numbers and `transparent` wrappers of them keep the error
                 // for `wr.latched()` (`SerializeShrinkWrap::ser_shrink_wrap_latch`)
@@ -416,7 +417,7 @@ impl Type {
                 tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
                 return;
             }
-            Type::External(_, _) if latch => {
+            Type::External { .. } if latch => {
                 // `read_field` is `read`, but `U1`..`U64`, `I2`..`I64`, plain numbers and `transparent` wrappers of
                 // them keep the error for `rd.latched()?` (`DeserializeShrinkWrap::des_shrink_wrap_latch`)
                 let read_field = if owned {
@@ -429,7 +430,7 @@ impl Type {
                 });
                 return;
             }
-            Type::External(_, _) => {
+            Type::External { .. } => {
                 tokens.append_all(quote! {
                     let #variable_name = rd.#read() #handle_err;
                 });

@@ -759,7 +759,7 @@ impl SeriesSeed<'_> {
                     ty => ty.def(self.is_ref, self.cp),
                 },
                 opaque,
-                tagged: !opaque && matches!(ty, Type::External(_, _) | Type::Option(_, _)),
+                tagged: !opaque && matches!(ty, Type::External { .. } | Type::Option(_, _)),
                 cells: !opaque && has_cells(ty),
                 wired: matches!(ty, Type::Wire { .. }),
                 default,

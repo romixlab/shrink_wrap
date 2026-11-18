@@ -55,7 +55,7 @@ fn nested(path: &crate::ast::path::Path, has_lifetime: bool) -> (TokenStream, To
 }
 
 fn classify_payload(ty: &Type) -> Result<Payload, String> {
-    if let Type::External(path, has_lifetime) = ty {
+    if let Type::External { path, has_lifetime } = ty {
         let name = path
             .segments
             .last()
@@ -86,7 +86,7 @@ fn classify(ty: &Type) -> Result<HKind, String> {
             classify_payload(&ok_err.0)?,
             classify_payload(&ok_err.1)?,
         )),
-        Type::External(path, has_lifetime) => {
+        Type::External { path, has_lifetime } => {
             let name = path.segments.last().map(|s| s.to_string()).unwrap_or_default();
             if name == "List" {
                 let item = path.args.iter().rev().find_map(|a| match a {

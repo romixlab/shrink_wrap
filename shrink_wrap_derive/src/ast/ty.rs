@@ -59,11 +59,11 @@ pub(crate) enum Type {
     Range(Box<Type>),
     RangeInclusive(Box<Type>),
 
-    // User defined type
-    // TODO: use enum structs instead of tuples
-    External(Path, bool),
-    // User defined, size is known and fixed, or deterministic (depends on enum discriminant) and will not be read/written.
-    // Sized(Path, bool),
+    /// A user type; `has_lifetime` when it is written with one (`Foo<'i>`)
+    External {
+        path: Path,
+        has_lifetime: bool,
+    },
 
     // is_some_flag, optional_ty
     Option(Ident, Box<Type>),
@@ -97,7 +97,10 @@ pub(crate) enum Type {
 impl Type {
     pub(crate) fn make_owned(&mut self) {
         match self {
-            Type::External(path, potential_lifetimes) => {
+            Type::External {
+                path,
+                has_lifetime: potential_lifetimes,
+            } => {
                 // Type::Unsized(path, potential_lifetimes) | Type::Sized(path, potential_lifetimes) => {
                 if *potential_lifetimes {
                     path.make_owned();
@@ -153,7 +156,7 @@ impl Type {
     pub(crate) fn is_zero_bits(&self) -> bool {
         match self {
             Type::Tuple(types) => types.is_empty(),
-            Type::External(path, _) => path
+            Type::External { path, .. } => path
                 .segments
                 .last()
                 .is_some_and(|ident| ident == "PhantomData"),
@@ -179,7 +182,7 @@ impl Type {
     /// Whether this type is or contains an external type whose last path segment is one of `names`.
     fn contains_external(&self, names: &[&str]) -> bool {
         self.any(&|ty| match ty {
-            Type::External(path, _) => path
+            Type::External { path, .. } => path
                 .segments
                 .last()
                 .is_some_and(|ident| names.iter().any(|name| ident == name)),
@@ -190,7 +193,10 @@ impl Type {
     /// Every user type (`Type::External`) in this type, nested ones included, with whether it takes a lifetime.
     pub(crate) fn externals(&self, out: &mut Vec<(Path, bool)>) {
         match self {
-            Type::External(path, is_lifetime) => out.push((path.clone(), *is_lifetime)),
+            Type::External {
+                path,
+                has_lifetime: is_lifetime,
+            } => out.push((path.clone(), *is_lifetime)),
             Type::Array(_, ty)
             | Type::Vec(ty)
             | Type::Range(ty)
@@ -220,7 +226,10 @@ impl Type {
             Type::String | Type::Vec(_) | Type::RefBox(_) | Type::MaxLen(_, _) => {
                 Some(quote! { true })
             }
-            Type::External(path, is_lifetime) => {
+            Type::External {
+                path,
+                has_lifetime: is_lifetime,
+            } => {
                 let element_size = cp.item(quote! { ElementSize });
                 let (ser_trait, _) = cp.serdes_traits(true);
                 // 'static, because it is a const context
@@ -297,7 +306,7 @@ impl Type {
             | Type::Tuple(_)
             | Type::Range(_)
             | Type::RangeInclusive(_)
-            | Type::External(_, _)
+            | Type::External { .. }
             | Type::MaxLen(_, _) => Self::write_max_size(self, cp),
         }
     }
@@ -394,7 +403,7 @@ impl Type {
                 let size = ty.element_size()?;
                 return Some(size.add(size.clone()));
             }
-            Type::External(_, _) => return None, // cannot know if it's actually Unsized or not, const calculation will be performed instead
+            Type::External { .. } => return None, // cannot know if it's actually Unsized or not, const calculation will be performed instead
             Type::IsSome(_) | Type::IsOk(_) => return Some(ObjectSize::sized(1)),
             Type::Result(_, ok_err_ty) => {
                 let mut sum = ObjectSize::SelfDescribing;
@@ -432,7 +441,10 @@ impl Type {
         }
         let element_size = cp.item(quote! { ElementSize });
         match self {
-            Type::External(path, is_lifetime) => {
+            Type::External {
+                path,
+                has_lifetime: is_lifetime,
+            } => {
                 let (ser_trait, _) = cp.serdes_traits(is_ref);
                 // 'static, because it is a const context
                 let ty = path.tokens((*is_lifetime && is_ref).then(|| quote! { 'static }));

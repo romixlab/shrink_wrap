@@ -146,7 +146,7 @@ pub(crate) fn check_backfill_position(fields: &[Field], first_allowed: bool) -> 
         if !field.ty.contains_backfill() {
             continue;
         }
-        let is_plain = matches!(field.ty, Type::External(_, _));
+        let is_plain = matches!(field.ty, Type::External { .. });
         if !(first_allowed && idx == 0 && is_plain) {
             return Err(format!(
                 "UVlq32Backfill must be the first field of a struct and not nested in another type: {}",
@@ -207,7 +207,7 @@ pub(crate) fn check_tail_bytes_position(types: &[&Type]) -> Result<(), String> {
         if !ty.contains_tail_bytes() {
             continue;
         }
-        let is_plain = matches!(ty, Type::External(_, _));
+        let is_plain = matches!(ty, Type::External { .. });
         if !(idx == types.len() - 1 && is_plain) {
             return Err(
                 "TailBytes must be the last field of a struct or enum variant and not nested in another type".into(),
@@ -228,7 +228,10 @@ fn wire_int_signed(ty: &Type, wire: bool) -> Option<bool> {
         Type::I128 if !wire => Some(true),
         Type::Nibble | Type::UNib32 | Type::UVlq32 | Type::UVlq64 if wire => Some(false),
         Type::INib32 if wire => Some(true),
-        Type::External(path, false) if path.args.is_empty() => {
+        Type::External {
+            path,
+            has_lifetime: false,
+        } if path.args.is_empty() => {
             let name = path.segments.last()?.to_string();
             if !wire {
                 return match name.as_str() {
@@ -259,9 +262,22 @@ fn wire_field_type(plain: Type, wire: Type, cfg: Option<syn::Meta>) -> Result<Ty
     let user = (wire_signed.is_none() && is_user_type(&wire))
         || (wire_signed.is_some()
             && plain_signed.is_none()
-            && matches!(plain, Type::External(_, false)));
+            && matches!(
+                plain,
+                Type::External {
+                    has_lifetime: false,
+                    ..
+                }
+            ));
     if user {
-        if !matches!(plain, Type::External(_, false)) && plain_signed.is_none() {
+        if !matches!(
+            plain,
+            Type::External {
+                has_lifetime: false,
+                ..
+            }
+        ) && plain_signed.is_none()
+        {
             return Err(
                 "#[wire(W)] with a user type W goes on a field of a type without a lifetime".into(),
             );
@@ -305,7 +321,10 @@ fn wire_field_type(plain: Type, wire: Type, cfg: Option<syn::Meta>) -> Result<Ty
 /// A user type without a lifetime, not one of the integer or other built-in types: `Magnitude`, `crate::Scale<3>`.
 fn is_user_type(ty: &Type) -> bool {
     match ty {
-        Type::External(path, false) => {
+        Type::External {
+            path,
+            has_lifetime: false,
+        } => {
             let name = path
                 .segments
                 .last()

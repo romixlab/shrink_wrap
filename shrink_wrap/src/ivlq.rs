@@ -121,12 +121,12 @@ macro_rules! ivlq {
 }
 
 ivlq! {
-    /// Variable length encoded i32 based on bytes: zigzag over [UVlq32], 1 to 5 bytes, alignment of 1 byte.
+    /// Variable length encoded i32 based on bytes: zigzag over [`UVlq32`], 1 to 5 bytes, alignment of 1 byte.
     IVlq32(i32) over UVlq32, zigzag32, unzigzag32, write_ivlq32
 }
 
 ivlq! {
-    /// Variable length encoded i64 based on bytes: zigzag over [UVlq64], 1 to 10 bytes, alignment of 1 byte.
+    /// Variable length encoded i64 based on bytes: zigzag over [`UVlq64`], 1 to 10 bytes, alignment of 1 byte.
     IVlq64(i64) over UVlq64, zigzag64, unzigzag64, write_ivlq64
 }
 

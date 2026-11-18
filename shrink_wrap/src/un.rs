@@ -110,7 +110,7 @@ macro_rules! un {
                 }
             }
 
-            #[doc = "Fails with [Error::SubtypeOutOfRange] when the number does not fit into " $bits " bits."]
+            #[doc = "Fails with [`Error::SubtypeOutOfRange`] when the number does not fit into " $bits " bits."]
             impl TryFrom<[<u $base_bits>]> for [<U $bits>] {
                 type Error = Error;
 
@@ -268,7 +268,7 @@ macro_rules! signed_un {
                 }
             }
 
-            #[doc = "Fails with [Error::SubtypeOutOfRange] when the number does not fit into " $bits " bits."]
+            #[doc = "Fails with [`Error::SubtypeOutOfRange`] when the number does not fit into " $bits " bits."]
             impl TryFrom<[<i $base_bits>]> for [<I $bits>] {
                 type Error = Error;
 

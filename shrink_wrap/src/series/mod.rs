@@ -353,7 +353,9 @@ mod tests {
         for round in 0..3000 {
             let len = 1 + (rand() % 40) as usize;
             let mut fill = [0u8; 40];
-            fill.iter_mut().for_each(|b| *b = rand() as u8);
+            for b in &mut fill {
+                *b = rand() as u8;
+            }
             let (mut a, mut b) = (fill, fill);
             let mut plain = BufWriter::new(&mut a[..len]);
             let mut wr = BufWriter::new(&mut b[..len]);
@@ -388,12 +390,8 @@ mod tests {
                         }
                         8 => {
                             let junk = rand() as u8;
-                            BitSink::scratch(&mut plain)
-                                .iter_mut()
-                                .for_each(|b| *b = junk);
-                            BitSink::scratch(&mut bits)
-                                .iter_mut()
-                                .for_each(|b| *b = junk);
+                            BitSink::scratch(&mut plain).fill(junk);
+                            BitSink::scratch(&mut bits).fill(junk);
                             (Ok(()), Ok(()))
                         }
                         0 => (plain.put_bit(value & 1 == 1), bits.put_bit(value & 1 == 1)),

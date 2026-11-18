@@ -1594,7 +1594,9 @@ mod tests {
         for _ in 0..2000 {
             let len = 1 + (rand() % 12) as usize;
             let mut fill = [0u8; 12];
-            fill.iter_mut().for_each(|b| *b = rand() as u8);
+            for b in &mut fill {
+                *b = rand() as u8;
+            }
             let (mut a, mut b) = (fill, fill);
             let mut wr = BufWriter::new(&mut a[..len]);
             let mut model = BufWriter::new(&mut b[..len]);
@@ -1660,7 +1662,9 @@ mod tests {
         for round in 0..3000 {
             let len = 1 + (rand() % 10) as usize;
             let mut fill = [0u8; 10];
-            fill.iter_mut().for_each(|b| *b = rand() as u8);
+            for b in &mut fill {
+                *b = rand() as u8;
+            }
             let (mut a, mut b) = (fill, fill);
             let mut wr = BufWriter::new(&mut a[..len]);
             let mut model = BufWriter::new(&mut b[..len]);

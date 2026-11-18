@@ -26,13 +26,16 @@ macro_rules! generation_from_manifest {
 
 const TABLE: &[u8] = b"[package.metadata.wire_weaver]";
 
-/// The line of `[package.metadata.wire_weaver] wire = "wN.M"` in `manifest`, the text of a `Cargo.toml`; panics
-/// (a compile error in a const) when the table, its `wire` key or a `wN.M` value with `N` in `1..=255` is missing.
+/// The line of `[package.metadata.wire_weaver] wire = "wN.M"` in `manifest`, the text of a `Cargo.toml`.
+///
+/// # Panics
+///
+/// Panics (a compile error in a const) when the table, its `wire` key or a `wN.M` value with `N` in `1..=255` is
+/// missing.
 pub const fn line_of_manifest(manifest: &str) -> u8 {
     let b = manifest.as_bytes();
-    let mut i = match find_table(b) {
-        Some(i) => i,
-        None => panic!("no `[package.metadata.wire_weaver]` table in Cargo.toml"),
+    let Some(mut i) = find_table(b) else {
+        panic!("no `[package.metadata.wire_weaver]` table in Cargo.toml")
     };
     // the table's lines, up to the next table header
     while i < b.len() {

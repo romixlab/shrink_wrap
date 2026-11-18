@@ -132,7 +132,7 @@ impl Parse for Args {
                         || {
                             syn::Error::new(
                                 repr_ident.span(),
-                                "expected one of: unib32, nib, u1..u32, ub<N>",
+                                "expected one of: unib32, nib, u1..u32, ub1..ub32",
                             )
                         },
                     )?);

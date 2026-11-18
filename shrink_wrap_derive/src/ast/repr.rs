@@ -24,17 +24,21 @@ impl Repr {
             return Some(Repr::Nibble);
         }
         if let Some(s) = s.strip_prefix("ub") {
-            let bits: u8 = s.parse().ok()?;
-            return Some(Repr::U(bits));
+            return Some(Repr::U(Self::parse_bits(s)?));
         }
-        let s = s.strip_prefix("u")?;
-        let bits: u8 = s.parse().ok()?;
+        let bits = Self::parse_bits(s.strip_prefix("u")?)?;
         match bits {
             8 => Some(Repr::U8),
             16 => Some(Repr::U16),
             32 => Some(Repr::U32),
             other => Some(Repr::U(other)),
         }
+    }
+
+    /// A bit count of a discriminant: 1 to 32, what the reader and writer take in one call.
+    fn parse_bits(s: &str) -> Option<u8> {
+        let bits: u8 = s.parse().ok()?;
+        (1..=32).contains(&bits).then_some(bits)
     }
 
     pub(crate) fn max_discriminant(&self) -> u32 {
@@ -76,6 +80,22 @@ impl Repr {
             Repr::U(bits) if *bits < 16 => 16,
             Repr::U(bits) if *bits < 32 => 32,
             _ => 32,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Repr;
+
+    #[test]
+    fn bit_counts_are_1_to_32() {
+        assert!(matches!(Repr::parse_str("ub1"), Some(Repr::U(1))));
+        assert!(matches!(Repr::parse_str("ub32"), Some(Repr::U(32))));
+        assert!(matches!(Repr::parse_str("u31"), Some(Repr::U(31))));
+        assert!(matches!(Repr::parse_str("u32"), Some(Repr::U32)));
+        for refused in ["u0", "ub0", "u33", "ub33", "u64", "ub255", "u256"] {
+            assert!(Repr::parse_str(refused).is_none(), "{refused}");
         }
     }
 }

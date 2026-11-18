@@ -173,7 +173,7 @@ Sets the wire representation of an enum's discriminant. **Required** for every e
 
 | `ww_repr`              | Discriminant                                 |
 |------------------------|----------------------------------------------|
-| `u1`..`u32`, `ub<N>`   | that many bits                               |
+| `u1`..`u31`, `ub1`..`ub32` | that many bits, bit-aligned              |
 | `nib`                  | a 4-bit nibble                               |
 | `u8`, `u16`, `u32`     | byte-aligned                                 |
 | `unib32`               | `UNib32`, variable length, 1 or more nibbles |

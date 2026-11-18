@@ -678,8 +678,8 @@ fn write_discriminant(repr: Repr, tokens: &mut TokenStream) {
         Repr::UNib32 => ("write_unib32", None),
         Repr::U(bits) if bits < 8 => ("write_un8", Some(bits)),
         Repr::U(bits) if bits < 16 => ("write_un16", Some(bits)),
-        Repr::U(bits) if bits < 32 => ("write_un32", Some(bits)),
-        u => unimplemented!("discriminant_type {:?}", u),
+        // `Repr::parse_str` gives 1 to 32 bits
+        Repr::U(bits) => ("write_un32", Some(bits)),
     };
     let write_fn = Ident::new(write_fn, Span::call_site());
     if let Some(bits) = bits {
@@ -819,8 +819,8 @@ fn read_discriminant(repr: Repr) -> TokenStream {
         Repr::UNib32 => ("read_unib32", None),
         Repr::U(bits) if bits < 8 => ("read_un8", Some(bits)),
         Repr::U(bits) if bits < 16 => ("read_un16", Some(bits)),
-        Repr::U(bits) if bits < 32 => ("read_un32", Some(bits)),
-        u => unimplemented!("discriminant_type {:?}", u),
+        // `Repr::parse_str` gives 1 to 32 bits
+        Repr::U(bits) => ("read_un32", Some(bits)),
     };
     let read_fn = Ident::new(write_fn, Span::call_site());
     if let Some(bits) = bits {

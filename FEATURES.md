@@ -553,7 +553,8 @@ for humans and AI agents alike.
   and the conformance case `stdlib.si.quantity.unknown_scale` (derive, dynamic, Python; C gap API-26).
 - ✅ **DER-26 The derive accepts only what it writes**: the type names `uleb32`..`ileb128` (never written, a panic
   in codegen) and the field attribute `#[id = N]` (read and not used) are gone; an enum without any variant, and
-  `#[flag]` or `#[default = ..]` on a tuple variant's field, are errors that name the cause.
+  `#[flag]` or `#[default = ..]` on a tuple variant's field, are errors that name the cause. A discriminant of
+  `ub32` is written (it panicked the macro); a width of 0 or above 32 bits is an error.
 
 ## Testing and code size (`TEST`)
 

@@ -487,6 +487,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 ### 🐛 Fixes
 
 - `derive_shrink_wrap`: the field types `uleb32`..`ileb128` panicked the macro; the names are gone, `UVlq32` / `UVlq64` are the byte-wise numbers (DER-26).
+- `derive_shrink_wrap`: `ww_repr = ub32` works; widths of 0 or above 32 bits are an error, they panicked the macro (DER-26).
 - `derive_shrink_wrap`: an enum without any variant is an error that names the cause, not rustc's E0084 (DER-26).
 - `derive_shrink_wrap`: `#[flag]` and `#[default = ..]` on a tuple variant's field are errors; they were dropped silently (DER-26).
 - `optimize-speed` builds on a 1.101 nightly from before `#[optimize]` was stable: every nightly gets the feature gate (SW-74).

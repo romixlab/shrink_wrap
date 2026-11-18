@@ -264,3 +264,33 @@ proptest! {
         prop_assert!(Frame::from_ww_bytes(&b[..cut]).is_err());
     }
 }
+
+/// A 32-bit discriminant that is bit-aligned, unlike `u32`.
+#[derive_shrink_wrap(borrowed, owned, derive(Debug, PartialEq, Eq, Copy, Clone), ww_repr = ub32, sized)]
+enum Wide {
+    Low = 1,
+    High = 0x8000_0001,
+}
+
+#[derive_shrink_wrap(borrowed, owned, derive(Debug, PartialEq, Eq, Copy, Clone), sized)]
+struct AfterBit {
+    flag: bool,
+    wide: Wide,
+}
+
+#[test]
+fn a_32_bit_discriminant_is_bit_aligned() {
+    assert_eq!(bytes(&Wide::High), [0x80, 0x00, 0x00, 0x01]);
+    let value = AfterBit {
+        flag: true,
+        wide: Wide::High,
+    };
+    // 1, then the 32 bits shifted by one
+    assert_eq!(bytes(&value), [0xC0, 0x00, 0x00, 0x00, 0x80]);
+    assert_eq!(AfterBit::from_ww_bytes(&bytes(&value)), Ok(value));
+    let low = AfterBit {
+        flag: false,
+        wide: Wide::Low,
+    };
+    assert_eq!(AfterBit::from_ww_bytes(&bytes(&low)), Ok(low));
+}

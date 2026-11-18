@@ -692,7 +692,6 @@ fn write_discriminant(repr: Repr, tokens: &mut TokenStream) {
 
 impl ToTokens for CGEnumSer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        // TODO: forbid empty enums or not?
         if let Some(fv) = self.item_enum.future_version {
             // a known one would be read back as that variant, without its fields
             let ident = &fv.ident;

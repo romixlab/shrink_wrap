@@ -160,6 +160,19 @@ impl ItemEnum {
         });
         Ok(())
     }
+
+    /// An enum has a value: a variant, or the one for a newer version's discriminants. Without any, rustc refuses
+    /// the generated `#[repr]` with an error that names no cause.
+    pub(crate) fn check_has_variants(&self) -> Result<(), String> {
+        if self.variants.is_empty() && self.future_version.is_none() {
+            return Err(
+                "an enum without variants has no value to write or read: add a variant, or keep the variant for \
+                 discriminants from a newer version (an Unsized enum without no_future_version gets it)"
+                    .into(),
+            );
+        }
+        Ok(())
+    }
 }
 
 /// `#[future_version] Unknown(u32)`: last, one `u32` field, no discriminant or `#[cfg]` of its own.
@@ -263,6 +276,14 @@ fn convert_fields(
             let mut unnamed = vec![];
             let mut unnamed_attrs = vec![];
             for (def_order_idx, field) in fields_unnamed.unnamed.iter().enumerate() {
+                // a tuple variant keeps the types of its fields only: what needs a field's name or its own entry
+                // is refused, never dropped
+                if field.attrs.iter().any(|a| a.path().is_ident("flag")) {
+                    return Err(format!(
+                        "#[flag] on field {def_order_idx} of a tuple variant: a relocated flag names the Option or \
+                         Result field it belongs to, name the variant's fields"
+                    ));
+                }
                 let (field, _is_explicit_flag) =
                     transform_field(def_order_idx as u32, field, path)?;
                 if field.series_opaque {
@@ -271,8 +292,12 @@ fn convert_fields(
                          name the variant's fields"
                     ));
                 }
-                // TODO: Do unnamed fields have to have since, id, default, etc?
-                // TODO: explicit flags in unnamed fields?
+                if field.default.is_some() {
+                    return Err(format!(
+                        "#[default = ..] on field {def_order_idx} of a tuple variant: only named fields have one, \
+                         name the variant's fields"
+                    ));
+                }
                 if field.ty.contains_backfill() {
                     return Err(
                         "UVlq32Backfill must be the first field of a struct, enums are not supported"
@@ -424,6 +449,37 @@ mod tests {
             apply(clash, named("Newer"), None, u8r),
             Ok(Some("Newer".into()))
         );
+    }
+
+    #[test]
+    fn tuple_variant_refusals() {
+        let err = |ts| {
+            ItemEnum::from_syn(&syn::parse2::<syn::ItemEnum>(ts).unwrap(), Repr::U8).unwrap_err()
+        };
+        let e = err(quote! { enum E { A(#[flag] bool, Option<u8>) } });
+        assert!(e.contains("#[flag] on field 0 of a tuple variant"), "{e}");
+        let e = err(quote! { enum E { A(u8, #[default = 1] u8) } });
+        assert!(
+            e.contains("#[default = ..] on field 1 of a tuple variant"),
+            "{e}"
+        );
+    }
+
+    #[test]
+    fn an_enum_needs_a_variant() {
+        let parse = |ts| ItemEnum::from_syn(&syn::parse2::<syn::ItemEnum>(ts).unwrap(), Repr::U8);
+        let mut reserved = parse(quote! { enum E {} }).unwrap();
+        assert!(reserved.check_has_variants().is_err());
+        // an Unsized enum gets `Unknown(u32)`: a name kept for later versions to fill
+        reserved
+            .apply_future_version_arg(&FutureVersionArg::Default, &None, Repr::U8)
+            .unwrap();
+        assert!(reserved.check_has_variants().is_ok());
+        let mut never = parse(quote! { enum E {} }).unwrap();
+        never
+            .apply_future_version_arg(&FutureVersionArg::Off, &None, Repr::U8)
+            .unwrap();
+        assert!(never.check_has_variants().is_err());
     }
 
     #[test]

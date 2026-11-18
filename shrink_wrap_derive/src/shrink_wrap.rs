@@ -184,6 +184,7 @@ fn generate_inner(
                 &args.size_assumption,
                 repr,
             )?;
+            ww_item_enum.check_has_variants()?;
             let has_tail_size = ww_item_enum.variants.iter().any(|v| match &v.fields {
                 crate::ast::item_enum::Fields::Named(named) => {
                     named.iter().any(|f| f.ty.contains_tail_size())

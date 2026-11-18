@@ -2,8 +2,8 @@
 //!
 //! When a `$T:ty` fragment is substituted into a macro's output, rustc wraps it in an invisible
 //! `syn::Type::Group` for hygiene (and a literal `(u16)` parses as `syn::Type::Paren`); the transform used to
-//! reject both with a debug dump of the `syn::Type`. `$T:ident` was the documented workaround, kept in
-//! `ref_vec_skip.rs`.
+//! reject both with a debug dump of the `syn::Type`. `$T:ident` was what the docs said to write instead, and
+//! `ref_vec_skip.rs` keeps that form.
 //!
 //! Every macro-generated type below has a hand-written twin with the same type spelled out directly, and the
 //! tests check the two produce identical bytes, proving the `$T:ty` path is not just accepted but transparent.

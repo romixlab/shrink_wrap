@@ -9,7 +9,6 @@
         reason = "a nightly after the stabilization still gets the gate"
     )
 )]
-//#![cfg_attr(all(not(feature = "std"), not(test)), no_std)] ?
 
 // So that the code `#[derive_shrink_wrap(..)]` generates can name this crate as `::shrink_wrap` from inside it too.
 extern crate self as shrink_wrap;

@@ -784,9 +784,8 @@ impl<'i> BufWriter<'i> {
     /// Write len to the back of the buffer, later when [BufWriter::encode_len_fifo()] or [BufWriter::finish()]
     /// are called, all the numbers will be encoded to UNib32 reverse encoding.
     ///
-    /// NOTE: currently BufWriter uses u16 numbers, so maximum length of an object is 65_535.
-    /// BufWriterOwned uses u32, so this limit does not apply there.
-    /// This might be changed in the future, but for now 65K on no alloc seems acceptable.
+    /// `BufWriter` keeps these lengths as `u16`: an object is at most 65_535 bytes long, a longer one is
+    /// [Error::LenTooLong]. `BufWriterOwned` keeps them as `u32`.
     pub fn write_rev_len(&mut self, len: usize) -> Result<RevPos, Error> {
         let Ok(len) = u16::try_from(len) else {
             return Err(Error::LenTooLong);

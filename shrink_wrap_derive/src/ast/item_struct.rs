@@ -83,7 +83,6 @@ impl ItemStruct {
 #[derive(Clone, Debug)]
 pub(crate) struct Field {
     pub(crate) docs: Docs,
-    pub(crate) _id: u32,
     pub(crate) ident: Ident,
     pub(crate) ty: Type,
     pub(crate) _since: Option<String>,

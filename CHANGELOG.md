@@ -80,6 +80,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
     - user types inside `[T; N]`, tuples, `Range<T>` and `Option<T>` / `Result<T, E>` fields are counted, they were
       left out: a `sized` type with an `Option<UserType>` field no longer compiles (it is `self_describing`);
     - `Range<T>` and `RangeInclusive<T>` are two `T`, not one.
+- `derive_shrink_wrap` no longer accepts `#[id = N]` on a field: it was read and never used. Remove the attribute (DER-26).
 
 ### 🚀 Features
 

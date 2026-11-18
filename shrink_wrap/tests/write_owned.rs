@@ -34,9 +34,7 @@ enum Kind<'i> {
 
 #[derive_shrink_wrap(borrowed, owned, sparse, derive(Debug, PartialEq, Clone))]
 struct Sparse<'i> {
-    #[id = 0]
     a: Option<u8>,
-    #[id = 3]
     b: Option<&'i str>,
 }
 

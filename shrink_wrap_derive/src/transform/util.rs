@@ -3,8 +3,8 @@ use crate::ast::item_struct::Field;
 use crate::ast::object_size::ObjectSize;
 use crate::ast::ty::Type;
 use crate::transform::syn_util::{
-    collect_docs_attrs, take_default_attr, take_flag_attr, take_flag_like_attr, take_id_attr,
-    take_series_attr, take_since_attr, take_wire_attr,
+    collect_docs_attrs, take_default_attr, take_flag_attr, take_flag_like_attr, take_series_attr,
+    take_since_attr, take_wire_attr,
 };
 use crate::transform::transform_ty::transform_type;
 use proc_macro2::{Ident, Span};
@@ -75,7 +75,6 @@ pub(crate) fn create_flags(fields: &mut Vec<Field>, explicit_flags: &[Ident]) {
         let flag_ident = Ident::new(format!("_{}_flag", ident).as_str(), ident.span());
         let flag = Field {
             docs: Docs::empty(),
-            _id: 0, // TODO: Adjust auto created flag IDs
             ident: flag_ident,
             ty: if is_result {
                 Type::IsOk(ident)
@@ -350,7 +349,6 @@ pub(crate) fn transform_field(
     let series_opaque =
         take_series_attr(&mut field.attrs).map_err(|e| format!("field `{ident}`: {e}"))?;
     let flag = take_flag_attr(&mut field.attrs);
-    let id = take_id_attr(&mut field.attrs).unwrap_or(def_order_idx);
     let since = take_since_attr(&mut field.attrs)?;
     let docs = collect_docs_attrs(&mut field.attrs);
     // TOOL-22: a hint for `wire_weaver_core`'s walker, nothing to do with wire layout here.
@@ -379,7 +377,6 @@ pub(crate) fn transform_field(
         Ok((
             Field {
                 docs,
-                _id: id,
                 ident,
                 ty: Type::IsOk(result_ident),
                 _since: since,
@@ -393,7 +390,6 @@ pub(crate) fn transform_field(
         Ok((
             Field {
                 docs,
-                _id: id,
                 ident,
                 ty,
                 _since: since,

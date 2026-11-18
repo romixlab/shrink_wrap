@@ -1,13 +1,6 @@
 use crate::ast::docs::Docs;
 use syn::{Expr, Lit, LitStr, Meta};
 
-/// Takes `#[id = N]`, which is accepted and not used yet: fields are written in order.
-pub(crate) fn take_id_attr(attrs: &mut Vec<syn::Attribute>) -> Option<u32> {
-    // TODO: implement id's
-    attrs.retain(|a| !a.path().is_ident("id"));
-    None
-}
-
 /// Take `#[since = "w1.2"]` attribute and return its text. What it names (a wire revision of the API, EVO-24) is
 /// for `wire_weaver_core` to check, the derive doesn't use it.
 pub(crate) fn take_since_attr(attrs: &mut Vec<syn::Attribute>) -> Result<Option<String>, String> {

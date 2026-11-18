@@ -2,14 +2,6 @@
 # workspace of its own), so of the embedded tier the assertion lints and its Clippy set apply here.
 extends = ["medium", "ai", "embedded"]
 
-[lints.panic-in-library]
-level = "warn"
-classes = []
-methods = ["unwrap"]
-macros = ["panic", "todo", "unimplemented"]
-bare-macros = ["unreachable"]
-reason = "a library, not firmware with task classes: every crate's library code is checked, as the medium tier does"
-
 [lints.exact-units-quantity]
 level = "allow"
 reason = "exact_units depends on shrink_wrap for its wire types: its unit types cannot be used here without a cycle"

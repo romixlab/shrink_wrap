@@ -264,6 +264,11 @@ for humans and AI agents alike.
   buffer holds what it held; the wire bytes are the same. Flash, on the five size-bench targets at `opt-level = "z"`,
   against the writer before it: -74 to +28 bytes with `len32` and -24 to +24 without, on the cases with lists
   (`vec_ser`, `busgen_ser`, `busgen`), nothing elsewhere (`shrink_wrap/tests/len32.rs`, `docs/wire_format.md`).
+- ✅ **SW-84 `UN` and `IN` outside a `Series`** — the plain form of the numbers whose bit count is data: the variant
+  in 3 bits, the bit count in 3, 4, 5 or 6 bits, then that many value bits, `IN` in two's complement. Both writers
+  and the reader; before, the six impls panicked (`todo!()`). A value wider than its bit count is
+  `Error::SubtypeOutOfRange`, a variant above 3 `Error::EnumFutureVersionOrMalformedData`. No size-bench case uses
+  the types and no reader or writer function changed (`shrink_wrap/src/un.rs`, `docs/wire_format.md`).
 - ✅ **SW-19 Bounded lists and strings `MaxLen<T, N>`**: a `RefVec`, `Vec`, `&str` or `String` with at most `N`
   elements, same bytes as `T` (a bound can be added, raised or removed without a new wire form), checked on
   serialize and deserialize (`Error::MaxLenExceeded`, never truncated). Works in derived types and in every API

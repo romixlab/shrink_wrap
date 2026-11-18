@@ -274,6 +274,20 @@ hand with `BufWriter::reserve_tail_size()` and `backfill_tail_size()`:
 On read: read the slot, `split()` the reader to that many bytes, read the rest from the split. The
 [showcase](showcase.md#bounding-a-value-from-the-inside-with-tailsize) has the bytes.
 
+### `UN` and `IN`
+
+Numbers whose bit count is data. Outside a [Series](#seriest), bit-aligned:
+
+```text
+variant:    3 bits     0: UN8, 1: UN16, 2: UN32, 3: UN64; 4 to 7 are not used
+bit_count:  3, 4, 5 or 6 bits by variant: the value's bits, 0 to 7, 15, 31 or 63
+value:      bit_count bits, most significant first; IN in two's complement
+```
+
+`UN::UN8 { bit_count: 3, value: 5 }` is `0E 80`: `000`, `011`, `101`. A value that needs more bits than its
+`bit_count` fails to serialize with `Error::SubtypeOutOfRange`; a variant above 3 reads as
+`Error::EnumFutureVersionOrMalformedData`.
+
 ### The delta and XOR codes
 
 Two bit-level codes that [Series](#seriest) columns use (they were the standalone types `Delta`, `DeltaOfDelta` and

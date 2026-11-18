@@ -4,6 +4,26 @@ use crate::vlq32::UVlq32;
 use crate::vlq64::UVlq64;
 use crate::{ElementSize, Error, Nibble, SerializeShrinkWrap};
 
+/// What a pending length is kept as at the back of the buffer until it is encoded: `u16`, or `u32` with the `len32`
+/// feature.
+#[cfg(not(feature = "len32"))]
+type RevLen = u16;
+#[cfg(feature = "len32")]
+type RevLen = u32;
+
+/// Bytes a pending length takes at the back of the buffer.
+pub(crate) const REV_LEN_BYTES: usize = size_of::<RevLen>();
+
+/// The length kept in a slot at the back of the buffer.
+fn rev_len_of(slot: &[u8]) -> u32 {
+    let mut le = [0; REV_LEN_BYTES];
+    le.copy_from_slice(slot);
+    #[cfg(not(feature = "len32"))]
+    return u32::from(RevLen::from_le_bytes(le));
+    #[cfg(feature = "len32")]
+    RevLen::from_le_bytes(le)
+}
+
 /// no_std buffer writer that supports 1 bit, 4 bit, variable length integer and other operations.
 /// No alignment requirements are imposed on the byte buffer provided.
 /// Allocator is not required for no_std use. See BufWriterOwned for std use.
@@ -85,7 +105,7 @@ impl BufWriter<'_> {
         f(&mut owned)?;
         let (bytes, byte_idx, bit_idx, lens) = owned.into_parts();
         let room = self.len_bytes.saturating_sub(self.byte_idx);
-        if bytes.len() + 2 * lens.len() > room {
+        if bytes.len() + REV_LEN_BYTES * lens.len() > room {
             return Err(Error::OutOfBoundsWriteRawSlice);
         }
         self.buf[self.byte_idx..self.byte_idx + bytes.len()].copy_from_slice(&bytes);
@@ -797,19 +817,19 @@ impl<'i> BufWriter<'i> {
     /// Write len to the back of the buffer, later when [BufWriter::encode_len_fifo()] or [BufWriter::finish()]
     /// are called, all the numbers will be encoded to UNib32 reverse encoding.
     ///
-    /// `BufWriter` keeps these lengths as `u16`: an object is at most 65_535 bytes long, a longer one is
-    /// [Error::LenTooLong]. `BufWriterOwned` keeps them as `u32`.
+    /// `BufWriter` keeps these lengths as `u16`, 2 bytes each until they are encoded: an object is at most 65_535
+    /// bytes long, a longer one is [Error::LenTooLong]. With the `len32` feature they are `u32`, 4 bytes each, as
+    /// in `BufWriterOwned`.
     pub fn write_rev_len(&mut self, len: usize) -> Result<RevPos, Error> {
-        let Ok(len) = u16::try_from(len) else {
+        let Ok(len) = RevLen::try_from(len) else {
             return Err(Error::LenTooLong);
         };
-        if self.bytes_left() < 2 {
+        if self.bytes_left() < REV_LEN_BYTES {
             return Err(Error::OutOfBoundsRev);
         }
-        let val_be = len.to_le_bytes();
-        self.buf[self.len_bytes - 2] = val_be[0];
-        self.buf[self.len_bytes - 1] = val_be[1];
-        self.len_bytes -= 2;
+        let start = self.len_bytes - REV_LEN_BYTES;
+        self.buf[start..self.len_bytes].copy_from_slice(&len.to_le_bytes());
+        self.len_bytes = start;
         Ok(RevPos(self.len_bytes))
     }
 
@@ -818,15 +838,13 @@ impl<'i> BufWriter<'i> {
         RevPos(self.len_bytes)
     }
 
-    /// Update previously written u16 value in the back of the buffer, using the obtained index.
+    /// Update a length previously written to the back of the buffer, using the obtained index.
     pub fn update_rev_len(&mut self, pos: RevPos, len: usize) -> Result<(), Error> {
-        if pos.0 + 1 >= self.buf.len() {
+        let Some(slot) = self.buf.get_mut(pos.0..pos.0 + REV_LEN_BYTES) else {
             return Err(Error::OutOfBoundsRev);
-        }
-        let len = u16::try_from(len).map_err(|_| Error::LenTooLong)?;
-        let val_be = len.to_le_bytes();
-        self.buf[pos.0] = val_be[0];
-        self.buf[pos.0 + 1] = val_be[1];
+        };
+        let len = RevLen::try_from(len).map_err(|_| Error::LenTooLong)?;
+        slot.copy_from_slice(&len.to_le_bytes());
         Ok(())
     }
 
@@ -1074,16 +1092,16 @@ impl<'i> BufWriter<'i> {
     /// println!("{buf:02x?}");
     ///```
     pub fn encode_len_fifo(&mut self, from: RevPos, to: RevPos) -> Result<(), Error> {
-        // one u16 per length, the one pushed last first
+        // one slot per length, the one pushed last first
         let Some(slots) = self.buf.get(from.0..to.0) else {
             return Ok(());
         };
-        if slots.len() < 2 {
+        if slots.len() < REV_LEN_BYTES {
             return Ok(());
         }
         let mut odd = 0;
-        for slot in slots.as_chunks::<2>().0 {
-            odd ^= UNib32(u16::from_le_bytes(*slot) as u32).len_nibbles();
+        for slot in slots.as_chunks::<REV_LEN_BYTES>().0 {
+            odd ^= UNib32(rev_len_of(slot)).len_nibbles();
         }
         // write_nib() aligns to a nibble first: from bits 6 to 3 that is the middle of a byte
         if (3..7).contains(&self.bit_idx) {
@@ -1095,12 +1113,12 @@ impl<'i> BufWriter<'i> {
                 .map_err(|_| Error::OutOfBoundsRevCompact)?;
         }
         let mut idx = from.0;
-        while idx + 1 < to.0 {
-            let val = u16::from_le_bytes([self.buf[idx], self.buf[idx + 1]]);
-            idx += 2;
+        while let Some(slot) = self.buf[..to.0].get(idx..idx + REV_LEN_BYTES) {
+            let val = rev_len_of(slot);
+            idx += REV_LEN_BYTES;
             // the slot is free from here on, the nibbles may take its place
             self.len_bytes = idx;
-            UNib32(val as u32).write_reversed(self)?;
+            UNib32(val).write_reversed(self)?;
         }
         debug_assert!(self.bit_idx == 7);
         Ok(())
@@ -1110,8 +1128,8 @@ impl<'i> BufWriter<'i> {
     /// return the slice containing written data.
     pub fn finish(&mut self) -> Result<&[u8], Error> {
         self.latched()?;
-        let reverse_u16_written = (self.buf.len() - self.len_bytes) / 2;
-        if reverse_u16_written > 0 {
+        let lens_written = (self.buf.len() - self.len_bytes) / REV_LEN_BYTES;
+        if lens_written > 0 {
             self.encode_len_fifo(RevPos(self.len_bytes), RevPos(self.buf.len()))?;
         } else {
             self.align_byte();
@@ -1364,6 +1382,8 @@ mod tests {
         assert_eq!(wr.finish().unwrap(), &[0b10101100]);
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn rev_u16_aligned() {
         let mut buf = [0; 6];
@@ -1377,6 +1397,8 @@ mod tests {
         assert_eq!(wr.finish().unwrap(), &[0xAA, 0xCC, 0b0101_0011]);
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn rev_u16_unaligned() {
         let mut buf = [0; 9];
@@ -1557,6 +1579,8 @@ mod tests {
     /// `write_un32` / `write_un64` give the bytes of the same bits written one by one with `write_bool`: from any
     /// position, over old contents (the bits not written keep them), up to the lengths at the back and the end
     /// of the buffer (where a word doesn't fit), and a write that doesn't fit writes nothing.
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn write_un_matches_write_bool() {
         let mut seed = 0x9e37_79b9_7f4a_7c15u64;
@@ -1740,6 +1764,8 @@ mod tests {
         assert!(matches!(wr.write_rev_len(5), Err(Error::OutOfBoundsRev)));
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn rev_len_pos_matches_write() {
         let mut buf = [0u8; 4];
@@ -1750,6 +1776,8 @@ mod tests {
         assert_eq!(wr.rev_len_pos().0, 2);
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn update_rev_len_success() {
         let mut buf = [0u8; 4];
@@ -1812,6 +1840,8 @@ mod tests {
         assert_eq!(buf, &[1, 2, 3, 0x03]);
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn write_bytes_too_long() {
         let data = vec![0u8; u16::MAX as usize + 1];
@@ -1829,6 +1859,8 @@ mod tests {
         assert_eq!(buf, &[b'a', b'b', 0x02]);
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn write_str_too_long() {
         let data = "a".repeat(u16::MAX as usize + 1);
@@ -2063,6 +2095,8 @@ mod tests {
         }
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn len_fifo_out_of_space() {
         // 0xFFFF takes 6 nibbles, one byte more than its slot
@@ -2147,8 +2181,10 @@ mod tests {
 
     /// Unsized type whose body is bigger than u16::MAX bytes, used to exercise
     /// [UnsizedBuilder::finish]'s ItemTooLong error path.
+    #[cfg(not(feature = "len32"))]
     struct HugeUnsized;
 
+    #[cfg(not(feature = "len32"))]
     impl SerializeShrinkWrap for HugeUnsized {
         const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
 
@@ -2158,6 +2194,8 @@ mod tests {
         }
     }
 
+    // the buffer and the numbers are those of 2-byte length slots
+    #[cfg(not(feature = "len32"))]
     #[test]
     fn write_unsized_item_too_long() {
         let mut buf = vec![0u8; u16::MAX as usize + 16];

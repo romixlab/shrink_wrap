@@ -174,7 +174,8 @@ size around it, as `wr.write` does.
   sees garbage. The builder is `#[must_use]`, but that only catches one that is never used at all.
 - **`MaxLen<RefVec<'i, T>, N>`**: start it with `RefVecBuilder::with_max_len(&mut wr, N)`, push `N + 1` fails with
   `Error::MaxLenExceeded` and writes nothing. A `BufWriter` keeps lengths as `u16` until they are encoded, so the
-  65 536th push fails with `Error::LenTooLong`.
+  65 536th push fails with `Error::LenTooLong` (not with the `len32` feature, see
+  [the FIFO of lengths](wire_format.md#the-fifo-of-lengths)).
 
 `RefVecBuilderOwned<T>` is the same builder for a `BufWriterOwned` and `SerializeShrinkWrapOwned` elements, with the
 same bytes.

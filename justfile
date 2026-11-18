@@ -27,6 +27,8 @@ test *flags:
 # doctests, the builds of `just check`, and a short run of every fuzz target
 test-all: check
     cargo nextest run --workspace --no-fail-fast
+    # the writer with 4-byte length slots: its own tests, and every test that is not sized for 2-byte ones
+    cargo nextest run -p shrink_wrap --features len32 --no-fail-fast
     # nextest does not run doctests
     cargo test --workspace --doc -q
     just fuzz-smoke
@@ -36,7 +38,7 @@ test-all: check
 check:
     cargo check -p shrink_wrap --no-default-features --target thumbv6m-none-eabi
     cargo check -p shrink_wrap --no-default-features --features fast-io,refused,defmt,serde --target thumbv7em-none-eabihf
-    cargo check -p shrink_wrap --no-default-features --features fast-io --target riscv32i-unknown-none-elf
+    cargo check -p shrink_wrap --no-default-features --features fast-io,len32 --target riscv32i-unknown-none-elf
     cargo +nightly check -p shrink_wrap --features optimize-speed
     cd size_bench/fw && cargo check --features busgen --target thumbv6m-none-eabi
 

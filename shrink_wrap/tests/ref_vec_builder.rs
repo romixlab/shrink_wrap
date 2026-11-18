@@ -455,6 +455,8 @@ fn failed_element_is_rolled_back() {
     assert_eq!(got, hex!("C2"));
 }
 
+// the buffer and the numbers are those of 2-byte length slots
+#[cfg(not(feature = "len32"))]
 #[test]
 fn latched_error_in_push_with() {
     let mut buf = [0u8; 4];

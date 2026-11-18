@@ -26,6 +26,9 @@ fast-io = []
 # or a nightly compiler, ignored with a warning on an older stable one (build.rs). Independent of `fast-io`; with both,
 # the helpers are forced inline as well
 optimize-speed = []
+# `BufWriter` keeps a length that waits to be encoded as `u32` instead of `u16`: lists, strings and nested values past
+# 65_535 bytes, for 2 more bytes of buffer per waiting length (`MAX_SIZE` counts them). Same bytes on the wire
+len32 = []
 serde = ["dep:serde"]
 
 defmt = ["dep:defmt"]

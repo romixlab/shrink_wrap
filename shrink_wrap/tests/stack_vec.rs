@@ -1,3 +1,6 @@
+// the stack buffers and the bytes are those of 2-byte length slots
+#![cfg(not(feature = "len32"))]
+
 use hex_literal::hex;
 use shrink_wrap::prelude::*;
 

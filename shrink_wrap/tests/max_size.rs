@@ -131,6 +131,8 @@ fn plain_types() {
     tight(&Result::<u8, u32>::Err(0), 0);
 }
 
+// the buffer and the numbers are those of 2-byte length slots
+#[cfg(not(feature = "len32"))]
 #[test]
 fn enums_take_the_largest_variant() {
     tight(&named(), 4);
@@ -139,6 +141,8 @@ fn enums_take_the_largest_variant() {
     tight(&Small::On { level: 0xFF }, 1);
 }
 
+// the buffer and the numbers are those of 2-byte length slots
+#[cfg(not(feature = "len32"))]
 #[test]
 fn bounded_lists_and_strings() {
     let s = "x".repeat(300);
@@ -206,6 +210,8 @@ struct WithTailSize<'i> {
     last: bool,
 }
 
+// the buffer and the numbers are those of 2-byte length slots
+#[cfg(not(feature = "len32"))]
 #[test]
 fn tail_size() {
     tight(

@@ -35,6 +35,8 @@ fn tuple_of_bits() {
     assert!(!x.7);
 }
 
+// the buffer and the numbers are those of 2-byte length slots
+#[cfg(not(feature = "len32"))]
 #[test]
 fn tuple_of_strings() {
     let mut scratch = [0u8; 9];

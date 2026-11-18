@@ -258,6 +258,12 @@ for humans and AI agents alike.
   a malformed read is the unsigned type's error. In a `Series` they are plain signed 32- and 64-bit columns
   (`shrink_wrap/src/ivlq.rs`, `docs/showcase.md`). Open in WireWeaver: the dynamic client, Python, the C runtime
   and the conformance corpus do not know the two types yet.
+- ✅ **SW-83 `len32`: `BufWriter` past 65 535 bytes** — a cargo feature that keeps a waiting length as `u32` instead
+  of `u16`: a list, string or nested value is no longer limited to 65 535 bytes (`Error::LenTooLong`), and each
+  waiting length takes 4 bytes of the buffer instead of 2, which `MAX_SIZE` counts. Off by default, so a small
+  buffer holds what it held; the wire bytes are the same. Flash, on the five size-bench targets at `opt-level = "z"`,
+  against the writer before it: -74 to +28 bytes with `len32` and -24 to +24 without, on the cases with lists
+  (`vec_ser`, `busgen_ser`, `busgen`), nothing elsewhere (`shrink_wrap/tests/len32.rs`, `docs/wire_format.md`).
 - ✅ **SW-19 Bounded lists and strings `MaxLen<T, N>`**: a `RefVec`, `Vec`, `&str` or `String` with at most `N`
   elements, same bytes as `T` (a bound can be added, raised or removed without a new wire form), checked on
   serialize and deserialize (`Error::MaxLenExceeded`, never truncated). Works in derived types and in every API

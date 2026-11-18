@@ -8,8 +8,10 @@
 //!
 //! [MaxSize::buffer_len] is then the length of a buffer that `to_ww_bytes` of any value of the type always fits into:
 //! a bound of the serialized size, and also of the space the writer needs while serializing (lengths are kept as
-//! `u16` at the back of the buffer until they are encoded). It is an upper bound, not the exact worst case: every
-//! alignment that may be needed is counted as needed, every length as at least four nibbles.
+//! `u16` at the back of the buffer until they are encoded, as `u32` with the `len32` feature). It is an upper bound, not
+//! the exact worst case: every
+//! alignment that may be needed is counted as needed, every length as at least the nibbles of its slot (four, or eight
+//! with `len32`).
 //!
 //! ```
 //! use shrink_wrap::prelude::*;
@@ -29,6 +31,7 @@
 //! assert!(bytes.len() <= PIECE_MAX);
 //! ```
 
+use crate::buf_writer::REV_LEN_BYTES;
 use crate::nib32::UNib32;
 use crate::{ElementSize, SerializeShrinkWrap};
 
@@ -46,7 +49,7 @@ pub struct MaxSize {
     pub bits: usize,
     /// Nibbles of the lengths the value pushes to the back of the buffer (a list's or string's length, the size of
     /// a nested `Unsized` value), encoded when the enclosing `Unsized` value or the buffer is finished. Each one is
-    /// counted as at least 4: while it waits to be encoded, it takes a `u16` slot.
+    /// counted as at least 4: while it waits to be encoded, it takes a `u16` slot (8 and a `u32` slot with `len32`).
     pub len_nibbles: usize,
     /// The alignment the value starts at, in bits: 1, 4 or 8. The writer pads to it first.
     pub align: u8,
@@ -132,8 +135,8 @@ impl MaxSize {
     }
 }
 
-/// Nibbles counted for a length of at most `max`: its `UNib32` encoding, but at least the 4 of the `u16` slot it
-/// takes until then.
+/// Nibbles counted for a length of at most `max`: its `UNib32` encoding, but at least those of the slot it takes
+/// until then (a `u16`, 4 nibbles; a `u32`, 8 nibbles, with the `len32` feature).
 const fn len_slot_nibbles(max: usize) -> usize {
     let max = if max > u32::MAX as usize {
         u32::MAX
@@ -141,7 +144,12 @@ const fn len_slot_nibbles(max: usize) -> usize {
         max as u32
     };
     let nibbles = UNib32(max).len_nibbles();
-    if nibbles < 4 { 4 } else { nibbles }
+    let slot_nibbles = REV_LEN_BYTES * 2;
+    if nibbles < slot_nibbles {
+        slot_nibbles
+    } else {
+        nibbles
+    }
 }
 
 const fn max(a: usize, b: usize) -> usize {

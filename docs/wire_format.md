@@ -42,6 +42,11 @@ Several slots stack up back to front, forming a FIFO that a reader consumes in t
 buffer forward. The [showcase](showcase.md#the-fifo-of-lengths-why-strings-can-come-before-their-length) has a
 worked byte-by-byte example.
 
+While it waits to be encoded, a slot of `BufWriter` is a `u16`: 2 bytes of the buffer, and a list, string or nested
+value of at most 65 535 bytes (`Error::LenTooLong` beyond). The `len32` cargo feature makes it a `u32`: 4 bytes of
+the buffer per waiting length and no such limit, for firmware that sends larger values. The bytes on the wire are
+the same either way, and `MAX_SIZE` counts the slot of the build. `BufWriterOwned` has no slots in its buffer.
+
 ## `BufWriter` and `BufReader`
 
 The two core types are

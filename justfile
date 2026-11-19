@@ -12,6 +12,9 @@ fuzz_targets := "tail-size ref-vec latched option-any-vec series-columns series-
 fuzz_host_triple := `rustc -vV | sed -n 's/^host: //p'`
 
 # List all available targets
+# The pinned nightly of the fuzz and miri recipes; rust-toolchain.toml pins the stable one
+nightly := "nightly-2026-11-19"
+
 default:
     @just --list
 
@@ -39,7 +42,7 @@ check:
     cargo check -p shrink_wrap --no-default-features --target thumbv6m-none-eabi
     cargo check -p shrink_wrap --no-default-features --features fast-io,refused,defmt,serde --target thumbv7em-none-eabihf
     cargo check -p shrink_wrap --no-default-features --features fast-io,len32 --target riscv32i-unknown-none-elf
-    cargo +nightly check -p shrink_wrap --features optimize-speed
+    cargo +{{ nightly }} check -p shrink_wrap --features optimize-speed
     cd size_bench/fw && cargo check --features busgen --target thumbv6m-none-eabi
 
 # Format, manifests, spelling, clippy and rustdoc as CI runs them, warnings are errors; the C readers on their own
@@ -62,10 +65,10 @@ lint-c:
     cc -std=c99 -Wall -Wextra -Werror -pedantic -Wconversion -Wsign-conversion -o target/head_tail_c shrink_wrap/tests/head_tail_c.c
     target/head_tail_c
 
-# The series cells round trips and the in-place builders under miri (needs `rustup component add miri --toolchain nightly`)
+# The series cells round trips and the in-place builders under miri (needs `rustup component add miri` on the toolchain `nightly` names)
 miri:
-    cargo +nightly miri test -p shrink_wrap --lib cells_tests
-    cargo +nightly miri test -p shrink_wrap --lib in_place
+    cargo +{{ nightly }} miri test -p shrink_wrap --lib cells_tests
+    cargo +{{ nightly }} miri test -p shrink_wrap --lib in_place
 
 # Code size on small CPUs (RV32I, RV32IC, Cortex-M0) per test case, `just size-bench --help` (docs/code_size.md)
 size-bench *args:
@@ -80,12 +83,12 @@ fuzz-install:
 # (fuzz/artifacts) stay out of git
 [working-directory('fuzz')]
 fuzz target seconds="":
-    cargo +nightly fuzz run --target {{ fuzz_host_triple }} shrink-wrap-{{ target }} -- -max_len=4096 {{ if seconds == "" { "" } else { "-max_total_time=" + seconds } }}
+    cargo +{{ nightly }} fuzz run --target {{ fuzz_host_triple }} shrink-wrap-{{ target }} -- -max_len=4096 {{ if seconds == "" { "" } else { "-max_total_time=" + seconds } }}
 
 # Every fuzz target for 20000 runs: a smoke run, part of `just test`
 [working-directory('fuzz')]
 fuzz-smoke:
-    for t in {{ fuzz_targets }}; do cargo +nightly fuzz run -O --target {{ fuzz_host_triple }} shrink-wrap-$t -- -runs=20000 -max_len=4096 || exit 1; done
+    for t in {{ fuzz_targets }}; do cargo +{{ nightly }} fuzz run -O --target {{ fuzz_host_triple }} shrink-wrap-$t -- -runs=20000 -max_len=4096 || exit 1; done
 
 # A library has nothing to put on PATH: builds it with the deploy profile, as a dependent's release build would
 install:

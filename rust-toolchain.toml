@@ -1,5 +1,5 @@
 # The compiler every build uses; the firmware targets size_bench measures (size_bench/fw pins its own nightly).
 [toolchain]
-channel = "1.99.0"
+channel = "1.100.0"
 components = ["clippy", "rustfmt"]
 targets = ["riscv32i-unknown-none-elf", "thumbv6m-none-eabi", "thumbv7em-none-eabihf"]

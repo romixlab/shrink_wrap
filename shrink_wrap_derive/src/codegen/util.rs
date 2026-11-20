@@ -340,7 +340,7 @@ impl SerdeDefaults {
     pub(crate) fn fn_def(fn_name: &Ident, ty: TokenStream, default: &syn::Expr) -> TokenStream {
         quote! {
             #[doc(hidden)]
-            #[allow(dead_code, non_snake_case)]
+            #[allow(dead_code, non_snake_case, clippy::unnecessary_wraps)]
             fn #fn_name() -> #ty { #default }
         }
     }

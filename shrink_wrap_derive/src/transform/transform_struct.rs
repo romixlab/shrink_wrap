@@ -1,6 +1,5 @@
 use proc_macro2::Ident;
-use quote::{format_ident, quote};
-use syn::parse2;
+use quote::format_ident;
 
 use crate::ast::generics::Generics;
 use crate::ast::item_struct::Field;
@@ -209,7 +208,7 @@ pub(crate) fn propagate_default_to_flags(fields: &mut [Field]) -> Result<(), Str
             && evolved.contains(value_ident)
         {
             // read as false when missing, the value field then becomes its default
-            f.default = Some(parse2(quote! { false }).unwrap());
+            f.default = Some(syn::parse_quote! { false });
         }
     }
     if default_is_not_last {
@@ -241,6 +240,7 @@ pub(crate) fn change_is_ok_to_is_some(fields: &mut [Field]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quote::quote;
 
     fn from_tokens(ts: proc_macro2::TokenStream) -> Result<ItemStruct, String> {
         let item: syn::ItemStruct = syn::parse2(ts).map_err(|e| e.to_string())?;

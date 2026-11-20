@@ -12,8 +12,10 @@ pub(crate) fn transform_type(
 ) -> Result<Type, String> {
     match ty {
         syn::Type::Path(type_path) => {
-            if type_path.path.segments.len() == 1 {
-                let path_segment = type_path.path.segments.first().unwrap();
+            if let (1, Some(path_segment)) = (
+                type_path.path.segments.len(),
+                type_path.path.segments.first(),
+            ) {
                 let ty = transform_path_segment(path_segment, path)?;
                 Ok(ty)
             } else {

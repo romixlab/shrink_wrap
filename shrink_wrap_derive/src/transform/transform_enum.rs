@@ -228,8 +228,7 @@ fn get_discriminant(variant: &syn::Variant) -> Result<Option<u32>, String> {
         .map(|(_, expr)| {
             if let Expr::Lit(lit) = expr {
                 if let Lit::Int(lit_int) = &lit.lit {
-                    let d = lit_int.base10_parse().unwrap();
-                    Ok(Some(d))
+                    lit_int.base10_parse().map(Some).map_err(|e| e.to_string())
                 } else {
                     Err("Wrong discriminant".into())
                 }
@@ -253,7 +252,8 @@ fn convert_fields(
                 let (field, is_explicit_flag) =
                     transform_field(def_order_idx as u32, field_syn, path)?;
                 if is_explicit_flag {
-                    explicit_flags.push(field_syn.ident.clone().unwrap());
+                    explicit_flags
+                        .push(field_syn.ident.clone().expect("a named field has an ident"));
                 }
                 named.push(field);
             }

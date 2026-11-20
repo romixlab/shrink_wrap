@@ -6,12 +6,14 @@ use crate::ast::repr::Repr;
 
 pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut attr = attr.into_iter();
-    let ww_repr = if let TokenTree::Ident(repr) = attr.next().unwrap() {
-        Repr::parse_str(repr.to_string().as_str()).unwrap()
-    } else {
+    let ww_repr = match attr.next() {
+        Some(TokenTree::Ident(repr)) => Repr::parse_str(repr.to_string().as_str()),
+        _ => None,
+    };
+    let Some(ww_repr) = ww_repr else {
         panic!("Wrong ww_repr provided, expected bool/u1..u32 or unib32");
     };
-    let enum_def: ItemEnum = parse2(item).unwrap();
+    let enum_def: ItemEnum = parse2(item).expect("ww_repr is put on an enum");
     let mut current_discriminant = 0;
     let mut max_discriminant = 0;
     for variant in &enum_def.variants {
@@ -22,7 +24,9 @@ pub fn ww_repr(attr: TokenStream, item: TokenStream) -> TokenStream {
             let Lit::Int(discriminant) = &discriminant.lit else {
                 panic!("Only integer discriminants are supported");
             };
-            let discriminant = discriminant.base10_parse::<u32>().unwrap();
+            let discriminant = discriminant
+                .base10_parse::<u32>()
+                .expect("a discriminant fits u32");
             current_discriminant = discriminant;
             discriminant
         } else {

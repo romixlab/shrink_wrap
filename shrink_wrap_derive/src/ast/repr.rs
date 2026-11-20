@@ -50,36 +50,30 @@ impl Repr {
                     2u32.pow(*bits as u32) - 1
                 }
             }
-            Self::UNib32 => u32::MAX,
+            Self::UNib32 | Self::U32 => u32::MAX,
             Self::Nibble => 15,
             Self::U8 => 255,
             Self::U16 => 65_535,
-            Self::U32 => u32::MAX,
         }
     }
 
     pub(crate) fn required_bits(&self) -> u8 {
         match self {
             Self::U(bits) => *bits,
-            Self::UNib32 => 32,
+            Self::UNib32 | Self::U32 => 32,
             Self::Nibble => 4,
             Self::U8 => 8,
             Self::U16 => 16,
-            Self::U32 => 32,
         }
     }
 
     pub(crate) fn std_bits(&self) -> u8 {
         match &self {
-            Self::Nibble => 8,
-            Self::U8 => 8,
+            Self::Nibble | Self::U8 => 8,
             Self::U16 => 16,
-            Self::U32 => 32,
-            Self::UNib32 => 32,
             Self::U(bits) if *bits < 8 => 8,
             Self::U(bits) if *bits < 16 => 16,
-            Self::U(bits) if *bits < 32 => 32,
-            Self::U(_) => 32,
+            Self::U32 | Self::UNib32 | Self::U(_) => 32,
         }
     }
 }

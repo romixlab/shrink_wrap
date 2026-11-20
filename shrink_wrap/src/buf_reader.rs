@@ -899,11 +899,10 @@ impl<'i> BufReader<'i> {
             let is_last_byte = self.byte_idx + 1 == self.len_bytes;
             match (is_last_byte, self.bit_idx != 7, self.is_at_bit7_rev) {
                 (true, false, false) => 2,
-                (true, false, true) => 1,
-                (true, true, false) => 1,
-                (true, true, true) => 0,
+                (true, false, true) | (true, true, false) => 1,
                 (false, _, _) if self.bit_idx == 7 => 2,
                 (false, _, _) if self.bit_idx == 3 => 1,
+                // also the last byte with both of its nibbles taken
                 _ => 0,
             }
         }

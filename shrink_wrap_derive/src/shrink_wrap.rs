@@ -811,18 +811,15 @@ fn shrink_wrap_derive_inner(mut file: File) -> Result<TokenStream, String> {
 
 fn item_name(name: String, ty_kind: TyKind, is_ref: bool) -> Ident {
     let ident = match (ty_kind, is_ref) {
-        // E.g., `MyTypeOwned` and generating owned code -> leave name as is
-        (TyKind::ExplicitOwned, false) => name,
         // E.g., `MyTypeOwned` and generating borrowed code -> strip the Owned suffix
         (TyKind::ExplicitOwned, true) => name.strip_suffix("Owned").unwrap_or(&name).to_owned(),
-
-        // E.g., MyType<'i> and generating borrowed code -> leave name as is
-        (TyKind::ImpliedRef, true) => name,
         // E.g., MyType<'i> and generating owned code -> append Owned
         (TyKind::ImpliedRef, false) => format!("{name}Owned"),
-
-        // E.g., MyType with only plain types -> leave name as is + only one type definition is emitted
-        (TyKind::Ambiguous, _) => name,
+        // The name as is: `MyTypeOwned` and generating owned code, MyType<'i> and generating borrowed code, and
+        // MyType with only plain types, where only one type definition is emitted
+        (TyKind::ExplicitOwned, false) | (TyKind::ImpliedRef, true) | (TyKind::Ambiguous, _) => {
+            name
+        }
     };
     Ident::new(&ident, Span::call_site())
 }

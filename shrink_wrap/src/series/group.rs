@@ -411,10 +411,9 @@ impl StructExtent {
     /// group read past its length is `MalformedSeries`.
     pub fn finish(self, rd: &mut BufReader<'_>, known: usize) -> Result<(), Error> {
         match self {
-            Self::All => Ok(()),
             // the outermost group is the last thing in the Series
             Self::Count(count) if count as usize > known => rd.skip_rest(),
-            Self::Count(_) => Ok(()),
+            Self::All | Self::Count(_) => Ok(()),
             Self::End(end) => rd.skip_to_bit(end),
         }
     }

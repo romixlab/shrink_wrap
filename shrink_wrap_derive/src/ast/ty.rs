@@ -110,26 +110,20 @@ impl Type {
                     *potential_lifetimes = false;
                 }
             }
-            Self::Option(_, some_ty) => some_ty.make_owned(),
+            Self::Option(_, inner)
+            | Self::Array(_, inner)
+            | Self::Vec(inner)
+            | Self::RefBox(inner)
+            | Self::MaxLen(_, inner) => inner.make_owned(),
             Self::Result(_, ok_err_ty) => {
                 ok_err_ty.0.make_owned();
                 ok_err_ty.1.make_owned();
-            }
-            Self::Array(_, layout) => {
-                layout.make_owned();
             }
             Self::Tuple(types) => {
                 for ty in types {
                     ty.make_owned();
                 }
             }
-            Self::Vec(layout) => {
-                layout.make_owned();
-            }
-            Self::RefBox(ref_box) => {
-                ref_box.make_owned();
-            }
-            Self::MaxLen(_, inner) => inner.make_owned(),
             _ => {}
         }
     }
@@ -356,25 +350,18 @@ impl Type {
         let size_bits = match self {
             Self::Bool => 1,
             Self::Nibble => 4,
-            Self::U8 => 8,
-            Self::U16 => 16,
-            Self::U32 => 32,
-            Self::U64 => 64,
-            Self::U128 => 128,
-            Self::UNib32 => return Some(ObjectSize::SelfDescribing),
-            Self::UVlq32 => return Some(ObjectSize::SelfDescribing),
-            Self::UVlq64 => return Some(ObjectSize::SelfDescribing),
-            Self::I8 => 8,
-            Self::I16 => 16,
-            Self::I32 => 32,
-            Self::I64 => 64,
-            Self::I128 => 128,
-            Self::INib32 | Self::IVlq32 | Self::IVlq64 => {
-                return Some(ObjectSize::SelfDescribing);
-            }
-            Self::F32 => 32,
-            Self::F64 => 64,
-            Self::String => return Some(ObjectSize::Unsized),
+            Self::U8 | Self::I8 => 8,
+            Self::U16 | Self::I16 => 16,
+            Self::U32 | Self::I32 | Self::F32 => 32,
+            Self::U64 | Self::I64 | Self::F64 => 64,
+            Self::U128 | Self::I128 => 128,
+            Self::UNib32
+            | Self::UVlq32
+            | Self::UVlq64
+            | Self::INib32
+            | Self::IVlq32
+            | Self::IVlq64 => return Some(ObjectSize::SelfDescribing),
+            Self::String | Self::RefBox(_) => return Some(ObjectSize::Unsized),
             Self::Array(len, ty) => {
                 let size = match ty.element_size()? {
                     ObjectSize::Unsized => ObjectSize::Unsized,
@@ -422,7 +409,6 @@ impl Type {
             Self::Option(_, option_ty) => {
                 return Some(option_ty.element_size()?.add(ObjectSize::SelfDescribing));
             }
-            Self::RefBox(_) => return Some(ObjectSize::Unsized),
             // same as the list or string inside
             Self::MaxLen(_, inner) => return inner.element_size(),
             Self::Wire { wire, .. } => return wire.element_size(),

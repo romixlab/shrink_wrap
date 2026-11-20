@@ -26,8 +26,7 @@ impl FieldPath {
 
     fn into_inner(self) -> TokenStream {
         match self {
-            Self::Ref(path) => path,
-            Self::Value(path) => path,
+            Self::Ref(path) | Self::Value(path) => path,
         }
     }
 
@@ -41,7 +40,7 @@ impl FieldPath {
 impl Type {
     pub(crate) fn def(&self, no_alloc: bool, cp: &CratePath) -> TokenStream {
         match self {
-            Self::Bool => quote! { bool },
+            Self::Bool | Self::IsSome(_) | Self::IsOk(_) => quote! { bool },
             Self::Nibble => cp.item(quote! { Nibble }),
             Self::U8 => quote! { u8 },
             Self::U16 => quote! { u16 },
@@ -117,7 +116,6 @@ impl Type {
                 let ty = ty.def(no_alloc, cp);
                 quote! { core::ops::RangeInclusive<#ty> }
             }
-            Self::IsSome(_) | Self::IsOk(_) => quote! { bool },
             Self::RefBox(box_ty) => {
                 let box_ty = box_ty.def(no_alloc, cp);
                 if no_alloc {
@@ -210,7 +208,9 @@ impl Type {
             | Self::UVlq32
             | Self::UVlq64
             | Self::IVlq32
-            | Self::IVlq64 => {
+            | Self::IVlq64
+            | Self::Array(_, _)
+            | Self::Tuple(_) => {
                 let field_path = field_path.by_ref();
                 tokens.append_all(quote! { wr.write(#field_path) #handle_eob; });
                 return;
@@ -279,16 +279,6 @@ impl Type {
                 tokens.append_all(
                     quote! { let __tail_size_slot = wr.reserve_tail_size(#width) #handle_eob; },
                 );
-                return;
-            }
-            Self::Array(_, _) => {
-                let field_path = field_path.by_ref();
-                tokens.append_all(quote! { wr.write(#field_path) #handle_eob; });
-                return;
-            }
-            Self::Tuple(_types) => {
-                let field_path = field_path.by_ref();
-                tokens.append_all(quote! { wr.write(#field_path) #handle_eob; });
                 return;
             }
             Self::Vec(inner_ty) => {
@@ -402,15 +392,6 @@ impl Type {
             Self::U32 => "read_u32",
             Self::U64 => "read_u64",
             Self::U128 => "read_u128",
-            Self::UNib32
-            | Self::INib32
-            | Self::UVlq32
-            | Self::UVlq64
-            | Self::IVlq32
-            | Self::IVlq64 => {
-                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
-                return;
-            }
             Self::I8 => "read_i8",
             Self::I16 => "read_i16",
             Self::I32 => "read_i32",
@@ -418,18 +399,6 @@ impl Type {
             Self::I128 => "read_i128",
             Self::F32 => "read_f32",
             Self::F64 => "read_f64",
-            Self::Array(_len, _ty) => {
-                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
-                return;
-            }
-            Self::Tuple(_) => {
-                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
-                return;
-            }
-            Self::Vec(_inner_ty) => {
-                tokens.append_all(quote! { let #variable_name = rd.#read() #handle_err; });
-                return;
-            }
             Self::External { .. } if latch => {
                 // `read_field` is `read`, but `U1`..`U64`, `I2`..`I64`, plain numbers and `transparent` wrappers of
                 // them keep the error for `rd.latched()?` (`DeserializeShrinkWrap::des_shrink_wrap_latch`)
@@ -443,17 +412,21 @@ impl Type {
                 });
                 return;
             }
-            Self::External { .. } => {
-                tokens.append_all(quote! {
-                    let #variable_name = rd.#read() #handle_err;
-                });
-                return;
-            }
-            Self::String
+            Self::UNib32
+            | Self::INib32
+            | Self::UVlq32
+            | Self::UVlq64
+            | Self::IVlq32
+            | Self::IVlq64
+            | Self::Array(_, _)
+            | Self::Tuple(_)
+            | Self::Vec(_)
+            | Self::String
             | Self::RefBox(_)
             | Self::Range(_)
             | Self::RangeInclusive(_)
-            | Self::MaxLen(_, _) => {
+            | Self::MaxLen(_, _)
+            | Self::External { .. } => {
                 tokens.append_all(quote! {
                     let #variable_name = rd.#read() #handle_err;
                 });

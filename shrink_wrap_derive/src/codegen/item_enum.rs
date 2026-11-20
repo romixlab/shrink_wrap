@@ -72,9 +72,8 @@ impl CGItemEnum<'_> {
                 Ident::new(ty, Span::call_site())
             }
             Repr::UNib32 | Repr::U32 => Ident::new("u32", Span::call_site()),
-            Repr::U8 => Ident::new("u8", Span::call_site()),
+            Repr::U8 | Repr::Nibble => Ident::new("u8", Span::call_site()),
             Repr::U16 => Ident::new("u16", Span::call_site()),
-            Repr::Nibble => Ident::new("u8", Span::call_site()),
         }
     }
 

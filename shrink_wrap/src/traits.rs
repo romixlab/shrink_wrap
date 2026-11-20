@@ -265,12 +265,11 @@ impl ElementSize {
         // Structs and enums cannot accidentally become UFS, because by default they are Unsized, and no sum operations are
         // performed, otherwise it would have been a compatibility problem.
         match (self, other) {
-            (Self::UnsizedFinalStructure, _) => Self::UnsizedFinalStructure,
-            (_, Self::UnsizedFinalStructure) => Self::UnsizedFinalStructure,
-            (Self::Unsized, _) => Self::Unsized,
-            (_, Self::Unsized) => Self::Unsized,
-            (Self::SelfDescribing, _) => Self::SelfDescribing,
-            (_, Self::SelfDescribing) => Self::SelfDescribing,
+            (Self::UnsizedFinalStructure, _) | (_, Self::UnsizedFinalStructure) => {
+                Self::UnsizedFinalStructure
+            }
+            (Self::Unsized, _) | (_, Self::Unsized) => Self::Unsized,
+            (Self::SelfDescribing, _) | (_, Self::SelfDescribing) => Self::SelfDescribing,
             (Self::Sized { size_bits: size_a }, Self::Sized { size_bits: size_b }) => Self::Sized {
                 size_bits: *size_a + size_b,
             },

@@ -354,20 +354,20 @@ for humans and AI agents alike.
   FOC row capture went 266 -> 1456 instructions). The private bit helpers of the writer and reader are `#[inline]`
   hints; a firmware picks with shrink_wrap's `fast-io` feature (forced, as before; on with `std`) or
   `optimize-speed` (Rust 1.101 or nightly, `#[optimize(speed)]` on the bit primitives and `Series` loops), first a `--cfg`. Lists of plain numbers share one non-generic
-  length-and-bytes path. Measured (thumbv6m): TEST-30 floor −740 B at `fw-z`, ±0 at `fw-3`; Donguru −824 B at `z`,
+  length-and-bytes path. Measured (thumbv6m): TEST-30 floor −740 B at `fw-z`, ±0 at `fw-3`; Portwright −824 B at `z`,
   −892 B at `3`; task-side series and bit-field encoding 5-22 % slower at `z` by default, ±0 with `fast-io`, 1-3 %
   faster with `optimize-speed` (+208 B). The planned 2.5-3.5 KB of "duplicate copies" were mostly call sequences:
-  `#[inline(never)]` on every derived serdes made Donguru 1.9 KB larger. See
+  `#[inline(never)]` on every derived serdes made Portwright 1.9 KB larger. See
   `docs/code_size.md#hot-paths-at-opt-level-z`.
 - ✅ **SW-74 Reader and writer plumbing out of the serdes copies** · `v0.5` — flash diet. The 31.7 KB of
-  `BufReader`/`BufWriter` code inlined into Donguru's serdes had four big shapes, found with `fw_budget --attribute
+  `BufReader`/`BufWriter` code inlined into Portwright's serdes had four big shapes, found with `fw_budget --attribute
   --sites` (TEST-32): `latched()`'s `take()` (239 copies, 1.1 KB), the `Result<BufReader>` copied out after
   `split()?` in `read::<T>` (45 copies, 1.1 KB), `BufReader::new` / `BufWriter::new` (65 + 41 copies, 2.2 KB) and the
   `Result<UnsizedBuilder>` in `write::<T>` (67 copies, 0.7 KB). Fixed in the shape of the code: `latched()` stores
   only an error it clears; one out-of-line `split_sized` writes the sub-reader in place; `begin_unsized` /
   `end_unsized` keep the builder in registers; the constructors are `#[inline(never)]` unless the `fast-io`
   feature (SW-70's switch, a `--cfg shrink_wrap_hot` before; `std` turns it on). An out-of-line `latched()`
-  was larger on both cores and was left inline. Measured: Donguru −3,984 B at `z`, −18,176 B at `3`, −2,708 B with `fast-io`; rePort −6,360 B; the
+  was larger on both cores and was left inline. Measured: Portwright −3,984 B at `z`, −18,176 B at `3`, −2,708 B with `fast-io`; rePort −6,360 B; the
   TEST-30 floor −76 to −336 B; instructions at `z` within ±0.6 %, at `3` the bit-io micro loops on a local reader or
   writer up to 2.2x (restored with `fast-io`), dispatch ±1.3 % except a call with an argument (+4.8 %). No wire
   change. `docs/articles/flash_budget.md#sw-74-reader-and-writer-plumbing`.
@@ -422,14 +422,14 @@ for humans and AI agents alike.
   format; only the printed text of a `no_std` build without `defmt` changes. Not yet measured: TEST-30 checks that
   the variant names are not linked; est. 0.5-1 KB.
 - ✅ **SW-71 Unit variants of a mixed enum decode apart** · `v0.5` — flash diet: des `exact_units::Prefix` was 574 B
-  (5 copies in Donguru). The cost is the mix: a `match` with field-reading arms keeps LLVM's jump table and one arm
+  (5 copies in Portwright). The cost is the mix: a `match` with field-reading arms keeps LLVM's jump table and one arm
   per tag. A fully fieldless enum already folds to about 48 B, so it needs nothing. The derive now puts the longest
   run of consecutive unit tags behind a range check, and those arms fold to a tag -> variant map, without any table of
   our own. It does so for a run of at least 4 with at least 2 data arms (1 with `niche`). `Prefix`, decoded alone on
   M0+: 624 -> 324 B at `fw-z`, 576 -> 460 B at `fw-3`. The ~100 B first estimated left out its three data arms and the
   catch-all, which stay. Same bytes on the wire. Test `shrink_wrap/tests/enum_unit_run.rs`.
 - ✅ **SW-72 `MaxLen<_, N>` checks through one helper** · `v0.5` — flash diet: ser `MaxLen<_, N>` was monomorphised
-  per bound (9 instances, 296 B in Donguru: `&str` for N = 16, 32, 64, 128, `RefVec<u8>` for 16, 20, 32, 512) though
+  per bound (9 instances, 296 B in Portwright: `&str` for N = 16, 32, 64, 128, `RefVec<u8>` for 16, 20, 32, 512) though
   the bodies differ only in N. `new`, `ser_shrink_wrap`, `ser_shrink_wrap_owned` and `des_shrink_wrap`'s `check_len`
   now share one `check_max_len(len, max)` (`shrink_wrap/src/max_len.rs`); same error and bytes on the
   wire. Measured on TEST-30's `flash-budget` harness (added `MaxLenBounds8`/`16` to `tests/flash_budget_api`,
@@ -441,7 +441,7 @@ for humans and AI agents alike.
   in the binary, not fewer. `docs/articles/flash_budget.md` has the numbers.
 - 💡 **SW-73 Panic-free indexing in BufReader / BufWriter** — flash diet, to evaluate: the slice indexing and
   `copy_from_slice` in shrink_wrap's reader and writer keep panic paths (670 B of file paths, `copy_from_slice` 636 B
-  and `index`/`index_mut` about 2 KB in Donguru's isolated build) though the reader and writer already report
+  and `index`/`index_mut` about 2 KB in Portwright's isolated build) though the reader and writer already report
   `OutOfBounds` errors. `get()` / checked copies where the bound isn't proved; measure instructions too. Est. 1-2 KB.
 
 ## Derive macro (`shrink_wrap_derive`, `DER`)

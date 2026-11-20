@@ -681,7 +681,7 @@ shrink_wrap = { version = "0.2", default-features = false, features = ["fast-io"
 
 The constructors are out of line by default because a firmware makes readers and writers in dozens of per-type
 copies (`dispatch::des::<T>`, `to_ww_bytes`, ..): inlined, each is about 20 bytes of stores, a call about 8 (SW-74,
-Donguru −968 B). The price is at `opt-level = 3`, in a function that makes a reader or writer and uses it in a tight
+Portwright −968 B). The price is at `opt-level = 3`, in a function that makes a reader or writer and uses it in a tight
 loop: its address goes to `new`, so LLVM no longer keeps its fields in registers (64 nibbles read in 983 instructions
 before, 2189 after; `fast-io` gives 983 back). Readers and writers passed to a decoder or encoder
 by `&mut` are in memory either way. Numbers in [the flash budget](../articles/flash_budget.md#sw-74-reader-and-writer-plumbing).
@@ -698,7 +698,7 @@ against the same commit before SW-70; flash from builds of the same checkout pat
 | --- | ---: | ---: | ---: |
 | server floor, `fw-z` ([flash budget](../articles/flash_budget.md), sync and async) | −740 B | ±0 | +208 B |
 | server floor, `fw-3` | ±0 | ±0 | ±0 |
-| Donguru firmware, `z` / `3`, with the shared path for lists of plain numbers | −824 / −892 B | | |
+| Portwright firmware, `z` / `3`, with the shared path for lists of plain numbers | −824 / −892 B | | |
 | `Series` encode / decode per item, `fw-z` (units budget, 100.7 / 424.0 before) | 125.2 / 458.0 | 100.7 / 424.0 | 90.5 / 391.4 |
 | hot benches, `fw-z`: FOC batch encode, encode from a store, `Series` encode, bit I/O, shared clock | +12, +22, +6, +12, +5.5 % | ±0 | −1.3 .. −2.8 % |
 | struct encode / decode, interrupt-side row capture | ±0 | ±0 | ±0 |

@@ -343,7 +343,12 @@ impl ElementSize {
     }
 
     pub fn discriminant(&self) -> u8 {
-        unsafe { *<*const _>::from(self).cast::<u8>() }
+        match self {
+            Self::Unsized => 0,
+            Self::UnsizedFinalStructure => 1,
+            Self::SelfDescribing => 2,
+            Self::Sized { .. } => 3,
+        }
     }
 }
 

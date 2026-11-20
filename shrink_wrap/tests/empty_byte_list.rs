@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! An empty byte list (`RefVec<u8>` / `Vec<u8>`) writes its length and nothing else, not even the alignment to a
 //! byte its elements would take (SW-81). The borrowed derive once aligned (`RefVec::ser_shrink_wrap_vec_u8`),
 //! so a field after an empty list that starts mid-byte was read one byte early. Here the borrowed and the owned

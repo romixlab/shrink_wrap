@@ -1,3 +1,9 @@
+#![expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! Plain fields are read and written without an error check each (`read_u8_latch`, `write_u8_latch`, ..), the
 //! derived code checks once per type. These tests make sure no error gets lost on the way: every buffer that is
 //! too short, for reading or for writing, must still be an error, and the error is the first one, the one reading

@@ -1,3 +1,6 @@
+#![expect(clippy::print_stdout, reason = "an example prints its result")]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 use shrink_wrap::prelude::*;
 
 #[derive_shrink_wrap(borrowed, derive(Debug, PartialEq))]

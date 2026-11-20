@@ -1,3 +1,9 @@
+#![expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `U1`..`U64` and `I2`..`I64` fields of derived types are read with the error kept in the reader
 //! (`BufReader::read_field`, `read_un*_latch`) and checked once per type, like the integers since SW-34 (SW-38).
 //! `bool`, `u8`..`u32`, `i8`..`i32` and `f32` too when they are a user type's field (the field of a

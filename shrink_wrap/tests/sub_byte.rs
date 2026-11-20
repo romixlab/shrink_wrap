@@ -1,3 +1,9 @@
+#![expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! Bit-sized numbers `U1`..`U64` / `I2`..`I64` as struct fields and enum variant payloads (SW-48): they take
 //! exactly their bits, next to a sub-byte discriminant and to each other, without padding to a byte.
 

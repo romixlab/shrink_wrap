@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! Builds a C test program of the generated readers and runs it on cases from the Rust side: with
 //! `AddressSanitizer` and `UBSan` where the compiler has them, so a read past the end of a buffer fails the test.
 

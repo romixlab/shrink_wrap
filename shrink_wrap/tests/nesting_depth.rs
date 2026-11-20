@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! Values nested deeper than the reader allows ([`BufReader::with_max_depth`]) are `Error::NestingTooDeep`: a
 //! recursive type decoded from untrusted data must not overflow the stack. One test per way a type can contain
 //! itself: through an `Unsized` value (a split reader), a `final_structure` one (read in place), the slots of a

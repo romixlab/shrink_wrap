@@ -899,4 +899,8 @@ fn write_header(
 }
 
 #[cfg(test)]
+#[expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
 mod tests;

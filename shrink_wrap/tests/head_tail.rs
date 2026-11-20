@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! The head+tail encoding (SW-46): offsets, exact bytes, round trips, garbage and short buffers, the C reader.
 
 use hex_literal::hex;

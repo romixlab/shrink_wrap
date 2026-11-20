@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `#[wire(W)] field: T` (DER-19): a plain integer in Rust, the bytes of `W` on the wire. Each type here has a twin
 //! with `W` as the field type, whose bytes it must match; a value `W` can't hold is an error when it is written, a
 //! value `T` can't hold an error when it is read.

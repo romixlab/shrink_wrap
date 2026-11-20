@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! Derived structs and enums with type and const parameters and where clauses (DER-14): `Timed<T>`, a borrowed
 //! `Tagged<'i, T>` with its owned `TaggedOwned<T>`, `Buf<const N: usize>`, `Reading<T>`, ...
 

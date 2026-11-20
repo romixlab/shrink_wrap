@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! A `validate` hook that returns `Refused` (SW-76): the read fails with `SubtypeOutOfRange` as with a plain
 //! `Error`, and the reader keeps the value and the rule, also for a value nested in another one, read latched, in a
 //! list or a `Series`.

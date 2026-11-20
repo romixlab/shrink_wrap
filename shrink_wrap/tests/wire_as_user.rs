@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `#[wire(W)] field: T` with a user type `W` (DER-23): a one-byte handle in Rust, the full value it stands for on
 //! the wire. Each type here has a twin with `W` as the field type, whose bytes it must match, also in a `Series` (as
 //! a `#[series(opaque)]` field); a value without a handle is an error when it is read.

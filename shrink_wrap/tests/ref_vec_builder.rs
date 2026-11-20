@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `RefVecBuilder` (SW-61): a `RefVec` written in place, element by element, gives the same bytes as the same
 //! `RefVec::Slice` serialized normally, wherever it is written; a push that fails leaves the list as it was.
 

@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! The fixed-layout fast path (SW-44, SW-45): `from_fixed` / `to_fixed` read and write the bytes `des_shrink_wrap` /
 //! `ser_shrink_wrap` do, at the offsets the consts say: byte fields, bit fields, a variable last field.
 

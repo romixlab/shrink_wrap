@@ -1,3 +1,9 @@
+#![expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `RefVec<T>` of `u8`..`u128`, `i8`..`i128`, `f32`, `f64` finds its end without decoding the elements (SW-37).
 //! That must not be observable: for every input the result (the list or the error) and the whole reader state
 //! afterwards are the ones of the decode pass, which is kept here as [`PassVec`] to compare against.

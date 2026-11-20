@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! SW-71: an enum's longest run of unit variants decodes apart from its other arms, to save flash. The tag -> variant
 //! mapping stays that of a plain `match`, also around the run: data arms, gaps, a variant compiled out, a future tag.
 

@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `BufWriter::write_owned`, `ser_owned` and `OwnedSer` (API-21): an owned value written into a fixed buffer gives the same
 //! bytes as its borrowed counterpart written with `write` / `ser_shrink_wrap`, at every bit position and inside
 //! an enclosing `Unsized` value that encodes the lengths it pushes.

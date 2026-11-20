@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! Tuple and unit structs (SW-59): the same bytes as a struct with the same fields named, in every layout, round trips,
 //! readers and writers of different versions.
 

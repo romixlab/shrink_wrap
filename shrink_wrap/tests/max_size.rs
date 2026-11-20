@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `SerializeShrinkWrap::MAX_SIZE` (SW-19): a buffer of `MaxSize::buffer_len()` bytes always fits the value, for
 //! the largest values of each type, and it is not much larger than what they take.
 

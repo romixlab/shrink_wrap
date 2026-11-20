@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `#[derive_shrink_wrap(transparent)]` (DER-18): a struct of one field that isn't zero bits is that field on the
 //! wire: its `ELEMENT_SIZE`, the same bytes in every position (an `Unsized` and a `sized` parent, `Vec`, `Option`,
 //! an array), the same series columns and tags, its `SeriesStore` and `SeriesCells`.

@@ -1,3 +1,9 @@
+#![expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `sparse` structs (DER-13): every field an `Option`, written as an `OptionAnyVec` slot, only the present ones take
 //! space. Round trips, nesting, explicit slots with gaps, readers and writers of different versions.
 

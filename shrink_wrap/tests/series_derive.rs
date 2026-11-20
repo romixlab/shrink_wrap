@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `#[derive_shrink_wrap(.., series)]` (SW-60): user structs and enums as items of a `Series`, round trips per
 //! feature, and the design's example bytes from types written the way an API crate writes them.
 

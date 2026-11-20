@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `SerializeShrinkWrap::PUSHES_LEN` (SW-36): `to_ww_bytes` skips the length FIFO for types that never push a
 //! length, and a type that does push one can never take that path. The bytes are the same on both paths.
 

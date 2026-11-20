@@ -1,3 +1,9 @@
+#![expect(
+    clippy::let_underscore_must_use,
+    reason = "probes for panics: what the bytes decode to does not matter"
+)]
+#![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
+
 //! `Series<T>` (SW-60) of plain numbers as fields of derived types, next to other fields.
 
 use shrink_wrap::prelude::*;

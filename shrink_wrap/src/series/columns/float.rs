@@ -40,8 +40,8 @@ where
     I: Iterator<Item = (T, bool)>,
 {
     let mut counter = BitCounter::new();
-    // a counter never fails
-    let _ = encode(&mut counter, codec, items);
+    let counted = encode(&mut counter, codec, items);
+    debug_assert!(counted.is_ok(), "a counter never fails");
     counter.bits()
 }
 

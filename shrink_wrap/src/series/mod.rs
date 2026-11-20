@@ -7,7 +7,8 @@ use crate::{BufReader, BufWriter, Error, SerializeShrinkWrap};
 
 pub mod bound;
 mod cells;
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
+#[cfg(feature = "std")]
 mod cells_tests;
 mod columns;
 /// Round trips of the column codecs for the `series-columns` fuzz target.
@@ -21,9 +22,11 @@ mod group;
 mod leaves;
 mod series_type;
 mod store;
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
+#[cfg(feature = "std")]
 mod store_tests;
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
+#[cfg(feature = "std")]
 mod store_write_tests;
 #[cfg(all(feature = "std", any(test, fuzzing)))]
 #[doc(hidden)]

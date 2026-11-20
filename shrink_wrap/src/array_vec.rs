@@ -107,7 +107,8 @@ impl<T: Clone, const N: usize> Clone for ArrayVec<T, N> {
         let mut out = Self::new();
         for item in self.as_slice() {
             // self.len <= N already, so this cannot fail.
-            let _ = out.push(item.clone());
+            let pushed = out.push(item.clone());
+            debug_assert!(pushed.is_ok(), "the length was checked against N");
         }
         out
     }
@@ -174,7 +175,8 @@ impl<'i, T: DeserializeShrinkWrap<'i>, const N: usize> DeserializeShrinkWrap<'i>
         for _ in 0..elements_count {
             let item: T = rd.read()?;
             // elements_count <= N already, so this cannot fail.
-            let _ = out.push(item);
+            let pushed = out.push(item);
+            debug_assert!(pushed.is_ok(), "the length was checked against N");
         }
         Ok(out)
     }
@@ -193,7 +195,8 @@ impl<T: DeserializeShrinkWrapOwned, const N: usize> DeserializeShrinkWrapOwned f
         for _ in 0..elements_count {
             let item: T = rd.read_owned()?;
             // elements_count <= N already, so this cannot fail.
-            let _ = out.push(item);
+            let pushed = out.push(item);
+            debug_assert!(pushed.is_ok(), "the length was checked against N");
         }
         Ok(out)
     }

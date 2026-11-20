@@ -360,14 +360,14 @@ pub fn round_trip(items: &[KitchenOwned], policy: CodecPolicy) {
 
     // as a field: Unsized, its length in the FIFO
     let mut wr = BufWriter::new(&mut buf);
-    wr.write_u8(0xA5).unwrap();
-    wr.write(&series).unwrap();
-    wr.write_bool(true).unwrap();
+    wr.write_u8(0xA5).expect("framed");
+    wr.write(&series).expect("framed");
+    wr.write_bool(true).expect("framed");
     let framed = wr.finish_and_take().expect("frame").to_vec();
     let mut rd = BufReader::new(&framed);
-    assert_eq!(rd.read_u8().unwrap(), 0xA5);
+    assert_eq!(rd.read_u8().expect("framed"), 0xA5);
     let inner: Series<'_, Kitchen<'_>> = rd.read().expect("read field");
-    assert!(rd.read_bool().unwrap());
+    assert!(rd.read_bool().expect("framed"));
     assert_eq!(inner.iter().collect::<Vec<_>>(), borrowed);
 }
 
@@ -391,7 +391,9 @@ pub fn random_bytes(bytes: &[u8]) {
     if let Ok(owned) = SeriesOwned::<KitchenOwned>::from_ww_bytes_owned(bytes) {
         assert!(owned.len() <= super::SERIES_MAX_ITEMS);
     }
-    let _ = SeriesOwned::<OuterV1>::from_ww_bytes_owned(bytes);
+    if let Ok(owned) = SeriesOwned::<OuterV1>::from_ww_bytes_owned(bytes) {
+        assert!(owned.len() <= super::SERIES_MAX_ITEMS);
+    }
 }
 
 /// A `NumericValue` from a pick: any variant, any value.
@@ -444,8 +446,8 @@ pub fn bounded_round_trip(items: &[TimedIv], policy: CodecPolicy) {
     assert_eq!(back.len(), items.len());
     for (a, b) in back.iter().zip(items) {
         assert_eq!(
-            a.to_ww_bytes_owned().unwrap(),
-            b.to_ww_bytes_owned().unwrap()
+            a.to_ww_bytes_owned().expect("write item"),
+            b.to_ww_bytes_owned().expect("write item")
         );
     }
 }

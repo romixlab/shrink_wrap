@@ -142,7 +142,11 @@ impl EitherAnyVecBuilder {
     ) {
         self.items = wr.save_state();
         wr.restore_state(marker.flags);
-        let _ = wr.write_bool(is_right);
+        let written = wr.write_bool(is_right);
+        debug_assert!(
+            written.is_ok(),
+            "the flag bit was reserved at the item start"
+        );
     }
 
     /// Write left item in one step.

@@ -103,6 +103,10 @@ impl<T: SerializeShrinkWrap> RefVecBuilder<T> {
                 // forward bytes and the lengths the element pushed are dropped, the count slot is below them;
                 // so is an error of a write_*_latch of the element that is still kept in the writer
                 wr.restore_state(state);
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "clears the kept error: the error of the element is the one returned"
+                )]
                 let _ = wr.latched();
                 Err(e)
             }
@@ -285,6 +289,10 @@ impl RefVecBuilder<u8> {
             }
             Err(e) => {
                 wr.restore_state(state);
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "clears the kept error: the error of the element is the one returned"
+                )]
                 let _ = wr.latched();
                 Err(e)
             }

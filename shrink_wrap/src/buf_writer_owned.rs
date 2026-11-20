@@ -194,49 +194,57 @@ impl BufWriterOwned {
     /// [`write_bool`](Self::write_bool), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_bool_latch(&mut self, val: bool) {
-        let _ = self.write_bool(val);
+        let written = self.write_bool(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_u8`](Self::write_u8), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_u8_latch(&mut self, val: u8) {
-        let _ = self.write_u8(val);
+        let written = self.write_u8(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_u16`](Self::write_u16), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_u16_latch(&mut self, val: u16) {
-        let _ = self.write_u16(val);
+        let written = self.write_u16(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_u32`](Self::write_u32), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_u32_latch(&mut self, val: u32) {
-        let _ = self.write_u32(val);
+        let written = self.write_u32(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_i8`](Self::write_i8), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_i8_latch(&mut self, val: i8) {
-        let _ = self.write_i8(val);
+        let written = self.write_i8(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_i16`](Self::write_i16), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_i16_latch(&mut self, val: i16) {
-        let _ = self.write_i16(val);
+        let written = self.write_i16(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_i32`](Self::write_i32), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_i32_latch(&mut self, val: i32) {
-        let _ = self.write_i32(val);
+        let written = self.write_i32(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// [`write_f32`](Self::write_f32), which cannot fail on this writer; see [latched](Self::latched).
     #[inline]
     pub fn write_f32_latch(&mut self, val: f32) {
-        let _ = self.write_f32(val);
+        let written = self.write_f32(val);
+        debug_assert!(written.is_ok(), "an owned writer grows instead of failing");
     }
 
     /// Write u8 with alignment of 1 byte.

@@ -50,7 +50,7 @@ where
             gap += 1;
         } else {
             sink.put_bit(true)?;
-            put_nib(sink, u32::try_from(gap).map_err(|_| Error::LenTooLong)?)?;
+            put_nib(sink, u32::try_from(gap).or(Err(Error::LenTooLong))?)?;
             put_change(sink, value)?;
             prev = value;
             gap = 0;
@@ -99,10 +99,7 @@ pub(crate) fn write_opaque_run<'a, S: BitSink>(
     items: impl Iterator<Item = &'a [u8]>,
 ) -> Result<(), Error> {
     let put = |sink: &mut S, bytes: &[u8]| {
-        put_nib(
-            sink,
-            u32::try_from(bytes.len()).map_err(|_| Error::LenTooLong)?,
-        )?;
+        put_nib(sink, u32::try_from(bytes.len()).or(Err(Error::LenTooLong))?)?;
         sink.put_bytes(bytes)
     };
     write_changes(sink, items, put, put)

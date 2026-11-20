@@ -844,7 +844,7 @@ impl<'i> BufWriter<'i> {
         let Some(slot) = self.buf.get_mut(pos.0..pos.0 + REV_LEN_BYTES) else {
             return Err(Error::OutOfBoundsRev);
         };
-        let len = RevLen::try_from(len).map_err(|_| Error::LenTooLong)?;
+        let len = RevLen::try_from(len).or(Err(Error::LenTooLong))?;
         slot.copy_from_slice(&len.to_le_bytes());
         Ok(())
     }
@@ -1000,7 +1000,7 @@ impl<'i> BufWriter<'i> {
         self.encode_len_fifo(self.rev_len_pos(), slot.rev_mark)?;
         self.align_byte();
         let end = slot.start + slot.len;
-        let size = u32::try_from(self.byte_idx - end).map_err(|_| Error::LenTooLong)?;
+        let size = u32::try_from(self.byte_idx - end).or(Err(Error::LenTooLong))?;
         let encoded = crate::tail_size::encode_slot(size, slot.len)?;
         self.buf[slot.start..end].copy_from_slice(&encoded[encoded.len() - slot.len..]);
         Ok(())
@@ -1111,7 +1111,7 @@ impl<'i> BufWriter<'i> {
         if odd & 1 != 0 {
             // ensure that reading from the back always starts from a valid UNib32
             self.write_nib(Nibble::zero())
-                .map_err(|_| Error::OutOfBoundsRevCompact)?;
+                .or(Err(Error::OutOfBoundsRevCompact))?;
         }
         let mut idx = from.0;
         while let Some(slot) = self.buf[..to.0].get(idx..idx + REV_LEN_BYTES) {

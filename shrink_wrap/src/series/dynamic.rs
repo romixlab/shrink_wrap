@@ -250,10 +250,7 @@ where
 {
     write_opaque_values(sink, items, |sink, v| {
         let bytes = v.as_ref();
-        put_nib(
-            sink,
-            u32::try_from(bytes.len()).map_err(|_| Error::LenTooLong)?,
-        )?;
+        put_nib(sink, u32::try_from(bytes.len()).or(Err(Error::LenTooLong))?)?;
         sink.put_bytes(bytes)
     })
 }

@@ -100,10 +100,7 @@ pub trait BitSink {
 /// `len: nib`, zero bits to the next byte, the bytes: an opaque run value.
 #[cfg(feature = "std")]
 pub(crate) fn put_opaque_value(sink: &mut impl BitSink, bytes: &[u8]) -> Result<(), Error> {
-    columns::put_nib(
-        sink,
-        u32::try_from(bytes.len()).map_err(|_| Error::LenTooLong)?,
-    )?;
+    columns::put_nib(sink, u32::try_from(bytes.len()).or(Err(Error::LenTooLong))?)?;
     sink.put_bytes(bytes)
 }
 
@@ -171,7 +168,7 @@ impl BitSink for BufWriter<'_> {
         // serialized past the room `len: nib` (at most 44 bits) and the padding can take, then moved in place
         let at = self.scratch_start();
         let len = value.to_ww_bytes(self.scratch())?.len();
-        columns::put_nib(self, u32::try_from(len).map_err(|_| Error::LenTooLong)?)?;
+        columns::put_nib(self, u32::try_from(len).or(Err(Error::LenTooLong))?)?;
         self.align_byte();
         self.move_in(at, len)
     }

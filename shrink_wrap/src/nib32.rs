@@ -61,7 +61,7 @@ impl UNib32 {
         if val < 8 {
             return wr
                 .write_nib(Nibble::new_masked(val as u8))
-                .map_err(|_| Error::OutOfBoundsRevCompact);
+                .or(Err(Error::OutOfBoundsRevCompact));
         }
         let mut flag = 0;
         loop {
@@ -76,7 +76,7 @@ impl UNib32 {
                 }
             }
             wr.write_nibbles(count, bits)
-                .map_err(|_| Error::OutOfBoundsRevCompact)?;
+                .or(Err(Error::OutOfBoundsRevCompact))?;
             if val == 0 {
                 return Ok(());
             }

@@ -283,7 +283,7 @@ impl BitSink for BitCounter<'_> {
             #[cfg(not(feature = "std"))]
             Err(e) => return Err(e),
         };
-        put_nib(self, u32::try_from(len).map_err(|_| Error::LenTooLong)?)?;
+        put_nib(self, u32::try_from(len).or(Err(Error::LenTooLong))?)?;
         self.align_byte();
         self.pos += len * 8;
         Ok(())

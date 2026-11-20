@@ -331,7 +331,7 @@ impl<'i> OpaqueBytes<'i> for &'i str {
     }
 
     fn from_bytes(bytes: &'i [u8]) -> Result<Self, Error> {
-        core::str::from_utf8(bytes).map_err(|_| Error::MalformedUtf8)
+        core::str::from_utf8(bytes).or(Err(Error::MalformedUtf8))
     }
 }
 

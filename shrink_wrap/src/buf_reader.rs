@@ -464,7 +464,7 @@ impl<'i> BufReader<'i> {
         let u64_bytes: [u8; 8] = self
             .read_raw_slice(8)?
             .try_into()
-            .map_err(|_| Error::InternalSliceToArrayCast)?;
+            .or(Err(Error::InternalSliceToArrayCast))?;
         Ok(u64::from_le_bytes(u64_bytes))
     }
 
@@ -473,7 +473,7 @@ impl<'i> BufReader<'i> {
         let u128_bytes: [u8; 16] = self
             .read_raw_slice(16)?
             .try_into()
-            .map_err(|_| Error::InternalSliceToArrayCast)?;
+            .or(Err(Error::InternalSliceToArrayCast))?;
         Ok(u128::from_le_bytes(u128_bytes))
     }
 
@@ -499,7 +499,7 @@ impl<'i> BufReader<'i> {
         let i64_bytes: [u8; 8] = self
             .read_raw_slice(8)?
             .try_into()
-            .map_err(|_| Error::InternalSliceToArrayCast)?;
+            .or(Err(Error::InternalSliceToArrayCast))?;
         Ok(i64::from_le_bytes(i64_bytes))
     }
 
@@ -508,7 +508,7 @@ impl<'i> BufReader<'i> {
         let i128_bytes: [u8; 16] = self
             .read_raw_slice(16)?
             .try_into()
-            .map_err(|_| Error::InternalSliceToArrayCast)?;
+            .or(Err(Error::InternalSliceToArrayCast))?;
         Ok(i128::from_le_bytes(i128_bytes))
     }
 
@@ -523,7 +523,7 @@ impl<'i> BufReader<'i> {
         let f64_bytes: [u8; 8] = self
             .read_raw_slice(8)?
             .try_into()
-            .map_err(|_| Error::InternalSliceToArrayCast)?;
+            .or(Err(Error::InternalSliceToArrayCast))?;
         Ok(f64::from_le_bytes(f64_bytes))
     }
 
@@ -705,7 +705,7 @@ impl<'i> BufReader<'i> {
     pub fn read_str(&mut self) -> Result<&'i str, Error> {
         let len_bytes = self.read_rev_len()?;
         let str_bytes = self.read_raw_slice(len_bytes)?;
-        core::str::from_utf8(str_bytes).map_err(|_| Error::MalformedUtf8)
+        core::str::from_utf8(str_bytes).or(Err(Error::MalformedUtf8))
     }
 
     /// Read any value that implements `DeserializeShrinkWrap`.

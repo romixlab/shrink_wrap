@@ -331,7 +331,7 @@ impl BufWriterOwned {
     /// Push u32 to the reverse FIFO, later when [`encode_len_fifo`](Self::encode_len_fifo) or [finish](Self::finish)
     /// are called, all the numbers will be encoded to `UNib32` reverse encoding.
     pub fn write_rev_len(&mut self, len: usize) -> Result<RevPos, Error> {
-        let len = u32::try_from(len).map_err(|_| Error::LenTooLong)?;
+        let len = u32::try_from(len).or(Err(Error::LenTooLong))?;
         self.rev.push(len);
         Ok(RevPos(self.rev.len() - 1))
     }
@@ -347,7 +347,7 @@ impl BufWriterOwned {
         let Some(slot) = self.rev.get_mut(pos.0) else {
             return Err(Error::OutOfBoundsRev);
         };
-        let len = u32::try_from(len).map_err(|_| Error::LenTooLong)?;
+        let len = u32::try_from(len).or(Err(Error::LenTooLong))?;
         *slot = len;
         Ok(())
     }
@@ -449,7 +449,7 @@ impl BufWriterOwned {
         self.encode_rev_range(slot.rev_mark, self.rev.len())?;
         self.align_byte();
         let end = slot.start + slot.len;
-        let size = u32::try_from(self.byte_idx - end).map_err(|_| Error::LenTooLong)?;
+        let size = u32::try_from(self.byte_idx - end).or(Err(Error::LenTooLong))?;
         let encoded = crate::tail_size::encode_slot(size, slot.len)?;
         self.buf[slot.start..end].copy_from_slice(&encoded[encoded.len() - slot.len..]);
         Ok(())

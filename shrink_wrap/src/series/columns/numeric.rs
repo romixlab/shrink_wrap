@@ -91,8 +91,8 @@ macro_rules! word {
 
             #[inline(always)]
             fn zigzag(self) -> Self {
-                let v = self as $signed;
-                ((v << 1) ^ (v >> (<$ty>::BITS - 1))) as $ty
+                let v = self.cast_signed();
+                ((v << 1) ^ (v >> (<$ty>::BITS - 1))).cast_unsigned()
             }
 
             #[inline(always)]

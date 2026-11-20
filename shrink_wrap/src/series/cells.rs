@@ -213,7 +213,7 @@ macro_rules! in_cells {
         word_leaf! {
             $(
                 crate::un::$ty: $word = |v| v.value() as $int as $word,
-                    |w| crate::un::$ty::new(w as $int).unwrap_or(crate::un::$ty::zero());
+                    |w| crate::un::$ty::new(w.cast_signed()).unwrap_or(crate::un::$ty::zero());
             )*
         }
     };

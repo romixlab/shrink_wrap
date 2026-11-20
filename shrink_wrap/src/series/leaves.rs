@@ -136,19 +136,16 @@ macro_rules! numeric_leaf {
 }
 
 macro_rules! numeric_prim {
-    ($($ty:ty: $word:ty, $width:literal, $signed:literal);* $(;)?) => {
-        $(numeric_leaf!($ty, $word, $width, $signed, |v| *v as $word, |b| if $signed {
-            sign_extend(b, $width) as $ty
-        } else {
-            b as $ty
-        });)*
+    (unsigned: $($ty:ty: $word:ty, $width:literal);* $(;)?) => {
+        $(numeric_leaf!($ty, $word, $width, false, |v| *v as $word, |b| b as $ty);)*
+    };
+    (signed: $($ty:ty: $word:ty, $width:literal);* $(;)?) => {
+        $(numeric_leaf!($ty, $word, $width, true, |v| *v as $word, |b| sign_extend(b, $width) as $ty);)*
     };
 }
 
-numeric_prim!(
-    u8: u32, 8, false; u16: u32, 16, false; u32: u32, 32, false; u64: u64, 64, false;
-    i8: u32, 8, true; i16: u32, 16, true; i32: u32, 32, true; i64: u64, 64, true;
-);
+numeric_prim!(unsigned: u8: u32, 8; u16: u32, 16; u32: u32, 32; u64: u64, 64);
+numeric_prim!(signed: i8: u32, 8; i16: u32, 16; i32: u32, 32; i64: u64, 64);
 
 numeric_leaf!(Nibble, u32, 4, false, |v| v.value() as u64, |b| {
     Nibble::new_masked(b as u8)
@@ -189,7 +186,7 @@ un_leaves!(true, u64, I: 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,
     56, 57, 58, 59, 60, 61, 62, 63, 64);
 
 macro_rules! numeric128 {
-    ($ty:ty, $signed:literal) => {
+    ($ty:ty, $signed:literal, |$b:ident| $from:expr) => {
         impl<'i> SeriesColumns<'i> for $ty {
             type Reader = Option<Numeric128Reader<'i>>;
             const MAX_ITEM_BITS: Option<usize> = Some(bound::NUMERIC128_ITEM_BITS);
@@ -223,14 +220,15 @@ macro_rules! numeric128 {
             }
 
             fn next(reader: &mut Self::Reader, _restart: bool) -> Result<Self, Error> {
-                Ok(column(reader)?.next()? as $ty)
+                let $b = column(reader)?.next()?;
+                Ok($from)
             }
         }
     };
 }
 
-numeric128!(u128, false);
-numeric128!(i128, true);
+numeric128!(u128, false, |b| b);
+numeric128!(i128, true, |b| b.cast_signed());
 
 macro_rules! float_leaf {
     ($ty:ty) => {

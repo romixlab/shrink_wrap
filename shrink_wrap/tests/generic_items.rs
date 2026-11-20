@@ -133,6 +133,10 @@ struct Flagged<const STRICT: bool, T = u8> {
 }
 
 impl<const STRICT: bool, T> Flagged<STRICT, T> {
+    #[expect(
+        clippy::unused_self,
+        reason = "reads the const parameter of the type of a value"
+    )]
     fn strict(&self) -> bool {
         STRICT
     }

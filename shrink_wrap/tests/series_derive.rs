@@ -454,7 +454,7 @@ fn generic_timed() {
                 },
                 i: Ampere {
                     prefix: Prefix::Micro,
-                    value: NumericValue::I32(152_000 - k as i32),
+                    value: NumericValue::I32(152_000 - k.cast_signed()),
                 },
             },
         })

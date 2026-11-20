@@ -85,12 +85,12 @@ fn bytes(v: &OuterOwned) -> Vec<u8> {
     v.to_ww_bytes_owned().unwrap()
 }
 
-fn range(value: i128) -> Option<Refused> {
-    Some(Refused::out_of(
+fn range(value: i128) -> Refused {
+    Refused::out_of(
         RefusedNum::Int(value),
         RefusedNum::Int(0),
         RefusedNum::Int(100),
-    ))
+    )
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn a_latched_field() {
         err,
         ReadError {
             error: shrink_wrap::Error::SubtypeOutOfRange,
-            refused: range(101)
+            refused: Some(range(101))
         }
     );
     assert_eq!(err.to_string(), "101 is out of 0..=100");
@@ -128,7 +128,7 @@ fn an_item_of_a_list() {
     let mut v = outer();
     v.list[1] = Percent(200);
     let err = OuterOwned::from_ww_bytes_explained(&bytes(&v)).unwrap_err();
-    assert_eq!(err.refused, range(200));
+    assert_eq!(err.refused, Some(range(200)));
 }
 
 #[test]
@@ -205,7 +205,7 @@ fn two_interleaved_readers() {
     // a reader without a slot keeps nothing anywhere
     assert!(Percent::des_shrink_wrap_owned(&mut c).is_err());
     assert_eq!(slot_b.take(), None);
-    assert_eq!(slot_a.take(), range(101));
+    assert_eq!(slot_a.take(), Some(range(101)));
 }
 
 /// The slot is a pointer more in a reader, so a `RefVec` (which holds a reader) grows by no more.

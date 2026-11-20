@@ -9,6 +9,7 @@ use std::process::{Command, Stdio};
 
 /// `tests/<c_file>` built with every warning an error (and the sanitizers, when they link), into the test's own
 /// target directory.
+#[expect(clippy::print_stderr, reason = "a note for whoever runs the tests")]
 pub fn build(c_file: &str) -> PathBuf {
     let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let exe = Path::new(env!("CARGO_TARGET_TMPDIR")).join(c_file.trim_end_matches(".c"));
@@ -86,7 +87,11 @@ pub fn run(exe: &Path, input: &str) -> String {
 
 /// A case line: the C name of the type and the bytes in hex (`-` for none).
 pub fn line(ty: &str, bytes: &[u8]) -> String {
-    let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+    use std::fmt::Write as _;
+    let mut hex = String::new();
+    for b in bytes {
+        write!(hex, "{b:02x}").expect("writing to a String");
+    }
     format!("{ty} {}\n", if hex.is_empty() { "-".into() } else { hex })
 }
 

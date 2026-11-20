@@ -74,7 +74,6 @@ macro_rules! for_each_un {
     };
     (@types $T:ident $body:block; $($ty:ty),*) => {
         $({
-            #[expect(dead_code)]
             type $T = $ty;
             $body
         })*

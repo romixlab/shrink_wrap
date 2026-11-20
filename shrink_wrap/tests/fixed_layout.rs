@@ -1,3 +1,4 @@
+#![expect(clippy::large_stack_frames, reason = "`Huge` is 70 kB on purpose")]
 #![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
 
 //! The fixed-layout fast path (SW-44, SW-45): `from_fixed` / `to_fixed` read and write the bytes `des_shrink_wrap` /
@@ -305,7 +306,7 @@ fn random_values() {
             e: r() as i8,
             f: r() as i16,
             g: r() as i32,
-            h: r() as i64,
+            h: r().cast_signed(),
             // finite floats, so that PartialEq holds
             x: (r() as u16) as f32 / 7.0,
             y: (r() as u32) as f64 / 3.0,
@@ -520,7 +521,7 @@ fn encodings(rng: &mut c_run::Rng, out: &mut Vec<(&'static str, Vec<u8>)>) {
                 e: r() as i8,
                 f: r() as i16,
                 g: r() as i32,
-                h: r() as i64,
+                h: r().cast_signed(),
                 x: f32::from_bits(r() as u32),
                 y: f64::from_bits(r()),
                 bytes: r().to_le_bytes()[..5].try_into().unwrap(),

@@ -1,4 +1,8 @@
 #![expect(
+    clippy::cast_possible_wrap,
+    reason = "fill values: any bit pattern will do"
+)]
+#![expect(
     clippy::let_underscore_must_use,
     reason = "probes for panics: what the bytes decode to does not matter"
 )]
@@ -93,7 +97,6 @@ macro_rules! for_each_plain {
     (@types $T:ident $body:block; $($ty:ty),*) => {
         $({
             const _: () = assert!(<$ty as DeserializeShrinkWrap>::PLAIN_BYTES.unwrap() == size_of::<$ty>());
-            #[expect(dead_code)]
             type $T = $ty;
             $body
         })*

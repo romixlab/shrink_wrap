@@ -1,3 +1,7 @@
+#![expect(
+    clippy::unsafe_derive_deserialize,
+    reason = "the generated `discriminant()` of an enum reads its tag through a pointer"
+)]
 //! DER-17: a `#[default = ..]` field also defaults in serde, so serde data written before the field was added
 //! (a saved RON or JSON file) still reads, as `shrink_wrap` data does.
 

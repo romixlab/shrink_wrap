@@ -37,7 +37,7 @@ where
 #[test]
 fn same_bytes_as_a_write_per_element() {
     let bytes: Vec<u8> = (0..300u32).map(|i| (i * 37) as u8).collect();
-    let signed: Vec<i8> = bytes.iter().map(|&b| b as i8).collect();
+    let signed: Vec<i8> = bytes.iter().map(|&b| b.cast_signed()).collect();
     for lead_bits in [0, 1, 3, 4, 7, 8, 9] {
         for len in [0, 1, 5, 255, 300] {
             let (mut a, mut b) = ([0u8; 512], [0u8; 512]);

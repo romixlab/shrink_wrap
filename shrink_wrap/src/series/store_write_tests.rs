@@ -56,10 +56,14 @@ fn value(k: u8, x: u64) -> Value {
 /// Item `i` of a series whose `Option` and enum keep one variant (`some`, `k`) unless `vary` says where to change.
 fn row(i: usize, some: bool, k: u8, vary: Option<usize>, x: u64, step: i64) -> Row {
     let changed = vary == Some(i);
-    let v = (x as i64).wrapping_add(step.wrapping_mul(i as i64)) as u64;
+    let nth = i64::try_from(i).expect("a row index fits i64");
+    let v = x
+        .cast_signed()
+        .wrapping_add(step.wrapping_mul(nth))
+        .cast_unsigned();
     Row {
         a: v as u32,
-        b: v.cast_signed() ^ (i as i64) << 40,
+        b: v.cast_signed() ^ nth << 40,
         f: (v % 1000) as f64 * 0.25,
         o: (some != changed).then(|| Inner {
             v: value(if changed { k + 1 } else { k }, v),

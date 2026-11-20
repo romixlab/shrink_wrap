@@ -178,9 +178,10 @@ fn design_sizes_100() {
 fn design_sizes_timed() {
     let n = 100;
     let mut r = Rng(77);
-    let t_regular: Vec<i64> = (0..n).map(|k| 1_000_000 + k as i64 * 1000).collect();
-    let t_jitter: Vec<i64> = (0..n)
-        .map(|k| 1_000_000 + k as i64 * 1000 + r.uni(3))
+    let ticks = i64::try_from(n).expect("a small count");
+    let t_regular: Vec<i64> = (0..ticks).map(|k| 1_000_000 + k * 1000).collect();
+    let t_jitter: Vec<i64> = (0..ticks)
+        .map(|k| 1_000_000 + k * 1000 + r.uni(3))
         .collect();
     let golden = [
         [

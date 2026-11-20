@@ -338,7 +338,7 @@ fn views_and_writers() {
 }
 
 fn waves_of(waves: &List<Wave>) -> usize {
-    waves.iter().filter(Result::is_ok).count()
+    waves.iter().flatten().count()
 }
 
 #[test]

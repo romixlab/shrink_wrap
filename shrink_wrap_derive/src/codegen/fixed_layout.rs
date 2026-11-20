@@ -1285,7 +1285,7 @@ pub(crate) fn struct_size_assumption(
     size_assumption: &mut Option<ObjectSize>,
     required: bool,
     last_is_flagged: bool,
-) -> Result<bool, String> {
+) -> bool {
     match size_assumption {
         None if required => {
             *size_assumption = Some(if last_is_flagged {
@@ -1293,14 +1293,14 @@ pub(crate) fn struct_size_assumption(
             } else {
                 ObjectSize::sized(0)
             });
-            Ok(true)
+            true
         }
         Some(
             ObjectSize::Sized { .. }
             | ObjectSize::UnsizedFinalStructure
             | ObjectSize::SelfDescribing,
-        ) => Ok(true),
-        _ => Ok(false),
+        ) => true,
+        _ => false,
     }
 }
 

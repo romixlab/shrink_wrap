@@ -123,7 +123,7 @@ fn generate_inner(
             &mut args.size_assumption,
             args.fixed_layout,
             last_field_is_flagged(item_struct),
-        )?,
+        ),
         _ => false,
     };
     let fixed_required = args.fixed_layout;

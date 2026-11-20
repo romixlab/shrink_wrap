@@ -371,8 +371,8 @@ mod tests {
         let (a, b) = ([1u16, 2], [1u16, 2, 3]);
         let short = RefVec::Slice { slice: &a[..] };
         let long = RefVec::Slice { slice: &b[..] };
-        assert!(short != long);
-        assert!(long != short);
+        assert_ne!(short, long);
+        assert_ne!(long, short);
         assert_ne!(RefVec::<u16>::Slice { slice: &[] }, short);
         assert_eq!(
             short,

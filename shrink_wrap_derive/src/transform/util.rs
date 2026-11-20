@@ -330,10 +330,11 @@ fn is_user_type(ty: &Type) -> bool {
                 .last()
                 .map(|s| s.to_string())
                 .unwrap_or_default();
-            !(path.segments.len() == 1 && matches!(name.as_str(), "usize" | "isize"))
-                && !(path.args.is_empty()
-                    && (name.strip_prefix('U').or_else(|| name.strip_prefix('I')))
-                        .is_some_and(|bits| bits.parse::<u8>().is_ok()))
+            let is_size = path.segments.len() == 1 && matches!(name.as_str(), "usize" | "isize");
+            let is_bit_int = path.args.is_empty()
+                && (name.strip_prefix('U').or_else(|| name.strip_prefix('I')))
+                    .is_some_and(|bits| bits.parse::<u8>().is_ok());
+            !is_size && !is_bit_int
         }
         _ => false,
     }

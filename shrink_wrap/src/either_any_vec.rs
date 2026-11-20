@@ -312,7 +312,7 @@ impl<'i> EitherAnyVecIter<'i> {
             let byte = self.rd.read_raw_slice(1)?;
             self.flags = Some(BufReader::new(byte));
         }
-        // NOTE(safety): flags is Some as if it is None, it is initialized above
+        // SAFETY: flags is Some as if it is None, it is initialized above
         // read_bool() must return Ok(_) since we checked the number of bits left as well
         let is_r = unsafe {
             self.flags

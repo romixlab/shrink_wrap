@@ -281,14 +281,14 @@ impl SeriesSeed<'_> {
             {
                 let items = fields.iter().map(|f| {
                     let m = &f.member;
-                    self.wrap(f, quote! { &item.#m })
+                    Self::wrap(f, quote! { &item.#m })
                 });
                 quote! { #(<#tys as #store_trait>::set::<__N>(&mut store.#members, i, #items);)* }
             },
             {
                 let gets = fields.iter().map(|f| {
                     let (m, ty) = (&f.member, &f.ty);
-                    self.unwrap(f, quote! { <#ty as #store_trait>::get::<__N>(&store.#m, i) })
+                    Self::unwrap(f, quote! { <#ty as #store_trait>::get::<__N>(&store.#m, i) })
                 });
                 quote! { Self { #(#members: #gets),* } }
             },
@@ -367,7 +367,7 @@ impl SeriesSeed<'_> {
             let binds: Vec<_> = fields
                 .iter()
                 .zip(&binds)
-                .map(|(f, b)| self.wrap(f, quote! { #b }))
+                .map(|(f, b)| Self::wrap(f, quote! { #b }))
                 .collect();
             set_arms.push(quote! {
                 #on
@@ -383,7 +383,7 @@ impl SeriesSeed<'_> {
                     let gets = fields.iter().map(|f| {
                         let ty = &f.ty;
                         let s = slot(v, f);
-                        self.unwrap(
+                        Self::unwrap(
                             f,
                             quote! { <#ty as #store_trait>::get::<__N>(&store.#s, i) },
                         )
@@ -599,7 +599,7 @@ impl SeriesSeed<'_> {
             {
                 let items = fields.iter().map(|f| {
                     let m = &f.member;
-                    self.wrap(f, quote! { &item.#m })
+                    Self::wrap(f, quote! { &item.#m })
                 });
                 quote! { #(<#tys as #cells_trait>::put::<__R>(&cells.#members, i, #items);)* }
             },
@@ -667,7 +667,7 @@ impl SeriesSeed<'_> {
             let binds: Vec<_> = fields
                 .iter()
                 .zip(&binds)
-                .map(|(f, b)| self.wrap(f, quote! { #b }))
+                .map(|(f, b)| Self::wrap(f, quote! { #b }))
                 .collect();
             put_arms.push(quote! {
                 #on
@@ -767,7 +767,7 @@ impl SeriesSeed<'_> {
     }
 
     /// A `&field` as what its column takes: `&Wired<W, T>` (or `&WiredOpaque<W, T>`) for a `#[wire(W)]` field.
-    fn wrap(&self, f: &SeriesField, field_ref: TokenStream) -> TokenStream {
+    fn wrap(f: &SeriesField, field_ref: TokenStream) -> TokenStream {
         if f.wired {
             let ty = &f.ty;
             quote! { <#ty>::from_ref(#field_ref) }
@@ -777,7 +777,7 @@ impl SeriesSeed<'_> {
     }
 
     /// A value of the field's column as the field: the `T` in a `Wired<W, T>`.
-    fn unwrap(&self, f: &SeriesField, value: TokenStream) -> TokenStream {
+    fn unwrap(f: &SeriesField, value: TokenStream) -> TokenStream {
         if f.wired {
             quote! { (#value).0 }
         } else {
@@ -805,7 +805,7 @@ impl SeriesSeed<'_> {
         let tags = fields.iter().map(|f| {
             if f.tagged {
                 let ty = &f.ty;
-                let v = self.wrap(f, value(f));
+                let v = Self::wrap(f, value(f));
                 // a field that can't have a tag is a constant `None`, compared with nothing
                 quote! {
                     if <#ty as #trait_<'i>>::TAGGED { <#ty as #trait_<'i>>::series_tag(#v) } else { None }
@@ -924,7 +924,7 @@ impl SeriesSeed<'_> {
         let record = maybe_quote(f.tagged, || {
             quote! { __sib.record(#j, <#ty as #trait_<'i>>::series_tag(&__v)); }
         });
-        let value = self.unwrap(f, quote! { __v });
+        let value = Self::unwrap(f, quote! { __v });
         quote! {
             {
                 let __v = <#ty as #trait_<'i>>::next(#r, __sib.restart(#restart))?;
@@ -1159,7 +1159,7 @@ impl SeriesSeed<'_> {
         let writes = fields.iter().enumerate().map(|(j, f)| {
             let m = &f.member;
             let earlier: Vec<&SeriesField> = fields[..j].iter().collect();
-            let field = self.wrap(f, quote! { &s.#m });
+            let field = Self::wrap(f, quote! { &s.#m });
             self.write_field(f, &earlier, quote! { |s: &'a Self| Some(#field) })
         });
         let skims = fields.iter().enumerate().map(|(j, f)| {
@@ -1182,10 +1182,11 @@ impl SeriesSeed<'_> {
             let idx = syn::Index::from(j);
             let local = &locals[j];
             let next = self.next_field(f, j, quote! { __r }, quote! { restart });
-            let missing = match f.default {
-                Some(default) => quote! { #default },
+            let missing = if let Some(default) = f.default {
+                quote! { #default }
+            } else {
                 // rejected by the skim
-                None => quote! { return Err(#error::MalformedSeries) },
+                quote! { return Err(#error::MalformedSeries) }
             };
             quote! {
                 let #local = match &mut __readers.#idx {
@@ -1398,7 +1399,7 @@ impl SeriesSeed<'_> {
                 }
             });
             let field_writes = fields.iter().enumerate().map(|(j, f)| {
-                let b = self.wrap(f, bind(f));
+                let b = Self::wrap(f, bind(f));
                 let earlier: Vec<&SeriesField> = fields[..j].iter().collect();
                 // the lints are allowed on the `let` that takes the closure (not on an expression, unstable)
                 let pick = quote! {

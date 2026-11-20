@@ -89,9 +89,12 @@ pub trait SeriesStore: Sized {
     }
 }
 
-/// [`SeriesStore::init_store`] of `slot`, checked: panics when the impl gave back another store than `slot` (which
-/// would leave `slot` uninitialized), so that code building a bigger store around it can rely on `slot` holding an
-/// empty store.
+/// [`SeriesStore::init_store`] of `slot`, checked, so that code building a bigger store around it can rely on
+/// `slot` holding an empty store.
+///
+/// # Panics
+///
+/// Panics when the impl gave back another store than `slot`, which would leave `slot` uninitialized.
 #[inline]
 pub fn init_store_in<T: SeriesStore, const N: usize>(
     slot: &mut MaybeUninit<T::Store<N>>,

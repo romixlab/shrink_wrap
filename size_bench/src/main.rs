@@ -39,6 +39,11 @@ const CASES: &[Case] = &[
     case("busgen_view", false),
 ];
 
+#[expect(
+    clippy::print_stdout,
+    clippy::print_stderr,
+    reason = "the binary prints, here only"
+)]
 fn main() -> Result<()> {
     let args = Args::parse();
     let bench = Bench {

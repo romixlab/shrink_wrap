@@ -134,6 +134,10 @@ pub struct Report {
 impl Bench<'_> {
     /// Builds the images `args` asks for, targets in parallel, cases one after another. `progress` gets a line
     /// before each build.
+    ///
+    /// # Panics
+    ///
+    /// Panics when a build thread panicked.
     pub fn run(&self, args: &Args, progress: &(dyn Fn(&str) + Sync)) -> Result<Report> {
         let targets = if args.target.is_empty() {
             Target::value_variants().to_vec()

@@ -656,7 +656,6 @@ macro_rules! bit_count_enum {
                         items.clone(),
                         |e: &'a Self| match e {
                             $ty::$v { bit_count, .. } => Some(bit_count),
-                            #[expect(unreachable_patterns)]
                             _ => None,
                         },
                         no_earlier::<Self>,
@@ -666,7 +665,6 @@ macro_rules! bit_count_enum {
                         items.clone(),
                         |e: &'a Self| match e {
                             $ty::$v { value, .. } => Some(value),
-                            #[expect(unreachable_patterns)]
                             _ => None,
                         },
                         no_earlier::<Self>,

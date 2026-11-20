@@ -79,7 +79,7 @@ impl Repr {
             Self::U(bits) if *bits < 8 => 8,
             Self::U(bits) if *bits < 16 => 16,
             Self::U(bits) if *bits < 32 => 32,
-            _ => 32,
+            Self::U(_) => 32,
         }
     }
 }

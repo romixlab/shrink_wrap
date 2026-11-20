@@ -82,7 +82,8 @@ impl ObjectSize {
             } => {
                 let mut s = format!("{size_bits} bit{}", if *size_bits == 1 { "" } else { "s" });
                 for term in symbolic {
-                    s += &format!(" + {term}");
+                    s.push_str(" + ");
+                    s.push_str(&term.to_string());
                 }
                 s
             }

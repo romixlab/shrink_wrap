@@ -169,7 +169,9 @@ fn collect_used_idents(ty: &Type, used: &mut HashSet<Ident>) {
                             }
                         }
                     }
-                    other => collect_token_idents(other.to_token_stream(), used),
+                    other @ PathArguments::Parenthesized(_) => {
+                        collect_token_idents(other.to_token_stream(), used);
+                    }
                 }
             }
         }

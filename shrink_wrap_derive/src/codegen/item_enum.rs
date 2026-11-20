@@ -411,10 +411,11 @@ impl CGItemEnum<'_> {
                 let mut user_types = String::new();
                 for ty in v.fields.types() {
                     if let Some(size) = ty.element_size() {
-                        known = known.add(size)
+                        known = known.add(size);
                     } else {
                         let ty = ty.def(is_ref, self.crate_path).to_string();
-                        user_types += &format!(" + {}", ty.replace(' ', ""));
+                        user_types.push_str(" + ");
+                        user_types.push_str(&ty.replace(' ', ""));
                     }
                 }
                 format!("{}: {}{user_types}", v.ident, known.describe())
@@ -789,7 +790,7 @@ impl ToTokens for CGEnumSer<'_> {
                         quote!(#enum_name::#variant_name ( #(#fields_numbers),* ) => { #ser }),
                     );
                 }
-                Fields::Unit => continue,
+                Fields::Unit => {}
             }
         }
 
@@ -849,25 +850,24 @@ impl ToTokens for CGEnumDes<'_> {
             latched_discriminant && !has_zero,
             || quote! { rd.latched()?; },
         );
-        let unknown = match self.item_enum.future_version {
-            // An Unsized enum is bounded by its size slot, the newer variant's fields are skipped with it. Otherwise
-            // nothing more is read: right for a new unit variant.
-            Some(fv) => {
-                let ident = &fv.ident;
-                let enum_name = &self.item_enum.ident;
-                let ty = &fv.ty;
-                quote! {
-                    #check_kept
-                    // DER-25: beyond a narrower field it fails as without the variant
-                    #enum_name::#ident(
-                        <#ty>::try_from(discriminant).map_err(|_| #error::EnumFutureVersionOrMalformedData)?,
-                    )
-                }
+        // An Unsized enum is bounded by its size slot, the newer variant's fields are skipped with it. Otherwise
+        // nothing more is read: right for a new unit variant.
+        let unknown = if let Some(fv) = self.item_enum.future_version {
+            let ident = &fv.ident;
+            let enum_name = &self.item_enum.ident;
+            let ty = &fv.ty;
+            quote! {
+                #check_kept
+                // DER-25: beyond a narrower field it fails as without the variant
+                #enum_name::#ident(
+                    <#ty>::try_from(discriminant).map_err(|_| #error::EnumFutureVersionOrMalformedData)?,
+                )
             }
-            None => quote! {
+        } else {
+            quote! {
                 #check_kept
                 return Err(#error::EnumFutureVersionOrMalformedData);
-            },
+            }
         };
         let all_arms = quote! {
             match discriminant {

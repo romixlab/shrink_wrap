@@ -252,6 +252,10 @@ impl Le for i8 {
 
 /// The `N` bytes of `b` from `off`, for [Le]. Generated code calls it with a const offset on an array of known
 /// length: the bounds check folds away and what is left is a pointer.
+///
+/// # Panics
+///
+/// Panics when `b` is shorter than `off + N` bytes.
 #[inline(always)]
 pub fn at<const N: usize>(b: &[u8], off: usize) -> &[u8; N] {
     match b.get(off..).and_then(|b| b.first_chunk::<N>()) {
@@ -261,6 +265,10 @@ pub fn at<const N: usize>(b: &[u8], off: usize) -> &[u8; N] {
 }
 
 /// [at], to write.
+///
+/// # Panics
+///
+/// Panics when `b` is shorter than `off + N` bytes.
 #[inline(always)]
 pub fn at_mut<const N: usize>(b: &mut [u8], off: usize) -> &mut [u8; N] {
     match b.get_mut(off..).and_then(|b| b.first_chunk_mut::<N>()) {

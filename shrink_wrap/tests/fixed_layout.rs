@@ -1,3 +1,7 @@
+#![expect(
+    clippy::cognitive_complexity,
+    reason = "one long generated check per case"
+)]
 #![expect(clippy::large_stack_frames, reason = "`Huge` is 70 kB on purpose")]
 #![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
 

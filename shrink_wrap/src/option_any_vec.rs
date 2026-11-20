@@ -161,6 +161,10 @@ impl<'i> OptionAnyVec<'i> {
         self.values.bit_pos()
     }
 
+    #[expect(
+        clippy::iter_not_returning_iterator,
+        reason = "a walker whose `next` can fail, or takes the type to read: not an `Iterator` by design"
+    )]
     pub fn iter(&self) -> OptionAnyVecIter<'i> {
         let mut present = self.present();
         let upcoming = present.next();

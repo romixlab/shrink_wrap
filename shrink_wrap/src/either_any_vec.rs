@@ -73,6 +73,10 @@ impl<'i> EitherAnyVec<'i> {
         self.data.is_empty()
     }
 
+    #[expect(
+        clippy::iter_not_returning_iterator,
+        reason = "a walker whose `next` can fail, or takes the type to read: not an `Iterator` by design"
+    )]
     pub fn iter(&self) -> EitherAnyVecIter<'i> {
         EitherAnyVecIter {
             flags: None,

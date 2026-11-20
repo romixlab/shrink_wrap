@@ -399,6 +399,15 @@ impl<'i, T: FixedLayout + Clone> List<'i, T> {
     }
 }
 
+impl<'i, T: FixedLayout + Clone> IntoIterator for &List<'i, T> {
+    type Item = Result<T, Error>;
+    type IntoIter = ListIter<'i, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 impl<'i> List<'i, u8> {
     /// The bytes themselves.
     pub fn as_bytes(&self) -> &'i [u8] {

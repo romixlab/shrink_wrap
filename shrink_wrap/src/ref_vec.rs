@@ -65,6 +65,10 @@ impl<'i, T> RefVec<'i, T>
 where
     T: DeserializeShrinkWrap<'i>,
 {
+    #[expect(
+        clippy::iter_not_returning_iterator,
+        reason = "`RefVecIter` is an `Iterator` for `T: Clone`, a bound `iter` itself does not need"
+    )]
     pub fn iter(&self) -> RefVecIter<'i, T> {
         match self {
             RefVec::Slice { slice, .. } => RefVecIter::Slice { slice, pos: 0 },

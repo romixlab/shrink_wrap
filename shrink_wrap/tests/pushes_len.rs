@@ -1,3 +1,7 @@
+#![expect(
+    clippy::cognitive_complexity,
+    reason = "one long generated check per case"
+)]
 #![expect(clippy::unwrap_used, reason = "test helpers unwrap")]
 
 //! `SerializeShrinkWrap::PUSHES_LEN` (SW-36): `to_ww_bytes` skips the length FIFO for types that never push a

@@ -1,4 +1,8 @@
 #![expect(
+    clippy::cognitive_complexity,
+    reason = "one long generated check per case"
+)]
+#![expect(
     clippy::cast_possible_wrap,
     reason = "fill values: any bit pattern will do"
 )]

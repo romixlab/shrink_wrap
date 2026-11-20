@@ -21,10 +21,7 @@ default:
 # The tests. `just test`: all of them (test-all). `just test --changed`: only the crates changed against main and
 # the crates that depend on them (through tpm when installed, otherwise the full suite)
 test *flags:
-    if [ "{{ flags }}" = "--changed" ]; then \
-        if command -v changedtests >/dev/null 2>&1; then f=$(changedtests) && if [ -n "$f" ]; then cargo nextest run --workspace -E "$f"; fi; \
-        else echo "changedtests not found; running the full test suite instead" >&2; {{ just_executable() }} test-all; fi; \
-    else {{ just_executable() }} test-all {{ flags }}; fi
+    {{ if flags == "--changed" { "changedtests run" } else { just_executable() + " test-all " + flags } }}
 
 # Every test: nextest (the C readers of fixed_layout and head_tail types run there, under the sanitizers), the
 # doctests, the builds of `just check`, and a short run of every fuzz target

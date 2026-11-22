@@ -84,6 +84,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### 🚀 Features
 
+- `elide_defaults` directive: an evolvable struct leaves trailing `#[default = ..]` fields at their default off the wire (SW-85).
 - `UN` and `IN` serialize outside a `Series` too, where they panicked: variant, bit count, value bits (SW-84).
 - `len32` feature: `BufWriter` writes lists, strings and nested values past 65 535 bytes, for 2 more buffer bytes per waiting length (SW-83).
 - `IVlq32` and `IVlq64`: signed byte-based variable-length numbers, zigzag over `UVlq32` and `UVlq64`, as field and `#[wire(..)]` types (SW-82).

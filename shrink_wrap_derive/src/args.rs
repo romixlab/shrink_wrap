@@ -45,6 +45,9 @@ pub(crate) struct Args {
     /// `transparent` (DER-18): a struct of one field that isn't zero bits (besides `PhantomData` and `()`), on the
     /// wire exactly that field: its `ELEMENT_SIZE`, bytes and series columns.
     pub(crate) transparent: bool,
+    /// `elide_defaults` (SW-85): an evolvable struct leaves the trailing run of `#[default = ..]` fields that hold
+    /// their default off the wire.
+    pub(crate) elide_defaults: bool,
     /// `validate = path` (SW-59): a function called on every struct value just read, see the docs of the derive.
     pub(crate) validate: Option<Path>,
     /// `series` (SW-60): also implement `SeriesColumns`, so that the type can be the item of a `Series` or a field
@@ -78,6 +81,7 @@ impl Parse for Args {
         let mut head_tail = false;
         let mut sparse = false;
         let mut transparent = false;
+        let mut elide_defaults = false;
         let mut validate = None;
         let mut future_version = FutureVersionArg::Default;
         let mut display = false;
@@ -148,6 +152,9 @@ impl Parse for Args {
                 }
                 "transparent" => {
                     transparent = true;
+                }
+                "elide_defaults" => {
+                    elide_defaults = true;
                 }
                 "validate" => {
                     input.parse::<Token![=]>()?;
@@ -229,6 +236,7 @@ impl Parse for Args {
             head_tail,
             sparse,
             transparent,
+            elide_defaults,
             validate,
             series,
             series_store,
@@ -241,7 +249,7 @@ impl Parse for Args {
 const SUPPORTED_DIRECTIVES: &str = "borrowed(..), owned, owned(..), \
 cfg_attr(..), cfg_attr_owned(..), cfg_attr_borrowed(..), \
 derive(..), derive_owned(..), derive_borrowed(..), \
-final_structure, self_describing, sized, fixed_layout, head_tail, sparse, transparent, validate = <path>, ww_repr=<u1,u2,..,nib,unib32,u8,..>, discriminants, display, series, series(no_store), series(cells), non_exhaustive, no_future_version, future_version = <Name>, crate_path(..)";
+final_structure, self_describing, sized, fixed_layout, head_tail, sparse, transparent, elide_defaults, validate = <path>, ww_repr=<u1,u2,..,nib,unib32,u8,..>, discriminants, display, series, series(no_store), series(cells), non_exhaustive, no_future_version, future_version = <Name>, crate_path(..)";
 
 /// Enum argument about the variant that holds discriminants from a newer version (SW-16, SW-47).
 #[derive(Clone, Debug, Default)]

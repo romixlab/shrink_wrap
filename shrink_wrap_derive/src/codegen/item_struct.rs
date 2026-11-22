@@ -25,6 +25,8 @@ pub(crate) struct CGItemStruct<'i> {
     pub(crate) transparent: Option<usize>,
     /// `validate = path`: called on the value just read
     pub(crate) validate: Option<&'i Path>,
+    /// `elide_defaults` (SW-85): the trailing run of `#[default = ..]` fields at their default is not written.
+    pub(crate) elide_defaults: bool,
     pub(crate) cfg: Option<&'i TokenStream>,
     pub(crate) cfg_attr: &'i [TokenStream],
     /// The item's own outer attributes, on the type with its name only.
@@ -140,6 +142,16 @@ impl<'i> CGItemStruct<'i> {
             item_struct: self,
             is_ref,
         };
+        // the writer of an `elide_defaults` struct reads and compares the fields it may leave off
+        let elide_generics;
+        let generics = if self.elide_defaults {
+            elide_generics = self.generics.with_predicates(&self.elide_bounds(is_ref)).expect(
+                "a bound made of a field's type and the shrink_wrap traits parses as a where predicate",
+            );
+            &elide_generics
+        } else {
+            self.generics
+        };
         let struct_des = CGStructDes {
             item_struct: self,
             is_ref,
@@ -154,7 +166,7 @@ impl<'i> CGItemStruct<'i> {
         };
         serdes_scaffold(
             struct_name,
-            self.generics,
+            generics,
             struct_ser,
             struct_des,
             self.cfg,
@@ -166,6 +178,27 @@ impl<'i> CGItemStruct<'i> {
             None,
             self.crate_path,
         )
+    }
+
+    /// `elide_defaults` (SW-85): `T: PartialEq + Deserialize..` for the type parameters, as the writer compares the
+    /// `#[default = ..]` fields with their defaults and reads them from zeros.
+    fn elide_bounds(&self, is_ref: bool) -> Vec<TokenStream> {
+        let cp = self.crate_path;
+        let (_, des_trait) = cp.serdes_traits(is_ref);
+        let des_bound = if is_ref {
+            quote! { #des_trait<'i> }
+        } else {
+            des_trait
+        };
+        // bounds on the parameters only: a bound on a concrete type would decide the type of every untyped read
+        self.generics
+            .type_params()
+            .filter(|p| !self.generics.phantom_only.contains(&p.ident))
+            .map(|p| {
+                let ident = &p.ident;
+                quote! { #ident: ::core::cmp::PartialEq + #des_bound }
+            })
+            .collect()
     }
 
     /// `sparse` (DER-13): an `OptionAnyVec` with the present fields in their slots, written in place.
@@ -414,7 +447,14 @@ impl ToTokens for CGStructSer<'_> {
                 }
             }
         }
-        for struct_field in self.item_struct.fields {
+        let elided = self
+            .item_struct
+            .elide_defaults
+            .then(|| ElidedDefaults::new(self.item_struct.fields));
+        if let Some(elided) = &elided {
+            elided.written_count(self.item_struct, self.is_ref, tokens);
+        }
+        for (idx, struct_field) in self.item_struct.fields.iter().enumerate() {
             let field_name = &struct_field.ident;
             let is_flag = matches!(struct_field.ty, Type::IsOk(_) | Type::IsSome(_));
             let field_path = match (tuple, is_flag) {
@@ -423,13 +463,22 @@ impl ToTokens for CGStructSer<'_> {
                 (false, true) => FieldPath::Value(quote! {self}),
                 (false, false) => FieldPath::Value(quote! {self.#field_name}),
             };
+            let mut write = TokenStream::new();
             struct_field.ty.buf_write(
                 field_path,
                 self.is_ref,
                 quote! { ? },
                 self.item_struct.crate_path,
-                tokens,
+                &mut write,
             );
+            match elided.as_ref().and_then(|e| e.group_of(idx)) {
+                Some(group) => tokens.append_all(quote! {
+                    if __defaults_written > #group {
+                        #write
+                    }
+                }),
+                None => tokens.append_all(write),
+            }
         }
         if self
             .item_struct
@@ -442,6 +491,131 @@ impl ToTokens for CGStructSer<'_> {
         tokens.append_all(quote! {
             wr.latched()
         });
+    }
+}
+
+/// `elide_defaults` (SW-85): the `#[default = ..]` fields of a struct, in order, each with its flag when it is an
+/// `Option` or `Result`. The writer leaves off the longest run at the end whose fields hold their default and read
+/// back as it from the end of the data.
+struct ElidedDefaults {
+    /// Index in the fields of each defaulted field and of its flag, the flag first.
+    groups: Vec<(Option<usize>, usize)>,
+}
+
+impl ElidedDefaults {
+    fn new(fields: &[Field]) -> Self {
+        let groups = fields
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| {
+                f.default.is_some() && !matches!(f.ty, Type::IsSome(_) | Type::IsOk(_))
+            })
+            .map(|(idx, f)| {
+                // the derive refuses a moved flag of a defaulted field: it is right before its value
+                let flag = idx.checked_sub(1).filter(|prev| {
+                    matches!(&fields[*prev].ty, Type::IsSome(v) | Type::IsOk(v) if *v == f.ident)
+                });
+                (flag, idx)
+            })
+            .collect();
+        ElidedDefaults { groups }
+    }
+
+    /// Position among the defaulted fields of the field or flag at `idx`.
+    fn group_of(&self, idx: usize) -> Option<usize> {
+        self.groups
+            .iter()
+            .position(|(flag, value)| *value == idx || *flag == Some(idx))
+    }
+
+    /// `let __defaults_written: usize = ..;`: how many defaulted fields are written, the ones after them are left off.
+    fn written_count(&self, item: &CGItemStruct<'_>, is_ref: bool, tokens: &mut TokenStream) {
+        let mut count = quote! { 0usize };
+        for (group, (flag, value)) in self.groups.iter().enumerate() {
+            let elidable = Self::elidable(item, *flag, *value, is_ref);
+            let written = group + 1;
+            count = quote! { if !(#elidable) { #written } else { #count } };
+        }
+        tokens.append_all(quote! { let __defaults_written: usize = #count; });
+    }
+
+    /// `true` when the field at `value` (with its flag at `flag`) holds its default, and the reader gets the default
+    /// back when the field is missing. A reader of data that ends early reads a missing field as its default when the
+    /// read runs out of data, but it may read it from the zero padding bits or nibble at the end instead; so the field
+    /// is read from a zero byte too: an error at the end of that data, or the default, is the default either way.
+    fn elidable(
+        item: &CGItemStruct<'_>,
+        flag: Option<usize>,
+        value: usize,
+        is_ref: bool,
+    ) -> TokenStream {
+        let cp = item.crate_path;
+        let field = &item.fields[value];
+        let ident = &field.ident;
+        let member = item.kind.member(ident);
+        let ty = field.ty.def(is_ref, cp);
+        let default = field
+            .default
+            .as_ref()
+            .expect("ElidedDefaults::new takes only the fields with a default");
+        let read = if is_ref {
+            quote! { read }
+        } else {
+            quote! { read_owned }
+        };
+        // what the struct's reader does, with every type named
+        let reads = match &field.ty {
+            Type::Option(_, some) => {
+                let some = some.def(is_ref, cp);
+                quote! {
+                    let __value: #ty = if rd.read_bool()? { Some(rd.#read::<#some>()?) } else { None };
+                }
+            }
+            Type::Result(_, ok_err) => {
+                let ok = ok_err.0.def(is_ref, cp);
+                let err = ok_err.1.def(is_ref, cp);
+                quote! {
+                    let __value: #ty = if rd.read_bool()? {
+                        Ok(rd.#read::<#ok>()?)
+                    } else {
+                        Err(rd.#read::<#err>()?)
+                    };
+                }
+            }
+            Type::Wire { .. } => {
+                let mut reads = TokenStream::new();
+                field
+                    .ty
+                    .buf_read(ident, !is_ref, quote! { ? }, false, cp, &mut reads);
+                quote! { #reads let __value: #ty = #ident; }
+            }
+            _ => quote! { let __value: #ty = rd.#read::<#ty>()?; },
+        };
+        debug_assert!(
+            flag.is_none() || matches!(field.ty, Type::Option(..) | Type::Result(..)),
+            "only an Option or Result has a flag"
+        );
+        let buf_reader = cp.item(quote! { BufReader });
+        let error = cp.error();
+        let lifetime = if is_ref {
+            quote! { 'i }
+        } else {
+            quote! { '_ }
+        };
+        quote! {{
+            let __default: #ty = #default;
+            ::core::cmp::PartialEq::eq(&self.#member, &__default) && {
+                let __zero: &#lifetime [u8] = &[0u8];
+                let __read_zero = |rd: &mut #buf_reader<#lifetime>| -> Result<bool, #error> {
+                    #reads
+                    Ok(::core::cmp::PartialEq::eq(&__value, &__default))
+                };
+                match __read_zero(&mut #buf_reader::new(__zero)) {
+                    Ok(eq) => eq,
+                    Err(e) => e.is_read_eob(),
+                }
+            }
+        }}
     }
 }
 

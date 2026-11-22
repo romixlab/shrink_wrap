@@ -109,6 +109,10 @@ sub-reader bounded to exactly the number of bytes a length slot says a value tak
 - code that doesn't know a newer field skips whatever trailing bytes it doesn't understand;
 - code reading data that lacks a field it knows runs out of bytes and falls back to that field's default.
 
+A writer can use the second rule on purpose: a struct with
+[`elide_defaults`](derive_reference.md#elide_defaults) leaves its trailing defaulted fields off while they hold
+their defaults, so its bytes are those of the older version without them.
+
 See the [evolution rules](../evolution/rules.md) for which changes stay wire-compatible.
 
 ### Nesting depth

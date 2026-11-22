@@ -269,6 +269,13 @@ for humans and AI agents alike.
   and the reader; before, the six impls panicked (`todo!()`). A value wider than its bit count is
   `Error::SubtypeOutOfRange`, a variant above 3 `Error::EnumFutureVersionOrMalformedData`. No size-bench case uses
   the types and no reader or writer function changed (`shrink_wrap/src/un.rs`, `docs/wire_format.md`).
+- ✅ **SW-85 Trailing defaults left off the wire (`elide_defaults`)** — an evolvable struct with the directive writes
+  the longest trailing run of `#[default = ..]` fields that equal their default (`PartialEq`, no allocation for
+  defaults like `None`) and read back as it from a zero byte; the bytes are those of the type without these fields,
+  so a new trailing field never changes the bytes of values that don't use it. Borrowed and owned; refused on enums,
+  size assumptions, `sparse`, `transparent`, `fixed_layout`, `head_tail`, `series` and moved flags. Generated code
+  changes only for types with the directive (`docs/derive_reference.md#elide_defaults`; test
+  `shrink_wrap/tests/elide_defaults.rs`). For `ww_self::Meta`. Conformance cases in WireWeaver's corpus: open.
 - ✅ **SW-19 Bounded lists and strings `MaxLen<T, N>`**: a `RefVec`, `Vec`, `&str` or `String` with at most `N`
   elements, same bytes as `T` (a bound can be added, raised or removed without a new wire form), checked on
   serialize and deserialize (`Error::MaxLenExceeded`, never truncated). Works in derived types and in every API

@@ -11,7 +11,8 @@ The order of directives doesn't matter to the parser, but the codebase consisten
 so do the examples):
 
 ```text
-borrowed, owned, cfg_attr*, derive*, non_exhaustive, final_structure|self_describing|sized|sparse|transparent, ww_repr,
+borrowed, owned, cfg_attr*, derive*, non_exhaustive, final_structure|self_describing|sized|sparse|transparent,
+elide_defaults, ww_repr,
 discriminants, display, validate, series|series(no_store)|series(cells), no_future_version|future_version
 ```
 
@@ -22,6 +23,7 @@ discriminants, display, validate, series|series(no_store)|series(cells), no_futu
 | `final_structure`, `self_describing`, `sized`       | [Size assumptions](size_assumptions.md)                                      |
 | `fixed_layout`, `head_tail`, `sparse`               | [Fixed and sparse layouts](layouts.md)                                       |
 | `transparent`                                       | [`transparent`](#transparent)                                                |
+| `elide_defaults`                                    | [`elide_defaults`](#elide_defaults)                                          |
 | `ww_repr`, `discriminants`, `no_future_version`, `future_version` | [Enums](#enums)                                               |
 | `display`, `validate`                               | [Messages and checks](#messages-and-checks)                                  |
 | `series`, `series(no_store)`, `series(cells)`       | [`series`](#series)                                                          |
@@ -500,6 +502,63 @@ twin.
   way. A reader built before the flag existed (`ww_self` without `transparent`) sees a struct of one field: it reads
   the same bytes inside a parent, but not a value of a wrapper around an evolvable (`Unsized`) type on its own, where
   it expects a length the derive doesn't write.
+
+## `elide_defaults`
+
+SW-85. An evolvable struct leaves its trailing `#[default = ..]` fields off the wire while they hold their default.
+The bytes are then those of the struct without these fields, which readers already read as the defaults (see
+[evolving types](derive.md#evolving-types)). Adding a new trailing `#[default = ..]` field then never changes the
+bytes of a value that doesn't use it:
+
+```rust
+#[derive_shrink_wrap(borrowed, derive(Debug, PartialEq))]
+struct MetaV1 {
+    id: u16,
+    kind: u8,
+}
+
+#[derive_shrink_wrap(borrowed, owned, elide_defaults, derive(Debug, PartialEq))]
+struct Meta<'i> {
+    id: u16,
+    kind: u8,
+    #[default = None]
+    effects: Option<&'i str>,
+    #[default = None]
+    track: Option<u8>,
+}
+```
+
+| Value of `Meta`                                     | Bytes                            | Without `elide_defaults`         |
+|-----------------------------------------------------|----------------------------------|----------------------------------|
+| `{ id: 7, kind: 1, effects: None, track: None }`    | `07 00 01`, the bytes of `MetaV1` | `07 00 01 00`                    |
+| `{ .., effects: Some("blink"), track: None }`       | `07 00 01 80 62 6c 69 6e 6b 05`  | the same                         |
+| `{ .., effects: None, track: Some(3) }`             | `07 00 01 40 03`                 | the same                         |
+
+The rule, on both the borrowed and the owned type:
+
+- The writer leaves off the longest run of fields at the end of the struct where every field has `#[default = ..]`,
+  holds its default and reads back as it from the end of the data. Every field before the run is written, a field
+  at its default too: `effects: None, track: Some(3)` writes `effects`.
+- A field holds its default when `PartialEq` says it equals the `#[default = ..]` expression, evaluated where the
+  value is written (no allocation for defaults like `None`, `0`, `""`, `String::new()` or `Vec::new()`). The types
+  of these fields need `PartialEq`; type parameters of the struct get `PartialEq` and the deserialize trait as
+  bounds of the writer too.
+- A field missing from the data reads as its default when its read runs out of data, but a read can also take the
+  zero bits at the end of the last byte or the free nibble next to the lengths (see the note in
+  [evolving types](derive.md#evolving-types)). So the writer also reads the field from a single zero byte: it is
+  left off only when that read gives the default or runs out of data. A `bool` with `#[default = true]` after a
+  `bool`, or `#[default = "none"]` on a string, is written even at its default; `None`, `false`, `0`, an empty
+  string or list and any default of a byte-aligned number are left off. The value read back is always the one
+  written.
+- An old reader skips nothing and a new reader of old data reads the defaults, as with any evolved struct; nested
+  in a parent, the struct's size slot counts only what it wrote. `MAX_SIZE` is the same as without the directive,
+  a bound for every value.
+- A compile error for an enum, for a struct with a size assumption (`sized`, `final_structure`,
+  `self_describing`: their readers expect every field), with `sparse`, `transparent`, `fixed_layout`, `head_tail` or
+  `series` (they lay out every field themselves), for a struct without `#[default = ..]` fields, and for a
+  defaulted `Option` or `Result` whose flag is moved with `#[flag]`.
+- Turning `elide_defaults` on changes the bytes of values that hold the defaults: they become the bytes an older
+  version of the type, without the defaulted fields, wrote. Readers of every version read them.
 
 ## Generics
 

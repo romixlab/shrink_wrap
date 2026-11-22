@@ -64,6 +64,19 @@ impl Generics {
         })
     }
 
+    /// These generics with `preds` added to the where clause.
+    pub(crate) fn with_predicates(&self, preds: &[TokenStream]) -> syn::Result<Self> {
+        let mut generics = self.clone();
+        let where_clause = generics.where_clause.get_or_insert_with(|| WhereClause {
+            where_token: Default::default(),
+            predicates: Default::default(),
+        });
+        for pred in preds {
+            where_clause.predicates.push(syn::parse2(pred.clone())?);
+        }
+        Ok(generics)
+    }
+
     /// `<'i, T: Bound = Default, const N: usize>` of the definition, `lifetime` on the borrowed side.
     pub(crate) fn def(&self, lifetime: bool) -> TokenStream {
         let params = &self.params;

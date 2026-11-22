@@ -103,6 +103,9 @@ fn generate_inner(
     if args.transparent {
         check_transparent_args(&item, &args)?;
     }
+    if args.elide_defaults {
+        check_elide_defaults_args(&item, &args)?;
+    }
     check_fieldless_struct_args(&item, &args)?;
     check_series_args(&item, &args)?;
     check_type_params_args(&item, &args)?;
@@ -335,6 +338,9 @@ fn generate_inner(
             } else {
                 None
             };
+            if args.elide_defaults {
+                check_elide_defaults_fields(&ww_item_struct, &type_name)?;
+            }
             let has_tail_size = ww_item_struct
                 .fields
                 .iter()
@@ -376,8 +382,12 @@ fn generate_inner(
             }
 
             if let Some(borrowed) = generate_borrowed {
-                let cg_item_struct =
-                    borrowed.cg_struct(&ww_item_struct, args.validate.as_ref(), transparent);
+                let cg_item_struct = borrowed.cg_struct(
+                    &ww_item_struct,
+                    args.validate.as_ref(),
+                    transparent,
+                    args.elide_defaults,
+                );
                 ts.append_all(cg_item_struct.def_rust(true));
                 ts.append_all(cg_item_struct.serdes_rust(true));
                 if let Some(message) = &display_message {
@@ -407,8 +417,12 @@ fn generate_inner(
 
             if let Some(owned) = generate_owned {
                 ww_item_struct.make_owned();
-                let cg_item_struct =
-                    owned.cg_struct(&ww_item_struct, args.validate.as_ref(), transparent);
+                let cg_item_struct = owned.cg_struct(
+                    &ww_item_struct,
+                    args.validate.as_ref(),
+                    transparent,
+                    args.elide_defaults,
+                );
                 // skip when type consists of only plain types, as it is the same one as borrowed then
                 if !(matches!(ty_kind, TyKind::Ambiguous) && do_generate_borrowed) {
                     ts.append_all(cg_item_struct.def_rust(false));
@@ -542,7 +556,7 @@ fn head_tail_inner(
                 return Err("structs must not have a ww_repr".into());
             }
             let ww_item_struct = ItemStruct::from_syn(item_struct, false)?;
-            let cg = seed.cg_struct(&ww_item_struct, args.validate.as_ref(), None);
+            let cg = seed.cg_struct(&ww_item_struct, args.validate.as_ref(), None, false);
             ts.append_all(cg.def_rust(true));
             ts.append_all(head_tail::ht_struct(
                 &names,
@@ -692,6 +706,69 @@ fn check_transparent_args(item: &Item, args: &Args) -> Result<(), String> {
         return Err(format!(
             "transparent: `{name}` is its field on the wire, it can't be sparse, fixed_layout or head_tail too"
         ));
+    }
+    Ok(())
+}
+
+/// `elide_defaults` (SW-85): only an evolvable struct reads missing trailing fields as their defaults, so only its
+/// bytes can end early; the other layouts have a fixed shape or columns of their own.
+fn check_elide_defaults_args(item: &Item, args: &Args) -> Result<(), String> {
+    let Item::Struct(item_struct) = item else {
+        return Err(
+            "elide_defaults: only a struct has trailing #[default = ..] fields to leave off".into(),
+        );
+    };
+    let name = &item_struct.ident;
+    if args.size_assumption.is_some() {
+        return Err(format!(
+            "elide_defaults: `{name}` has a size assumption, its readers expect every field: remove sized, \
+             final_structure or self_describing, or elide_defaults"
+        ));
+    }
+    for (on, directive) in [
+        (args.sparse, "sparse"),
+        (args.transparent, "transparent"),
+        (args.fixed_layout, "fixed_layout"),
+        (args.head_tail, "head_tail"),
+        (args.series, "series"),
+    ] {
+        if on {
+            return Err(format!(
+                "elide_defaults: `{name}` is {directive}, which lays out every field itself: only a plain \
+                 evolvable struct ends early"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// `elide_defaults` (SW-85): the struct has `#[default = ..]` fields, and the flag of each sits right before its
+/// `Option` / `Result`, so that a flag and its value are left off together.
+fn check_elide_defaults_fields(item: &ItemStruct, type_name: &str) -> Result<(), String> {
+    if !item
+        .fields
+        .iter()
+        .any(|f| f.default.is_some() && !matches!(f.ty, Type::IsSome(_) | Type::IsOk(_)))
+    {
+        return Err(format!(
+            "elide_defaults: `{type_name}` has no #[default = ..] field, only those can be left off"
+        ));
+    }
+    for (idx, f) in item.fields.iter().enumerate() {
+        let (Type::IsSome(value) | Type::IsOk(value)) = &f.ty else {
+            continue;
+        };
+        let next = item.fields.get(idx + 1);
+        let value_has_default = item
+            .fields
+            .iter()
+            .any(|v| &v.ident == value && v.default.is_some());
+        if value_has_default && next.is_none_or(|n| &n.ident != value) {
+            return Err(format!(
+                "elide_defaults: the flag of `{value}` is moved with #[flag], a #[default = ..] field that can be \
+                 left off keeps its flag in front of it"
+            ));
+        }
     }
     Ok(())
 }
@@ -938,6 +1015,7 @@ impl<'a> CGSeed<'a> {
         ww_item_struct: &'i ItemStruct,
         validate: Option<&'i Path>,
         transparent: Option<usize>,
+        elide_defaults: bool,
     ) -> CGItemStruct<'i> {
         CGItemStruct {
             transparent,
@@ -947,6 +1025,7 @@ impl<'a> CGSeed<'a> {
             kind: ww_item_struct.kind,
             sparse_slots: ww_item_struct.sparse_slots.as_deref(),
             validate,
+            elide_defaults,
             cfg: self.cfg.as_ref(),
             cfg_attr: &self.cfg_attr,
             derive: &self.derive,
@@ -1549,5 +1628,70 @@ mod transparent_tests {
         )
         .to_string();
         assert!(!s.contains("compile_error"), "{s}");
+    }
+}
+
+#[cfg(test)]
+mod elide_defaults_tests {
+    use super::shrink_wrap_attr;
+    use proc_macro2::TokenStream;
+    use quote::quote;
+
+    fn error_of(args: TokenStream, item: TokenStream) -> String {
+        let s = shrink_wrap_attr(args, item).to_string();
+        assert!(s.contains("compile_error"), "{s}");
+        s
+    }
+
+    #[test]
+    fn size_assumptions_and_other_layouts_are_errors() {
+        let item = quote! { struct S { a: u8, #[default = None] b: Option<u8> } };
+        for args in [
+            quote! { borrowed, elide_defaults, sized },
+            quote! { borrowed, elide_defaults, final_structure },
+            quote! { borrowed, elide_defaults, self_describing },
+        ] {
+            let s = error_of(args, item.clone());
+            assert!(s.contains("`S` has a size assumption"), "{s}");
+        }
+        for (args, layout) in [
+            (
+                quote! { borrowed, elide_defaults, fixed_layout },
+                "fixed_layout",
+            ),
+            (quote! { borrowed, elide_defaults, head_tail }, "head_tail"),
+            (quote! { borrowed, elide_defaults, series }, "series"),
+            (
+                quote! { borrowed, elide_defaults, transparent },
+                "transparent",
+            ),
+        ] {
+            let s = error_of(args, item.clone());
+            assert!(s.contains(&format!("`S` is {layout}")), "{s}");
+        }
+        let s = error_of(
+            quote! { borrowed, elide_defaults, sparse },
+            quote! { struct S { a: Option<u8> } },
+        );
+        assert!(s.contains("`S` is sparse"), "{s}");
+        let s = error_of(
+            quote! { borrowed, elide_defaults, ww_repr = u4 },
+            quote! { enum E { A(u8) } },
+        );
+        assert!(s.contains("only a struct has trailing"), "{s}");
+    }
+
+    #[test]
+    fn a_struct_without_defaults_or_with_a_moved_flag_is_an_error() {
+        let s = error_of(
+            quote! { borrowed, elide_defaults },
+            quote! { struct S { a: u8, b: Option<u8> } },
+        );
+        assert!(s.contains("`S` has no #[default = ..] field"), "{s}");
+        let s = error_of(
+            quote! { borrowed, elide_defaults },
+            quote! { struct S { #[flag] b: bool, a: u8, #[default = None] b: Option<u8> } },
+        );
+        assert!(s.contains("the flag of `b` is moved with #[flag]"), "{s}");
     }
 }

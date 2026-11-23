@@ -1,6 +1,7 @@
 use crate::ast::docs::Docs;
 use crate::ast::item_struct::Field;
 use crate::ast::object_size::ObjectSize;
+use crate::ast::pass_attrs::PassAttrs;
 use crate::ast::ty::Type;
 use crate::transform::syn_util::{
     collect_docs_attrs, take_default_attr, take_flag_attr, take_flag_like_attr, take_series_attr,
@@ -84,7 +85,7 @@ pub(crate) fn create_flags(fields: &mut Vec<Field>, explicit_flags: &[Ident]) {
             _since: None,
             default: None,
             series_opaque: false,
-            attrs: vec![],
+            attrs: PassAttrs::default(),
         };
         fields.insert(pos + shift, flag);
     }
@@ -372,6 +373,7 @@ pub(crate) fn transform_field(
     let docs = collect_docs_attrs(&mut field.attrs);
     // TOOL-22: a hint for `wire_weaver_core`'s walker, nothing to do with wire layout here.
     take_flag_like_attr(&mut field.attrs, "no_unit_hint");
+    let attrs = PassAttrs::new(field.attrs).map_err(|e| format!("field `{ident}`: {e}"))?;
 
     if flag.is_some() {
         if !matches!(ty, Type::Bool) {
@@ -401,7 +403,7 @@ pub(crate) fn transform_field(
                 _since: since,
                 default,
                 series_opaque,
-                attrs: field.attrs,
+                attrs,
             },
             true,
         ))
@@ -414,7 +416,7 @@ pub(crate) fn transform_field(
                 _since: since,
                 default,
                 series_opaque,
-                attrs: field.attrs,
+                attrs,
             },
             false,
         ))

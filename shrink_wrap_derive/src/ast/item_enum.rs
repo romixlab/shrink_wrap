@@ -1,6 +1,7 @@
 use crate::ast::docs::Docs;
 use crate::ast::generics::Generics;
 use crate::ast::item_struct::Field;
+use crate::ast::pass_attrs::PassAttrs;
 use crate::ast::ty::Type;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -27,7 +28,7 @@ pub(crate) struct FutureVersion {
     pub(crate) docs: Docs,
     pub(crate) ident: Ident,
     /// Attributes the derive doesn't read, as [Variant::attrs].
-    pub(crate) attrs: Vec<syn::Attribute>,
+    pub(crate) attrs: PassAttrs,
     /// The field's type: `u32`, or `u8` / `u16` written to keep the enum small (DER-25).
     pub(crate) ty: Ident,
 }
@@ -73,11 +74,10 @@ pub(crate) struct Variant {
     pub(crate) cfg: Vec<TokenStream>,
     /// `#[display("..")]` override (DER-12), takes precedence over the first doc line.
     pub(crate) display: Option<String>,
-    /// The variant's attributes the derive doesn't read (`#[serde(..)]`, `#[cfg_attr(..)]`, ...), kept as written on
-    /// the generated type that has the item's own name.
-    pub(crate) attrs: Vec<syn::Attribute>,
+    /// The variant's attributes the derive doesn't read (`#[serde(..)]`, `#[cfg_attr(..)]`, `#[attr_owned(..)]`, ...).
+    pub(crate) attrs: PassAttrs,
     /// The same for each field of a tuple variant ([Fields::Unnamed]), empty for other variants.
-    pub(crate) unnamed_attrs: Vec<Vec<syn::Attribute>>,
+    pub(crate) unnamed_attrs: Vec<PassAttrs>,
 }
 
 impl Variant {

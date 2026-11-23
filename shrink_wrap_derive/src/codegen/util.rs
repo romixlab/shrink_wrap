@@ -281,30 +281,7 @@ impl SerdeDefaults {
         ident: &Ident,
         generics: &Generics,
     ) -> Option<Self> {
-        let conds = if derive
-            .iter()
-            .any(|p| p.segments.last().is_some_and(|s| s.ident == "Deserialize"))
-        {
-            None
-        } else {
-            let conds: Vec<TokenStream> = cfg_attr
-                .iter()
-                .filter_map(|ts| {
-                    let mut tokens = ts.clone().into_iter();
-                    let cond: TokenStream = tokens
-                        .by_ref()
-                        .take_while(
-                            |t| !matches!(t, proc_macro2::TokenTree::Punct(p) if p.as_char() == ','),
-                        )
-                        .collect();
-                    mentions_deserialize(tokens.collect()).then_some(cond)
-                })
-                .collect();
-            if conds.is_empty() {
-                return None;
-            }
-            Some(conds)
-        };
+        let conds = derives(cfg_attr, derive, &["Deserialize"])?;
         let ty_generics = generics.ty(false);
         let owner = if ty_generics.is_empty() {
             ident.to_string()
@@ -369,18 +346,44 @@ impl SerdeDefaults {
     }
 }
 
-fn mentions_deserialize(ts: TokenStream) -> bool {
-    ts.into_iter().any(|t| match t {
-        proc_macro2::TokenTree::Ident(i) => i == "Deserialize",
-        proc_macro2::TokenTree::Group(g) => mentions_deserialize(g.stream()),
-        _ => false,
-    })
+/// Whether a type with these `derive(..)` paths and `cfg_attr(..)` bodies derives one of `traits`: `None` when it
+/// doesn't, `Some(None)` when a `derive(..)` path ends in one, else `Some(conditions)` of each `cfg_attr` mentioning
+/// one.
+pub(crate) fn derives(
+    cfg_attr: &[TokenStream],
+    derive: &[syn::Path],
+    traits: &[&str],
+) -> Option<Option<Vec<TokenStream>>> {
+    if derive.iter().any(|p| {
+        p.segments
+            .last()
+            .is_some_and(|s| traits.iter().any(|t| s.ident == t))
+    }) {
+        return Some(None);
+    }
+    let conds: Vec<TokenStream> = cfg_attr
+        .iter()
+        .filter_map(|ts| {
+            let mut tokens = ts.clone().into_iter();
+            let cond: TokenStream = tokens
+                .by_ref()
+                .take_while(
+                    |t| !matches!(t, proc_macro2::TokenTree::Punct(p) if p.as_char() == ','),
+                )
+                .collect();
+            mentions(tokens.collect(), traits).then_some(cond)
+        })
+        .collect();
+    (!conds.is_empty()).then_some(Some(conds))
 }
 
-/// `attrs` when `keep`, none otherwise: the attributes the derive doesn't read go on the type with the item's own
-/// name only (an owned mirror may not derive what they belong to).
-pub(crate) fn maybe_attrs(keep: bool, attrs: &[syn::Attribute]) -> &[syn::Attribute] {
-    if keep { attrs } else { &[] }
+/// Whether `ts` holds one of the identifiers `names`, at any depth.
+pub(crate) fn mentions(ts: TokenStream, names: &[&str]) -> bool {
+    ts.into_iter().any(|t| match t {
+        proc_macro2::TokenTree::Ident(i) => names.iter().any(|n| i == n),
+        proc_macro2::TokenTree::Group(g) => mentions(g.stream(), names),
+        _ => false,
+    })
 }
 
 #[cfg(test)]

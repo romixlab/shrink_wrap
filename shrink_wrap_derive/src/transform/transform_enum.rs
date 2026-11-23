@@ -4,6 +4,7 @@ use crate::ast::generics::Generics;
 use crate::ast::item_enum::ItemEnum;
 use crate::ast::item_enum::{Fields, FutureVersion, Variant};
 use crate::ast::object_size::ObjectSize;
+use crate::ast::pass_attrs::PassAttrs;
 use crate::ast::repr::Repr;
 use crate::transform::syn_util::{
     collect_docs_attrs, take_cfg_attrs, take_display_attr, take_flag_like_attr_or_cfg,
@@ -50,6 +51,8 @@ impl ItemEnum {
             let cfg = take_cfg_attrs(&mut attrs)?;
             let display = take_display_attr(&mut attrs)?;
             let docs = collect_docs_attrs(&mut attrs);
+            let attrs =
+                PassAttrs::new(attrs).map_err(|e| format!("variant `{}`: {e}", variant.ident))?;
             variants.push(Variant {
                 docs,
                 ident: variant.ident.clone(),
@@ -155,7 +158,7 @@ impl ItemEnum {
         self.future_version = Some(FutureVersion {
             docs,
             ident,
-            attrs: vec![],
+            attrs: PassAttrs::default(),
             ty: Ident::new("u32", Span::call_site()),
         });
         Ok(())
@@ -216,7 +219,7 @@ fn future_version_variant(
     Ok(FutureVersion {
         docs,
         ident: ident.clone(),
-        attrs,
+        attrs: PassAttrs::new(attrs).map_err(|e| format!("variant `{ident}`: {e}"))?,
         ty,
     })
 }
@@ -244,7 +247,7 @@ fn get_discriminant(variant: &syn::Variant) -> Result<Option<u32>, String> {
 fn convert_fields(
     fields: &syn::Fields,
     path: &FieldPath,
-) -> Result<(Fields, Vec<Vec<syn::Attribute>>), String> {
+) -> Result<(Fields, Vec<PassAttrs>), String> {
     match fields {
         syn::Fields::Named(fields_named) => {
             let mut named = vec![];

@@ -5,12 +5,20 @@ use syn::{File, Item, Path, parse2};
 use crate::{
     args::Args,
     ast::{
-        generics::Generics, item_enum::ItemEnum, item_struct::ItemStruct, object_size::ObjectSize,
-        repr::Repr, ty::Type,
+        generics::Generics,
+        item_enum::ItemEnum,
+        item_struct::ItemStruct,
+        object_size::ObjectSize,
+        pass_attrs::{AttrSide, SerdeSide},
+        repr::Repr,
+        ty::Type,
     },
     codegen::{
-        fixed_layout, head_tail, item_enum::CGItemEnum, item_struct::CGItemStruct,
-        series::SeriesSeed, util::CratePath,
+        fixed_layout, head_tail,
+        item_enum::CGItemEnum,
+        item_struct::CGItemStruct,
+        series::SeriesSeed,
+        util::{CratePath, derives, mentions},
     },
     transform::cfg_attr::{cfg_guards, expand_read_cfg_attrs},
     transform::docs_util::add_notes,
@@ -173,6 +181,14 @@ fn generate_inner(
     } else {
         None
     };
+
+    let (mut generate_borrowed, mut generate_owned) = (generate_borrowed, generate_owned);
+    set_attr_sides(
+        generate_borrowed.as_mut(),
+        generate_owned.as_mut(),
+        ambiguous,
+        outer_attrs_mention(&item, SERDE_TRAITS),
+    );
 
     let mut ts = TokenStream::new();
     match &item {
@@ -525,6 +541,13 @@ fn head_tail_inner(
         &crate_path,
     )
     .base_if_named(&name);
+    let mut seed = seed;
+    set_attr_sides(
+        Some(&mut seed),
+        None,
+        false,
+        outer_attrs_mention(&item, SERDE_TRAITS),
+    );
     let names = head_tail::Names {
         ident: seed.ident.clone(),
         has_lifetime,
@@ -914,6 +937,8 @@ struct CGSeed<'a> {
     crate_path: &'a CratePath,
     /// The type with the item's own name: it gets the item's outer attributes.
     base: bool,
+    /// Where the attributes the derive doesn't read on fields and variants go (SW-86), set by [set_attr_sides].
+    side: AttrSide,
 }
 
 impl<'a> CGSeed<'a> {
@@ -945,6 +970,7 @@ impl<'a> CGSeed<'a> {
             ambiguous,
             crate_path,
             base: false,
+            side: AttrSide::none(),
         }
     }
 
@@ -1000,7 +1026,11 @@ impl<'a> CGSeed<'a> {
             ambiguous: self.ambiguous,
             crate_path: self.crate_path,
             generics: &ww_item_enum.generics,
-            base: self.base && ident == &self.ident,
+            side: if ident == &self.ident {
+                self.side.clone()
+            } else {
+                AttrSide::none()
+            },
             niche: ww_item_enum.niche,
             attrs: if self.base && ident == &self.ident {
                 &ww_item_enum.attrs
@@ -1033,7 +1063,7 @@ impl<'a> CGSeed<'a> {
             ambiguous: self.ambiguous,
             crate_path: self.crate_path,
             generics: &ww_item_struct.generics,
-            base: self.base,
+            side: self.side.clone(),
             repr: &ww_item_struct.repr,
             attrs: if self.base {
                 &ww_item_struct.attrs
@@ -1041,6 +1071,63 @@ impl<'a> CGSeed<'a> {
                 &[]
             },
         }
+    }
+}
+
+/// The traits whose derive reads `#[serde(..)]` on fields and variants.
+const SERDE_TRAITS: &[&str] = &["Serialize", "Deserialize"];
+
+/// Whether the item's own outer attributes (`#[derive(..)]`, `#[cfg_attr(..)]`) name one of `traits`.
+fn outer_attrs_mention(item: &Item, traits: &[&str]) -> bool {
+    let attrs = match item {
+        Item::Struct(s) => &s.attrs,
+        Item::Enum(e) => &e.attrs,
+        _ => return false,
+    };
+    attrs
+        .iter()
+        .any(|a| mentions(a.meta.to_token_stream(), traits))
+}
+
+/// Sets which generated type each seed is, for the attributes the derive doesn't read on fields and variants
+/// (SW-86). `#[serde(..)]` ones go on the types that derive serde, under the same conditions; on the type with the
+/// item's name when none visibly does. `outer_serde`: the item's own outer attributes derive serde, which go on the
+/// type with its name.
+fn set_attr_sides(
+    borrowed: Option<&mut CGSeed>,
+    owned: Option<&mut CGSeed>,
+    ambiguous: bool,
+    outer_serde: bool,
+) {
+    // an ambiguous type with both sides is one type, defined by the borrowed seed
+    let one_type = ambiguous && borrowed.is_some() && owned.is_some();
+    let serde_of = |seed: &CGSeed| {
+        derives(&seed.cfg_attr, &seed.derive, SERDE_TRAITS)
+            .or_else(|| (seed.base && outer_serde).then_some(None))
+    };
+    let serde_b = borrowed.as_deref().and_then(serde_of);
+    let serde_o = owned.as_deref().and_then(serde_of);
+    let any_serde = serde_b.is_some() || serde_o.is_some();
+    let serde_side = |serde: Option<Option<Vec<TokenStream>>>| match serde {
+        Some(conds) => SerdeSide::On(conds),
+        None if any_serde => SerdeSide::Off,
+        None => SerdeSide::Kept,
+    };
+    if let Some(seed) = borrowed {
+        seed.side = AttrSide {
+            base: seed.base,
+            owned: one_type,
+            borrowed: true,
+            serde: serde_side(serde_b),
+        };
+    }
+    if let Some(seed) = owned {
+        seed.side = AttrSide {
+            base: seed.base,
+            owned: true,
+            borrowed: one_type,
+            serde: serde_side(serde_o),
+        };
     }
 }
 

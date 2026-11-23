@@ -57,6 +57,10 @@ mod ww_repr;
 /// with the item's own name, so the derive can be behind a `cfg_attr` of an optional feature with the plain derives
 /// written once.
 ///
+/// Attributes the derive doesn't read on fields and variants go on the type with the item's own name;
+/// `#[attr_owned(attr, ..)]` / `#[attr_borrowed(attr, ..)]` put theirs on the owned or the borrowed type only, and a
+/// `#[serde(..)]` goes on the types that derive serde.
+///
 /// See also [ShrinkWrap derive macro](ShrinkWrap).
 #[proc_macro_attribute]
 pub fn derive_shrink_wrap(attr: TokenStream, item: TokenStream) -> TokenStream {

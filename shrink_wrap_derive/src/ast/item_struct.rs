@@ -1,5 +1,6 @@
 use crate::ast::docs::Docs;
 use crate::ast::generics::Generics;
+use crate::ast::pass_attrs::PassAttrs;
 use crate::ast::ty::Type;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -89,9 +90,8 @@ pub(crate) struct Field {
     pub(crate) default: Option<Expr>,
     /// `#[series(opaque)]` (SW-60): in a `Series`, an opaque run of the value's own bytes instead of its columns.
     pub(crate) series_opaque: bool,
-    /// The field's attributes the derive doesn't read (`#[serde(..)]`, `#[cfg_attr(..)]`, ...), kept as written on
-    /// the generated type that has the item's own name.
-    pub(crate) attrs: Vec<syn::Attribute>,
+    /// The field's attributes the derive doesn't read (`#[serde(..)]`, `#[cfg_attr(..)]`, `#[attr_owned(..)]`, ...).
+    pub(crate) attrs: PassAttrs,
 }
 
 impl ItemStruct {

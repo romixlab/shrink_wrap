@@ -11,6 +11,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### ⚠️ Breaking
 
+- A field's `#[serde(..)]` goes on every generated type deriving serde, not the item-named one only; owned serde output follows it (SW-86).
 - Repository: shrink_wrap and shrink_wrap_derive live in romixlab/shrink_wrap again; take them by git from there, not from wire_weaver.
 - `size_bench` drops its `reply` and `finish_for` cases (a WireWeaver reply); wire_weaver's `just size-bench-reply` measures them (TEST-17).
 - Wire (EVO-81, follows SW-81): the borrowed derive writes an empty `RefVec<u8>` field that starts mid-byte one byte shorter, as the owned derive always did. A value with such a field now has other bytes than before; old bytes read the same where the list ends a size-delimited body, and were misread by every reader where a mid-byte field follows. Frozen goldens holding such a value are re-sealed with an `EVO-81` mark.
@@ -84,6 +85,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### 🚀 Features
 
+- `#[attr_owned(..)]` / `#[attr_borrowed(..)]` on fields and variants: attributes for the owned or borrowed type only (SW-86).
 - `elide_defaults` directive: an evolvable struct leaves trailing `#[default = ..]` fields at their default off the wire (SW-85).
 - `UN` and `IN` serialize outside a `Series` too, where they panicked: variant, bit count, value bits (SW-84).
 - `len32` feature: `BufWriter` writes lists, strings and nested values past 65 535 bytes, for 2 more buffer bytes per waiting length (SW-83).

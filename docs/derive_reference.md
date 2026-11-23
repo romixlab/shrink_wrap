@@ -31,6 +31,7 @@ discriminants, display, validate, series|series(no_store)|series(cells), no_futu
 | `crate_path`                                        | [`crate_path`](#crate_pathpath)                                              |
 | `#[wire(W)]` on a field                             | [`#[wire(W)]` field attribute](#wirew-field-attribute)                      |
 | `#[default]`, `#[flag]`, `#[slot]`, `#[future_version]`, `#[cfg]` | [Field and variant attributes](#field-and-variant-attributes) |
+| `#[attr_owned(..)]`, `#[attr_borrowed(..)]` on a field or variant | [Attributes for one generated type](#attributes-for-one-generated-type) |
 
 ## Generated types
 
@@ -734,6 +735,7 @@ It is a promise the impl's tests check: a value past it doesn't fit a buffer siz
 | `#[display("..")]`      | variants, with `display` | the message instead of the doc line ([above](#display))                                                          |
 | `#[series(opaque)]`     | named fields, with `series` | the field is an opaque run of its own bytes in a `Series` ([above](#series))                                  |
 | `#[wire(W)]`            | struct and variant fields | the field keeps its Rust type, the bytes are `W`'s ([above](#wirew-field-attribute))                                |
+| `#[attr_owned(..)]`, `#[attr_borrowed(..)]` | fields and variants | the attributes inside go on the owned or the borrowed type only ([below](#attributes-for-one-generated-type)) |
 
 ### Behind `cfg_attr`, and attributes the derive doesn't read
 
@@ -751,8 +753,42 @@ evaluate a `cfg`. So:
   `#[cfg_attr(feature = "defmt", defmt(Debug2Format))]`, a `cfg_attr` of those) stays on the generated field or variant
   as written, and rustc expands it there. It goes on the type with the item's own name only (the borrowed `Type<'i>`,
   or `TypeOwned` when that is what is written), like the item's own `derive`s: the owned mirror may not derive what
-  the attribute belongs to.
+  the attribute belongs to. `serde` attributes and `#[attr_owned(..)]` / `#[attr_borrowed(..)]` go elsewhere, see
+  [below](#attributes-for-one-generated-type).
 - A name the derive doesn't know is a compile error from rustc ("cannot find attribute"), never silently nothing.
+
+### Attributes for one generated type
+
+`#[attr_owned(attr, ..)]` puts the attributes inside on the owned type only, `#[attr_borrowed(attr, ..)]` on the
+borrowed type only: the field form of `cfg_attr_owned(..)` / `cfg_attr_borrowed(..)`. They work on struct fields,
+on variants and on their fields, named or not. An [ambiguous](derive.md#borrowed-owned-or-both) type with both sides
+is one type and takes both. A condition goes inside, `#[attr_owned(cfg_attr(feature = "x", serde(..)))]`.
+
+A `#[serde(..)]` (or a `#[cfg_attr(pred, serde(..))]` holding only `serde` attributes) needs no marking: it goes on
+every generated type that derives `Serialize` or `Deserialize`, through `derive(..)`, `derive_owned(..)` /
+`derive_borrowed(..)`, the item's own outer `#[derive(..)]` (on the type with its name) or a `cfg_attr` naming
+them, under that `cfg_attr`'s condition. When no generated type visibly derives them, it stays on the type with
+the item's name. So a type whose owned side alone has serde takes a unit's `with` attribute as written:
+
+```rust
+#[derive_shrink_wrap(
+    borrowed,
+    owned,
+    derive(Debug, PartialEq),
+    derive_owned(Clone, serde::Serialize, serde::Deserialize)
+)]
+struct Settings<'i> {
+    laugh_tokens: RefVec<'i, &'i str>,
+    #[serde(with = "exact_units::serde::with_unit")] // on SettingsOwned only
+    delay: Quantity,
+    #[attr_owned(serde(rename = "lvl"))]
+    #[attr_borrowed(allow(deprecated))]
+    level: u8,
+}
+```
+
+Both types read and write the same shrink_wrap bytes; the attributes change nothing on the wire
+(`shrink_wrap/tests/one_side_attrs.rs`).
 
 Special field types the macro handles itself: [`TailSize<N>`](special_types.md#tailsizen-the-size-of-the-rest-of-a-value)
 (filled in with the size of the rest of the value; only in types without a size assumption, the same on the borrowed

@@ -276,6 +276,13 @@ for humans and AI agents alike.
   size assumptions, `sparse`, `transparent`, `fixed_layout`, `head_tail`, `series` and moved flags. Generated code
   changes only for types with the directive (`docs/derive_reference.md#elide_defaults`; test
   `shrink_wrap/tests/elide_defaults.rs`). For `ww_self::Meta`. Conformance cases in WireWeaver's corpus: open.
+- ✅ **SW-86 Field attributes for one generated type (`attr_owned`, `attr_borrowed`)** — `#[attr_owned(..)]` and
+  `#[attr_borrowed(..)]` on fields, variants and their fields put the attributes inside on the owned or the borrowed
+  type only; an ambiguous type with both sides takes both. An unmarked `#[serde(..)]` goes on every generated type
+  that derives `Serialize` or `Deserialize`, under the condition of the `cfg_attr` that does, and stays on the type
+  with the item's name when none visibly does: a type whose owned side alone has serde takes
+  `#[serde(with = "exact_units::serde::with_unit")]` as written (`docs/derive_reference.md`; test
+  `shrink_wrap/tests/one_side_attrs.rs`).
 - ✅ **SW-19 Bounded lists and strings `MaxLen<T, N>`**: a `RefVec`, `Vec`, `&str` or `String` with at most `N`
   elements, same bytes as `T` (a bound can be added, raised or removed without a new wire form), checked on
   serialize and deserialize (`Error::MaxLenExceeded`, never truncated). Works in derived types and in every API

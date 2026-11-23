@@ -2,10 +2,11 @@ use crate::ast::docs::Docs;
 use crate::ast::generics::Generics;
 use crate::ast::item_struct::{Field, StructKind};
 use crate::ast::object_size::ObjectSize;
+use crate::ast::pass_attrs::AttrSide;
 use crate::ast::ty::Type;
 use crate::codegen::ty::FieldPath;
 use crate::codegen::util::{
-    CratePath, SerdeDefaults, assert_sized_before_tail_size, maybe_attrs, maybe_quote,
+    CratePath, SerdeDefaults, assert_sized_before_tail_size, maybe_quote,
     rewrite_positional_placeholders, serdes_scaffold,
 };
 use proc_macro2::{Ident, Span, TokenStream};
@@ -40,8 +41,8 @@ pub(crate) struct CGItemStruct<'i> {
     pub(crate) crate_path: &'i CratePath,
     /// Type and const parameters and where clause of the struct (DER-14), as written.
     pub(crate) generics: &'i Generics,
-    /// The type with the item's own name: its fields keep the attributes the derive doesn't read.
-    pub(crate) base: bool,
+    /// Which generated type this is, for the fields' attributes the derive doesn't read (SW-86).
+    pub(crate) side: AttrSide,
     /// `#[repr(..)]` of the struct, as written.
     pub(crate) repr: &'i [syn::Attribute],
 }
@@ -67,7 +68,7 @@ impl<'i> CGItemStruct<'i> {
             tuple: self.kind == StructKind::Tuple,
             cp: self.crate_path,
             serde_defaults: serde_defaults.as_ref(),
-            attrs: self.base,
+            side: &self.side,
         };
         let where_clause = self.generics.where_clause(&[]);
         let body = match self.kind {
@@ -390,8 +391,8 @@ struct CGStructFieldsDef<'a> {
     cp: &'a CratePath,
     /// DER-17: when the type derives `serde::Deserialize`
     serde_defaults: Option<&'a SerdeDefaults>,
-    /// Keep the fields' attributes the derive doesn't read.
-    attrs: bool,
+    /// Which generated type the fields' attributes the derive doesn't read are for.
+    side: &'a AttrSide,
 }
 
 impl ToTokens for CGStructFieldsDef<'_> {
@@ -407,8 +408,8 @@ impl ToTokens for CGStructFieldsDef<'_> {
                 (Some(serde), Some(_)) => serde.field_attr(&SerdeDefaults::fn_name(None, ident)),
                 _ => quote! {},
             };
-            let attrs = maybe_attrs(self.attrs, &struct_field.attrs);
-            let docs = quote! { #docs #serde_default #(#attrs)* };
+            let attrs = struct_field.attrs.tokens(self.side);
+            let docs = quote! { #docs #serde_default #attrs };
             if self.tuple {
                 tokens.append_all(quote! {
                     #docs

@@ -3,6 +3,7 @@ pub(crate) mod generics;
 pub(crate) mod item_enum;
 pub(crate) mod item_struct;
 pub(crate) mod object_size;
+pub(crate) mod pass_attrs;
 pub(crate) mod path;
 pub(crate) mod repr;
 pub(crate) mod ty;

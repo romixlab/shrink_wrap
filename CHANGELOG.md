@@ -85,6 +85,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### 🚀 Features
 
+- `TailBytes` is `Clone` and `Copy`, so borrowed types holding it can derive `Clone` (a request rewritten by a mount forwarder).
 - `#[attr_owned(..)]` / `#[attr_borrowed(..)]` on fields and variants: attributes for the owned or borrowed type only (SW-86).
 - `elide_defaults` directive: an evolvable struct leaves trailing `#[default = ..]` fields at their default off the wire (SW-85).
 - `UN` and `IN` serialize outside a `Series` too, where they panicked: variant, bit count, value bits (SW-84).

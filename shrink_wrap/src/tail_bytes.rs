@@ -15,6 +15,7 @@ use core::ops::Deref;
 /// WARNING: If type is not Unsized, last means last in the first Unsized type on the way up.
 /// `#[derive_shrink_wrap(..)]` checks that it is the last field of a struct or enum variant, but can't check
 /// outer types.
+#[derive(Clone, Copy)]
 pub struct TailBytes<'i>(pub &'i [u8]);
 
 impl SerializeShrinkWrap for TailBytes<'_> {

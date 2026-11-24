@@ -538,3 +538,117 @@ fn enum_future_version_u16() {
         Err(ShrinkWrapError::EnumFutureVersionOrMalformedData)
     );
 }
+
+/// What one pass makes of a group: where it ends and whether it has a tag run, or its error.
+type PassResult = Result<((usize, u8), bool), ShrinkWrapError>;
+
+/// What `validate_group` (deserializing a `Series`) and `skim` (iterating it, the owned decoder) make of `bytes`.
+fn both_passes<'i, T: SeriesColumns<'i>>(bytes: &'i [u8]) -> (PassResult, PassResult) {
+    use shrink_wrap::series::{Level, RootCtx};
+    let mut rd = BufReader::new(bytes);
+    let n = match rd.read_unib32() {
+        Ok(n) if n > 0 => n as usize,
+        Ok(_) => return (Ok(((0, 0), false)), Ok(((0, 0), false))),
+        Err(e) => return (Err(e), Err(e)),
+    };
+    let mut rd_v = rd;
+    let validated = T::validate_group(&mut rd_v, RootCtx::new(n), Level::Outermost)
+        .map(|run| (rd_v.pos(), run.is_some()));
+    let mut rd_s = rd;
+    let skimmed = T::skim(&mut rd_s, RootCtx::new(n), Level::Outermost)
+        .map(|r| (rd_s.pos(), T::tag_run(&r).is_some()));
+    (validated, skimmed)
+}
+
+/// `validate_group` and `skim` agree on every truncation and every single bit flip of valid bytes, for structs,
+/// enums, `Option`, tuples and arrays.
+fn validate_agrees_with_skim<T>(bytes: &[u8])
+where
+    T: for<'i> SeriesColumns<'i>,
+{
+    let check = |b: &[u8], what: &str| {
+        let (validated, skimmed) = both_passes::<T>(b);
+        assert_eq!(validated, skimmed, "{what}: {b:02x?}");
+    };
+    check(bytes, "valid");
+    assert!(both_passes::<T>(bytes).0.is_ok());
+    for len in 0..bytes.len() {
+        check(&bytes[..len], "truncated");
+    }
+    for byte in 0..bytes.len() {
+        for bit in 0..8 {
+            let mut flipped = bytes.to_vec();
+            flipped[byte] ^= 1 << bit;
+            check(&flipped, "flipped");
+        }
+    }
+}
+
+#[test]
+fn validate_group_agrees_with_skim() {
+    let iv: Vec<IvSample> = (0..12u8)
+        .map(|k| IvSample {
+            v: Volt {
+                prefix: if k < 6 { Prefix::Milli } else { Prefix::Unit },
+                value: if k % 4 == 0 {
+                    NumericValue::I32(-(k as i32))
+                } else {
+                    NumericValue::U8(k)
+                },
+            },
+            i: Ampere {
+                prefix: Prefix::Micro,
+                value: NumericValue::U16(300 + k as u16),
+            },
+        })
+        .collect();
+    validate_agrees_with_skim::<IvSample>(&Series::new(&iv).to_ww_bytes_owned().unwrap());
+
+    type Parts = (Option<Volt>, NumericValue, [i16; 2]);
+    let parts: Vec<Parts> = (0..10u8)
+        .map(|k| {
+            (
+                (k % 3 != 0).then_some(Volt {
+                    prefix: Prefix::Unit,
+                    value: NumericValue::U8(k),
+                }),
+                if k < 4 {
+                    NumericValue::U16(k as u16)
+                } else {
+                    NumericValue::I32(k as i32 - 5)
+                },
+                [k as i16, -(k as i16)],
+            )
+        })
+        .collect();
+    validate_agrees_with_skim::<Parts>(&Series::new(&parts).to_ww_bytes_owned().unwrap());
+
+    let outer: Vec<OuterOwned> = (0..8u16)
+        .map(|k| OuterOwned {
+            event: if k % 3 == 0 {
+                EventOwned::Idle
+            } else {
+                EventOwned::Reading(Prefix::Milli, k as i32, k % 2 == 0)
+            },
+            inner: InnerOwned {
+                id: k,
+                name: "a".into(),
+            },
+            maybe: (k % 2 == 0).then(|| InnerOwned {
+                id: k,
+                name: "b".into(),
+            }),
+            t: k as f32,
+        })
+        .collect();
+    let bytes = SeriesOwned(outer).to_ww_bytes_owned().unwrap();
+    validate_agrees_with_skim::<OuterOwned>(&bytes);
+}
+
+/// A decoded `Series` keeps only where its columns start, not a cursor per column: its size doesn't depend on `T`.
+#[test]
+fn decoded_series_size_is_independent_of_t() {
+    use core::mem::size_of;
+    assert_eq!(size_of::<Series<IvSample>>(), size_of::<Series<u8>>());
+    assert_eq!(size_of::<Series<OuterOwned>>(), size_of::<Series<u8>>());
+}

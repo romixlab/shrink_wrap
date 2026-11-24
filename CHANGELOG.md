@@ -11,6 +11,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### ⚠️ Breaking
 
+- A decoded `Series` keeps where its columns start instead of a cursor per column (SW-87): `Series::Buf { n, reader, raw }` is now `Series::Buf { n, columns, raw }`, `columns` a `BufReader` at the first column. Its size no longer depends on `T` (704 bytes less for a `Series<ww_si::Second>` on thumbv7m); `iter()` skims the columns again. Code that built a `Buf` by hand passes the reader after the count instead. Same bytes.
 - A field's `#[serde(..)]` goes on every generated type deriving serde, not the item-named one only; owned serde output follows it (SW-86).
 - Repository: shrink_wrap and shrink_wrap_derive live in romixlab/shrink_wrap again; take them by git from there, not from wire_weaver.
 - `size_bench` drops its `reply` and `finish_for` cases (a WireWeaver reply); wire_weaver's `just size-bench-reply` measures them (TEST-17).
@@ -85,6 +86,7 @@ Covers `shrink_wrap` 0.2.0 and `shrink_wrap_derive` 0.2.0.
 
 ### 🚀 Features
 
+- `SeriesColumns::validate_group`: validates a group like `skim` without keeping the cursors, part by part in structs, enums, tuples, arrays and `Option` (derived and built in), which deserializing a `Series` uses (SW-87). Hand-written impls get a default that calls `skim`.
 - `TailBytes` is `Clone` and `Copy`, so borrowed types holding it can derive `Clone` (a request rewritten by a mount forwarder).
 - `#[attr_owned(..)]` / `#[attr_borrowed(..)]` on fields and variants: attributes for the owned or borrowed type only (SW-86).
 - `elide_defaults` directive: an evolvable struct leaves trailing `#[default = ..]` fields at their default off the wire (SW-85).

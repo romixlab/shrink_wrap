@@ -119,8 +119,11 @@ let back: Vec<IvSample> = Series::<IvSample>::from_ww_bytes(&bytes)?.iter().coll
 let owned = SeriesOwned::<IvSample>::from_ww_bytes_owned(&bytes)?; // std, into a Vec<T>
 ```
 
-Deserializing validates every column in one pass (`SeriesColumns::skim`) with no allocation; `iter()` then decodes
-items one at a time, stepping all columns in parallel, zero-copy for borrowed `&str`/`&[u8]` leaves. Malformed data
+Deserializing validates every column in one pass (`SeriesColumns::validate_group`) with no allocation and keeps
+only the item count and where the columns start: a decoded `Series` is a few words whatever `T` is, so a message
+holding one stays small on an MCU's stack. `iter()` skims the columns again for a cursor each
+(`SeriesColumns::skim`) and decodes items one at a time, stepping all columns in parallel, zero-copy for borrowed
+`&str`/`&[u8]` leaves. Malformed data
 is always an `Error`, never a panic; the number of items is capped at `u16::MAX` (a column can take zero bits per
 item — a constant run — so, unlike `Vec<T>`, the count can't be checked against the remaining bytes and has to be
 bounded instead).

@@ -283,6 +283,15 @@ for humans and AI agents alike.
   with the item's name when none visibly does: a type whose owned side alone has serde takes
   `#[serde(with = "exact_units::serde::with_unit")]` as written (`docs/derive_reference.md`; test
   `shrink_wrap/tests/one_side_attrs.rs`).
+- ✅ **SW-87 A decoded `Series` without its column cursors** — `Series::Buf` keeps the item count and where the
+  columns start (`columns: BufReader`), not a cursor per column: its size no longer depends on `T` (a
+  `Series<ww_si::Second>` was 704 bytes on thumbv7m, one cursor per `NumericValue` variant). Deserializing validates
+  the group with `SeriesColumns::validate_group`, which structs, enums, tuples, arrays and `Option` (derived and
+  built in) implement part by part, so no cursors of two parts are on the stack together; `iter` skims again for the
+  cursors. Same bytes. In WireWeaver's `qemu-mount-prefix` (Cortex-M3) decoding an observe `Event` without sample
+  times went from 6.6 KB of stack and 5130 instructions to 520 bytes and 738 at `opt-level = "z"`
+  (`docs/series.md`; tests `validate_group_agrees_with_skim`, `decoded_series_size_is_independent_of_t` in
+  `shrink_wrap/tests/series_derive.rs`).
 - ✅ **SW-19 Bounded lists and strings `MaxLen<T, N>`**: a `RefVec`, `Vec`, `&str` or `String` with at most `N`
   elements, same bytes as `T` (a bound can be added, raised or removed without a new wire form), checked on
   serialize and deserialize (`Error::MaxLenExceeded`, never truncated). Works in derived types and in every API
@@ -393,6 +402,11 @@ for humans and AI agents alike.
   type and the derive's features.
 - 🔍 **SW-23 Tuple enum variants evolution** — check that tuple variants evolve as `docs/evolution/rules.md` says
   (fields can be appended) and add a test.
+- 📋 **SW-88 Smaller series skim contexts** — validating a `Series<ww_si::Second>` of 3 items still takes 3.4 KB of
+  stack and about 24 k instructions on a Cortex-M3 at `opt-level = "z"` (2.7 KB and 6.5 k at `3`): every variant
+  of `NumericValue` gets its own `VariantCtx` and `SiblingCtx` copy, each holding a `TagRun` (a `BufReader` and run
+  state, about 48 bytes) per field of every enclosing struct, tagged or not. Keep runs for tagged fields only,
+  shrink `BufReader` / `RunReader`, and skip the walk of a variant the tag run never names.
 - 💡 **SW-65 Aligned plain `Series` columns** — numbers byte-aligned and little-endian at their width (numeric
   escape `11 11`, float codec `0010`, an `AlignedPlain` policy), copied from a `SeriesStore`: 34 k cycles per FOC
   level batch on an STM32H725 at `opt-level = 3` against 60 k for column-wise `DeltaPacked` (SW-64), for 2.3x the

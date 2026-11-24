@@ -21,9 +21,10 @@ pub const SERIES_MAX_ITEMS: usize = u16::MAX as usize;
 ///
 /// `ElementSize::Unsized`: as a field its byte length goes into the parent's length FIFO; nothing inside uses the
 /// FIFO. Serializing walks the items once per column and allocates nothing. Deserializing reads `n` and validates
-/// every column in one pass ([SeriesColumns::skim]), keeping a cursor per column; [iter](Self::iter) then decodes
-/// the items one by one, all columns in parallel, zero-copy for `&str` / `&[u8]` leaves. Malformed data is an
-/// `Error`, never a panic, and the work is bounded by `n` times the columns.
+/// every column in one pass ([SeriesColumns::skim]), then keeps only where the columns start: a decoded `Series` is
+/// a few words whatever `T` is, so a message holding one stays small on an MCU's stack. [iter](Self::iter) skims
+/// again for a cursor per column and decodes the items one by one, all columns in parallel, zero-copy for `&str` /
+/// `&[u8]` leaves. Malformed data is an `Error`, never a panic, and the work is bounded by `n` times the columns.
 ///
 /// `P` is how the codecs of the columns are picked: [CodecPolicy] at run time, or a [SeriesPolicy] type fixed at
 /// compile time ([DeltaPacked](super::DeltaPacked)), which links only its own codecs. Both write the same bytes for
@@ -31,10 +32,11 @@ pub const SERIES_MAX_ITEMS: usize = u16::MAX as usize;
 pub enum Series<'i, T: SeriesColumns<'i>, P: SeriesPolicy = CodecPolicy> {
     /// Items to serialize, and how to pick the codecs of their columns.
     Slice { items: &'i [T], policy: P },
-    /// Decoded from a buffer: the column cursors at their starts.
+    /// Decoded from a buffer: the item count and where the columns start.
     Buf {
         n: usize,
-        reader: Option<T::Reader>,
+        /// At the first column, right after `n`: [iter](Series::iter) skims the columns from here for their cursors.
+        columns: BufReader<'i>,
         /// The `Series`' own bytes when it started at a byte (always, when read as a field), to serialize again.
         raw: Option<&'i [u8]>,
     },
@@ -113,8 +115,8 @@ impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy> Series<'i, T, P> {
     {
         match self {
             Series::Slice { items, .. } => SeriesIter::Slice { items, pos: 0 },
-            Series::Buf { n, reader, .. } => SeriesIter::Buf {
-                reader: reader.clone(),
+            Series::Buf { n, columns, .. } => SeriesIter::Buf {
+                reader: open_columns::<T>(*columns, *n),
                 left: *n,
             },
         }
@@ -146,9 +148,9 @@ impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy + Clone> Clone for Series<'i, T, 
                 items,
                 policy: policy.clone(),
             },
-            Series::Buf { n, reader, raw } => Series::Buf {
+            Series::Buf { n, columns, raw } => Series::Buf {
                 n: *n,
-                reader: reader.clone(),
+                columns: *columns,
                 raw: *raw,
             },
         }
@@ -318,21 +320,41 @@ impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy> crate::SerializeShrinkWrapOwned
     }
 }
 
-/// Reads `n` and skims the group: the item count and the column cursors, `rd` after the padding.
+/// Reads `n` and validates the group: the item count and where the columns start, `rd` after the padding. No column
+/// cursors are kept ([SeriesColumns::validate_group]), so a `Series` never carries them. Out of line: the
+/// validation's stack is taken only when a `Series` is there, not by every decoder of a message with an optional one.
+#[inline(never)]
 fn read_series<'i, T: SeriesColumns<'i>>(
     rd: &mut BufReader<'i>,
-) -> Result<(usize, Option<T::Reader>), Error> {
+) -> Result<(usize, BufReader<'i>), Error> {
+    let n = read_count(rd)?;
+    let columns = *rd;
+    if n != 0 {
+        T::validate_group(rd, RootCtx::new(n), Level::Outermost)?;
+    }
+    rd.align_byte();
+    Ok((n, columns))
+}
+
+/// Reads the item count `n`.
+fn read_count(rd: &mut BufReader<'_>) -> Result<usize, Error> {
     let n = rd.read_unib32()? as usize;
     if n > SERIES_MAX_ITEMS {
         return Err(Error::MalformedSeries);
     }
-    let reader = if n == 0 {
-        None
-    } else {
-        Some(T::skim(rd, RootCtx::new(n), Level::Outermost)?)
-    };
-    rd.align_byte();
-    Ok((n, reader))
+    Ok(n)
+}
+
+/// The column cursors of `n` items whose columns start at `columns`: `None` for none, or for columns that don't
+/// skim (only a `Buf` built by hand; deserializing validated them).
+fn open_columns<'i, T: SeriesColumns<'i>>(
+    mut columns: BufReader<'i>,
+    n: usize,
+) -> Option<T::Reader> {
+    if n == 0 {
+        return None;
+    }
+    T::skim(&mut columns, RootCtx::new(n), Level::Outermost).ok()
 }
 
 impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy> DeserializeShrinkWrap<'i> for Series<'i, T, P> {
@@ -340,13 +362,13 @@ impl<'i, T: SeriesColumns<'i>, P: SeriesPolicy> DeserializeShrinkWrap<'i> for Se
 
     fn des_shrink_wrap<'di>(rd: &'di mut BufReader<'i>) -> Result<Self, Error> {
         let (start, bit) = rd.pos();
-        let (n, reader) = read_series::<T>(rd)?;
+        let (n, columns) = read_series::<T>(rd)?;
         let raw = if bit == 7 {
             rd.bytes_at(start, rd.pos().0)
         } else {
             None
         };
-        Ok(Series::Buf { n, reader, raw })
+        Ok(Series::Buf { n, columns, raw })
     }
 }
 
@@ -433,14 +455,16 @@ impl<T: for<'i> SeriesColumns<'i>> crate::DeserializeShrinkWrapOwned for SeriesO
     const ELEMENT_SIZE: ElementSize = ElementSize::Unsized;
 
     fn des_shrink_wrap_owned(rd: &mut BufReader<'_>) -> Result<Self, Error> {
-        let (n, reader) = read_series::<T>(rd)?;
+        let n = read_count(rd)?;
         // grown as it decodes: n is data, not a reason to allocate up front
         let mut items = Vec::new();
-        if let Some(mut reader) = reader {
+        if n != 0 {
+            let mut reader = T::skim(rd, RootCtx::new(n), Level::Outermost)?;
             for _ in 0..n {
                 items.push(T::next(&mut reader, false)?);
             }
         }
+        rd.align_byte();
         Ok(SeriesOwned(items))
     }
 }

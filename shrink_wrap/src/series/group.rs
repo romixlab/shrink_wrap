@@ -601,6 +601,19 @@ pub trait SeriesColumns<'i>: Sized {
         level: Level,
     ) -> Result<Self::Reader, Error>;
 
+    /// [skim](Self::skim) without keeping the cursors: validates the group the same way, leaves `rd` after it and
+    /// returns only the tag run ([tag_run](Self::tag_run)). A type made of other types (a struct, an enum, a tuple,
+    /// an array, an `Option`) checks its parts one by one, so their cursors are never on the stack together: what
+    /// deserializing a `Series` runs, whose cursors are found again when it is iterated.
+    fn validate_group<C: SeriesCtx>(
+        rd: &mut BufReader<'i>,
+        ctx: C,
+        level: Level,
+    ) -> Result<Option<TagRun<'i>>, Error> {
+        let reader = Self::skim(rd, ctx, level)?;
+        Ok(Self::tag_run(&reader))
+    }
+
     /// The next item of the subsequence from the column cursors, `restart` as the context had it.
     fn next(reader: &mut Self::Reader, restart: bool) -> Result<Self, Error>;
 

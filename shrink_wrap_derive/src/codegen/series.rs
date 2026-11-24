@@ -904,6 +904,27 @@ impl SeriesSeed<'_> {
         }
     }
 
+    /// Validates field `j` like [skim_field](Self::skim_field) but keeps no reader (`validate_group`), `ctx` the
+    /// parent's context, `__runs` the tag runs of the fields before it.
+    fn validate_field(&self, f: &SeriesField, j: usize, ctx: TokenStream) -> TokenStream {
+        if f.opaque {
+            let skim = self.skim_field(f, j, ctx);
+            return quote! { let _ = #skim; };
+        }
+        let ty = &f.ty;
+        let sibling_ctx = self.sc(quote! { SiblingCtx });
+        let trait_ = self.sc(quote! { SeriesColumns });
+        let level = self.sc(quote! { Level });
+        let call = quote! {
+            <#ty as #trait_<'i>>::validate_group(rd, #sibling_ctx::new(#ctx, __runs), #level::Nested)?
+        };
+        if f.tagged {
+            quote! { __runs[#j] = #call; }
+        } else {
+            quote! { #call; }
+        }
+    }
+
     /// The next value of field `j` from reader `#r` (a `&mut`), `__sib` the `SiblingTags` of the item.
     fn next_field(
         &self,
@@ -1007,6 +1028,15 @@ impl SeriesSeed<'_> {
                     level: #level,
                 ) -> Result<Self::Reader, #error> {
                     <#ty as #trait_<'i>>::skim(rd, ctx, level)
+                }
+
+                #[inline]
+                fn validate_group<__C: #ctx_trait>(
+                    rd: &mut #buf_reader<'i>,
+                    ctx: __C,
+                    level: #level,
+                ) -> Result<Option<#tag_run<'i>>, #error> {
+                    <#ty as #trait_<'i>>::validate_group(rd, ctx, level)
                 }
 
                 #[inline]
@@ -1175,6 +1205,15 @@ impl SeriesSeed<'_> {
                 if __head.has_field(rd, #j) { Some(#skim) } else { #missing },
             }
         });
+        let validates = fields.iter().enumerate().map(|(j, f)| {
+            let validate = self.validate_field(f, j, quote! { ctx.clone() });
+            let missing = maybe_quote(f.default.is_none(), || {
+                quote! { else { return Err(#error::MalformedSeries); } }
+            });
+            quote! {
+                if __head.has_field(rd, #j) { #validate } #missing
+            }
+        });
         let locals: Vec<Ident> = fields
             .iter()
             .map(|f| format_ident!("__f_{}", f.member.to_string()))
@@ -1265,6 +1304,19 @@ impl SeriesSeed<'_> {
                     let __readers = (#(#skims)*);
                     __head.finish(rd, #n)?;
                     Ok((#sibling_tags::new(), __readers))
+                }
+
+                #[allow(unused_assignments, unused_mut)]
+                fn validate_group<__C: #ctx_trait>(
+                    rd: &mut #buf_reader<'i>,
+                    ctx: __C,
+                    level: #level,
+                ) -> Result<Option<#tag_run<'i>>, #error> {
+                    let __head = #skim_struct_head(rd, &ctx, level, #evolvable)?;
+                    let mut __runs: [Option<#tag_run<'i>>; #n] = [None; #n];
+                    #(#validates)*
+                    __head.finish(rd, #n)?;
+                    Ok(None)
                 }
 
                 #[allow(unused_variables)]
@@ -1358,14 +1410,17 @@ impl SeriesSeed<'_> {
 
         // the tag run, checked for every value
         let discriminant = |v: &Variant| proc_macro2::Literal::u32_unsuffixed(v.discriminant);
-        let tag_arms = variants.iter().map(|v| {
-            let d = discriminant(v);
-            let on = v.cfg_attrs();
-            let off = v.not_cfg_attr().map(|off| {
-                quote! { #off #d => Err(#error::EnumVariantDisabled), }
-            });
-            quote! { #on #d => Ok(()), #off }
-        });
+        let tag_arms = variants
+            .iter()
+            .map(|v| {
+                let d = discriminant(v);
+                let on = v.cfg_attrs();
+                let off = v.not_cfg_attr().map(|off| {
+                    quote! { #off #d => Err(#error::EnumVariantDisabled), }
+                });
+                quote! { #on #d => Ok(()), #off }
+            })
+            .collect::<Vec<_>>();
         let future_check = future_version.map(|fv| {
             quote! {
                 if items.clone().any(|(e, _)| matches!(e, Self::#fv(_))) {
@@ -1376,6 +1431,7 @@ impl SeriesSeed<'_> {
 
         let mut writes = vec![];
         let mut skims = vec![];
+        let mut validates = vec![];
         let mut reader_fields = vec![];
         let mut reader_inits = vec![];
         let mut reader_clones = vec![];
@@ -1436,6 +1492,19 @@ impl SeriesSeed<'_> {
                     let __rs = (#(#field_skims,)*);
                     (#sibling_tags::new(), __rs)
                 };
+            });
+            let field_validates = fields
+                .iter()
+                .enumerate()
+                .map(|(j, f)| self.validate_field(f, j, quote! { __vctx.clone() }));
+            validates.push(quote! {
+                #on
+                #[allow(unused_assignments, unused_mut)]
+                {
+                    let __vctx = #variant_ctx::new(ctx.clone(), __tags.tag_run(), #d);
+                    let mut __runs: [Option<#tag_run<'i>>; #k] = [None; #k];
+                    #(#field_validates)*
+                }
             });
             reader_inits.push(quote! { #on #vfield, });
             reader_clones.push(quote! { #on #vfield: self.#vfield.clone(), });
@@ -1616,6 +1685,20 @@ impl SeriesSeed<'_> {
                     })?;
                     #(#skims)*
                     #finish_skim
+                }
+
+                #[allow(clippy::manual_range_patterns)]
+                fn validate_group<__C: #ctx_trait>(
+                    rd: &mut #buf_reader<'i>,
+                    ctx: __C,
+                    _level: #level,
+                ) -> Result<Option<#tag_run<'i>>, #error> {
+                    let __tags = #enum_tags::skim(rd, &ctx, |tag| match tag {
+                        #(#tag_arms)*
+                        _ => Err(#error::EnumFutureVersionOrMalformedData),
+                    })?;
+                    #(#validates)*
+                    Ok(__tags.tag_run())
                 }
 
                 #[allow(unused_variables)]

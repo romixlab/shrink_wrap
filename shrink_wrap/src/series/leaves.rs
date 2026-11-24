@@ -477,6 +477,16 @@ impl<'i, X: SeriesColumns<'i>> SeriesColumns<'i> for Option<X> {
         Ok(OptionReader { tags, some })
     }
 
+    fn validate_group<C: SeriesCtx>(
+        rd: &mut BufReader<'i>,
+        ctx: C,
+        _level: Level,
+    ) -> Result<Option<TagRun<'i>>, Error> {
+        let tags = EnumTags::skim_kind(rd, &ctx, RunKind::OptionTag, |_| Ok(()))?;
+        X::validate_group(rd, VariantCtx::new(ctx, tags.tag_run(), 1), Level::Nested)?;
+        Ok(tags.tag_run())
+    }
+
     fn next(reader: &mut Self::Reader, restart: bool) -> Result<Self, Error> {
         let (tag, entered) = reader.tags.next_tag()?;
         if tag == 0 {
@@ -585,6 +595,19 @@ macro_rules! tuple {
                 Ok((SiblingTags::new(), readers))
             }
 
+            #[allow(unused_assignments)]
+            fn validate_group<C: SeriesCtx>(
+                rd: &mut BufReader<'i>,
+                ctx: C,
+                _level: Level,
+            ) -> Result<Option<TagRun<'i>>, Error> {
+                let mut runs: [Option<TagRun<'i>>; $n] = [None; $n];
+                $(
+                    runs[$idx] = $t::validate_group(rd, SiblingCtx::new(ctx.clone(), runs), Level::Nested)?;
+                )+
+                Ok(None)
+            }
+
             fn next(reader: &mut Self::Reader, restart: bool) -> Result<Self, Error> {
                 let (sib, readers) = reader;
                 sib.begin();
@@ -691,6 +714,23 @@ macro_rules! bit_count_enum {
                 Ok((tags, readers))
             }
 
+            fn validate_group<C: SeriesCtx>(
+                rd: &mut BufReader<'i>,
+                ctx: C,
+                _level: Level,
+            ) -> Result<Option<TagRun<'i>>, Error> {
+                let tags = EnumTags::skim(rd, &ctx, |tag| match tag {
+                    0..=3 => Ok(()),
+                    _ => Err(Error::EnumFutureVersionOrMalformedData),
+                })?;
+                $({
+                    let vctx = VariantCtx::new(ctx.clone(), tags.tag_run(), $d);
+                    <$bits>::validate_group(rd, vctx.clone(), Level::Nested)?;
+                    <$val>::validate_group(rd, vctx, Level::Nested)?;
+                })+
+                Ok(tags.tag_run())
+            }
+
             fn next(reader: &mut Self::Reader, restart: bool) -> Result<Self, Error> {
                 let (tags, readers) = reader;
                 let (tag, entered) = tags.next_tag()?;
@@ -775,6 +815,18 @@ impl<'i, X: SeriesColumns<'i> + Default, const N: usize> SeriesColumns<'i> for [
             sib: SiblingTags::new(),
             elements,
         })
+    }
+
+    fn validate_group<C: SeriesCtx>(
+        rd: &mut BufReader<'i>,
+        ctx: C,
+        _level: Level,
+    ) -> Result<Option<TagRun<'i>>, Error> {
+        let mut runs: [Option<TagRun<'i>>; N] = [None; N];
+        for j in 0..N {
+            runs[j] = X::validate_group(rd, SiblingCtx::new(ctx.clone(), runs), Level::Nested)?;
+        }
+        Ok(None)
     }
 
     fn next(reader: &mut Self::Reader, restart: bool) -> Result<Self, Error> {

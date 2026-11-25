@@ -186,7 +186,7 @@ Every serializable type implements
 Both work on borrowed data, no allocator required. Types that also support `std` implement the `..Owned`
 counterparts, `SerializeShrinkWrapOwned` / `DeserializeShrinkWrapOwned`, which write into a `BufWriterOwned`.
 `#[derive_shrink_wrap(..)]` generates one pair per representation you ask for (see
-[borrowed, owned, or both?](derive.md#borrowed-owned-or-both)).
+[borrowed, owned, or both?](../basic/borrowed_and_owned.md#which-types-the-derive-makes)).
 
 Each trait carries `ELEMENT_SIZE: ElementSize`, the one piece of information the FIFO of lengths is built on. It
 tells a _parent_ type, at compile time, whether a field needs a length slot at all:

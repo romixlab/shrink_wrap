@@ -15,50 +15,12 @@ and it lets newer and older versions of a type read each other's data.
 It lives in its own crate, `shrink_wrap`, with no dependency on the rest of WireWeaver. If all you need is a compact
 format for files, messages or flash records, you can use it on its own.
 
-## A first example
+## Where to start
 
-Put `#[derive_shrink_wrap(..)]` on a struct or enum and it gets everything it needs to go on the wire:
-
-```rust
-use ww_api::prelude::*; // or `use shrink_wrap::prelude::*;` for the crate on its own
-
-#[derive_shrink_wrap(owned, derive(Debug, PartialEq))]
-struct Sample<'i> {
-    id: u8,
-    ok: bool,
-    label: &'i str,
-    error: Option<u16>,
-}
-
-fn main() {
-    let sample = Sample { id: 7, ok: true, label: "temp", error: None };
-
-    // no_std, no allocator: serialize into a buffer you own
-    let mut buf = [0u8; 64];
-    let bytes = sample.to_ww_bytes(&mut buf).unwrap();
-    assert_eq!(bytes, &[0x07, 0x80, 0x74, 0x65, 0x6d, 0x70, 0x04]);
-
-    // read it back without copying: `label` points into `bytes`
-    let read = Sample::from_ww_bytes(bytes).unwrap();
-    assert_eq!(read, sample);
-
-    // with std: `SampleOwned` has a `String` instead of `&str`, same bytes
-    let owned = SampleOwned::from_ww_bytes_owned(bytes).unwrap();
-    assert_eq!(owned.to_ww_bytes_owned().unwrap(), bytes);
-}
-```
-
-Seven bytes for the whole value:
-
-| Bytes         | What                                                                              |
-|---------------|-----------------------------------------------------------------------------------|
-| `07`          | `id`                                                                              |
-| `80`          | `ok`: one bit, the rest of the byte is padding before the next byte-aligned field |
-| `74 65 6d 70` | `"temp"`                                                                          |
-| `04`          | `error`'s `None` flag (one bit), padding, and the length of `"temp"` (4)          |
-
-Two things stand out: a `bool` or an `Option` flag costs one bit, and the string's length is not in front of the
-string but at the end of the buffer. Both are explained below.
+The Basic part of the book teaches ShrinkWrap on one example, a sensor node that sends its readings over a radio
+link. [Your types on the wire](../basic/types_on_the_wire.md) puts a first struct on the wire and explains its bytes
+bit by bit, and the chapters after it cover borrowed and owned types, the built-in types, structs and enums, and
+types that change. This page sums up what the format gives you and how it stays small.
 
 ## What you get
 
@@ -70,10 +32,10 @@ string but at the end of the buffer. Both are explained below.
 - **Safe on untrusted data.** A malformed buffer is an error, never a panic, and a recursive type nested too deep
   is `Error::NestingTooDeep` instead of a stack overflow ([nesting depth](wire_format.md#nesting-depth)).
 - **Evolvable.** By default a type can get new fields later; old and new code keep reading each other's data
-  ([derive: evolving types](derive.md#evolving-types)).
+  ([Types that change](../basic/types_that_change.md)).
 - **Many types out of the box:** integers of any bit width, variable-length numbers, strings and lists with an
   optional maximum length, `Option`, `Result`, tuples, arrays, compressed time series and more
-  ([built-in types](../types.md)).
+  ([Built-in types](../basic/built_in_types.md)).
 
 ## How it stays small
 
@@ -98,8 +60,13 @@ For the exact bytes, bit by bit, see [wire format internals](wire_format.md).
 
 | Page                                     | Level    | What's there                                                                          |
 |------------------------------------------|----------|---------------------------------------------------------------------------------------|
-| [Derive](derive.md)                      | Basic    | `#[derive_shrink_wrap]`: borrowed and owned types, evolving types, enums               |
-| [Built-in types](../types.md)            | Basic    | Every type that goes on the wire and what it costs                                     |
+| [Your types on the wire](../basic/types_on_the_wire.md) | Basic | A first struct on the wire, bit by bit                                |
+| [Borrowed and owned](../basic/borrowed_and_owned.md) | Basic   | Zero-copy types for firmware, owned twins for hosts                       |
+| [Built-in types](../basic/built_in_types.md) | Basic   | Every type that goes on the wire and what it costs                                     |
+| [Structs and enums](../basic/structs_and_enums.md) | Basic | Your own types, discriminants and variants a reader doesn't know            |
+| [Types that change](../basic/types_that_change.md) | Basic | New fields and variants that old and new readers both read                  |
+| [Derive in depth](derive.md)             | Advanced | Type mapping, defaults and serde, tuple structs, generic types, directives            |
+| [Types in depth](../types.md)            | Advanced | Bounded lists in an API, recursive and generic types, aliases                          |
 | [Size assumptions](size_assumptions.md)  | Advanced | `sized`, `final_structure`, `self_describing`: smaller, but frozen                     |
 | [Derive reference](derive_reference.md)  | Advanced | Every directive of the macro                                                           |
 | [Special types](special_types.md)        | Advanced | `TailSize`, `ArrayString`/`ArrayVec`, compressed sequences, `OptionAnyVec`             |

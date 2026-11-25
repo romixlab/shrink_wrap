@@ -36,11 +36,11 @@ discriminants, display, validate, series|series(no_store)|series(cells), no_futu
 ## Generated types
 
 Which types the macro generates follows from the fields: see
-[borrowed, owned, or both?](derive.md#borrowed-owned-or-both).
+[borrowed, owned, or both?](../basic/borrowed_and_owned.md#which-types-the-derive-makes).
 
 ### `borrowed`, `borrowed(<cfg predicate>)`
 
-Requests the borrowed type. Only needed for an [ambiguous](derive.md#borrowed-owned-or-both) type (where it's
+Requests the borrowed type. Only needed for an [ambiguous](../basic/borrowed_and_owned.md#which-types-the-derive-makes) type (where it's
 otherwise not generated at all), or to gate an implied-borrowed type behind a `cfg` predicate:
 
 ```rust
@@ -761,7 +761,7 @@ evaluate a `cfg`. So:
 
 `#[attr_owned(attr, ..)]` puts the attributes inside on the owned type only, `#[attr_borrowed(attr, ..)]` on the
 borrowed type only: the field form of `cfg_attr_owned(..)` / `cfg_attr_borrowed(..)`. They work on struct fields,
-on variants and on their fields, named or not. An [ambiguous](derive.md#borrowed-owned-or-both) type with both sides
+on variants and on their fields, named or not. An [ambiguous](../basic/borrowed_and_owned.md#which-types-the-derive-makes) type with both sides
 is one type and takes both. A condition goes inside, `#[attr_owned(cfg_attr(feature = "x", serde(..)))]`.
 
 A `#[serde(..)]` (or a `#[cfg_attr(pred, serde(..))]` holding only `serde` attributes) needs no marking: it goes on

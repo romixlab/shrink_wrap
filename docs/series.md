@@ -100,7 +100,7 @@ gets you the worse of both.
 
 `ww_si::Timed<V, Tm> { t: Tm, value: V }` ([DER-14](derive_reference.md#generics) generic struct with
 `series`) is not a special case of `Series` — it gets a `t` column like any other field, and a regular sampling
-rate costs about nothing (delta + constant: `t0 + period`). `t` is a [time point](../std_library/ww_si.md#which-time-point),
+rate costs about nothing (delta + constant: `t0 + period`). `t` is a [time point](../std_library/time_points.md#which-time-point),
 `DeviceMicros<u32>` by default: a plain `u32` column, no prefix run and no number tag. Use `Series<Timed<T>>`
 wherever a batch needs its own timestamps; where a stream already carries time for the whole batch, a plain
 `Series<T>` works just as well.
